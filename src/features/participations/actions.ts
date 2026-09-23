@@ -245,3 +245,101 @@ export async function deleteChecklistItem(formData: FormData) {
   revalidatePath(detailPath(participationId));
   redirect(detailPath(participationId));
 }
+
+/**
+ * 상품별 판매 실적 한 줄 추가.
+ * "내 상품" 목록에서 골랐으면(product_id) 그 상품의 이름/기본 단가를 가져와
+ * 스냅샷으로 저장하고, 직접 입력(product_name_custom)이면 그 이름을 그대로
+ * 쓴다 — event_product_sales.product_name은 상품이 나중에 삭제/변경돼도
+ * 기록은 그대로 남도록 만든 스냅샷 컬럼(스키마 주석 참고).
+ */
+export async function addProductSale(formData: FormData) {
+  const participationId = String(formData.get("participation_id") ?? "");
+  if (!participationId) redirect("/my-events");
+
+  const { supabase, storeId } = await requireOwnedParticipation(participationId);
+
+  const productId = emptyToNull(formData.get("product_id"));
+  const customName = String(formData.get("product_name_custom") ?? "").trim();
+  let productName = customName;
+  let price = toNumberOrNull(formData.get("price"));
+
+  if (productId) {
+    // 61번 항목: store_id까지 걸어 남의 상품 id를 넣어도 붙지 않도록 이중 확인.
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select("name, price")
+      .eq("id", productId)
+      .eq("store_id", storeId)
+      .maybeSingle();
+    if (productError || !product) {
+      redirect(`${detailPath(participationId)}?error=${encodeURIComponent("선택한 상품을 찾을 수 없어요.")}`);
+    }
+    productName = product!.name;
+    if (price == null) price = product!.price;
+  }
+
+  if (!productName) {
+    redirect(
+      `${detailPath(participationId)}?error=${encodeURIComponent("상품을 선택하거나 상품명을 직접 입력해 주세요.")}`
+    );
+  }
+
+  const { error } = await supabase.from("event_product_sales").insert({
+    participation_id: participationId,
+    product_id: productId,
+    product_name: productName,
+    prepared: toNumberOrZero(formData.get("prepared")),
+    sold: toNumberOrZero(formData.get("sold")),
+    price: price ?? 0,
+  });
+
+  if (error) {
+    redirect(`${detailPath(participationId)}?error=${encodeURIComponent(error.message)}`);
+  }
+  revalidatePath(detailPath(participationId));
+  redirect(`${detailPath(participationId)}?notice=${encodeURIComponent("판매 실적을 추가했어요.")}`);
+}
+
+export async function updateProductSale(formData: FormData) {
+  const participationId = String(formData.get("participation_id") ?? "");
+  const saleId = String(formData.get("sale_id") ?? "");
+  if (!participationId || !saleId) redirect("/my-events");
+
+  const supabase = await createClient();
+  // revenue/sell_through_rate는 생성 컬럼이라 payload에 넣으면 안 된다(스키마 주석 참고).
+  const { error } = await supabase
+    .from("event_product_sales")
+    .update({
+      prepared: toNumberOrZero(formData.get("prepared")),
+      sold: toNumberOrZero(formData.get("sold")),
+      price: toNumberOrZero(formData.get("price")),
+    })
+    .eq("id", saleId)
+    .eq("participation_id", participationId);
+
+  if (error) {
+    redirect(`${detailPath(participationId)}?error=${encodeURIComponent(error.message)}`);
+  }
+  revalidatePath(detailPath(participationId));
+  redirect(`${detailPath(participationId)}?notice=${encodeURIComponent("판매 실적을 수정했어요.")}`);
+}
+
+export async function deleteProductSale(formData: FormData) {
+  const participationId = String(formData.get("participation_id") ?? "");
+  const saleId = String(formData.get("sale_id") ?? "");
+  if (!participationId || !saleId) redirect("/my-events");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("event_product_sales")
+    .delete()
+    .eq("id", saleId)
+    .eq("participation_id", participationId);
+
+  if (error) {
+    redirect(`${detailPath(participationId)}?error=${encodeURIComponent(error.message)}`);
+  }
+  revalidatePath(detailPath(participationId));
+  redirect(detailPath(participationId));
+}

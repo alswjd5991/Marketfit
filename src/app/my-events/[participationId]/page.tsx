@@ -7,11 +7,14 @@ import { getCurrentUser } from "@/features/store/data";
 import { getParticipationDetail } from "@/features/participations/data";
 import {
   addChecklistItem,
+  addProductSale,
   deleteChecklistItem,
+  deleteProductSale,
   toggleChecklistItem,
   updateParticipationPrep,
   updateParticipationResult,
   updateParticipationStatus,
+  updateProductSale,
 } from "@/features/participations/actions";
 import { STATUS_LABEL, STATUS_ORDER } from "@/features/participations/status-labels";
 
@@ -268,6 +271,82 @@ export default async function ParticipationDetailPage(
             </label>
             <Button type="submit" className="self-start">
               결과 저장
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>상품별 판매 실적</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {detail.productSales.length === 0 ? (
+            <p className="text-sm text-neutral-400">아직 등록된 판매 실적이 없어요.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {detail.productSales.map((sale) => (
+                <li key={sale.id} className="rounded-lg border border-neutral-100 px-3 py-2">
+                  <form action={updateProductSale} className="flex flex-col gap-2">
+                    <input type="hidden" name="participation_id" value={p.id} />
+                    <input type="hidden" name="sale_id" value={sale.id} />
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-neutral-900">{sale.product_name}</span>
+                      <span className="text-sm text-neutral-500">
+                        매출 {sale.revenue.toLocaleString()}원
+                        {sale.sell_through_rate != null && ` · 판매율 ${sale.sell_through_rate}%`}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      <Field name="prepared" label="준비" type="number" defaultValue={sale.prepared} />
+                      <Field name="sold" label="판매" type="number" defaultValue={sale.sold} />
+                      <Field name="price" label="단가(원)" type="number" defaultValue={sale.price} />
+                      <div className="flex items-end gap-1">
+                        <Button type="submit" variant="secondary" size="sm" className="flex-1">
+                          저장
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
+                  <form action={deleteProductSale} className="mt-1 text-right">
+                    <input type="hidden" name="participation_id" value={p.id} />
+                    <input type="hidden" name="sale_id" value={sale.id} />
+                    <Button type="submit" variant="ghost" size="sm">
+                      삭제
+                    </Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <form action={addProductSale} className="flex flex-col gap-2 rounded-lg border border-dashed border-neutral-200 p-3">
+            <input type="hidden" name="participation_id" value={p.id} />
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-neutral-600">내 상품에서 선택</span>
+                <select
+                  name="product_id"
+                  defaultValue=""
+                  className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">직접 입력</option>
+                  {detail.myProducts.map((prod) => (
+                    <option key={prod.id} value={prod.id}>
+                      {prod.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Field name="product_name_custom" label="직접 입력 시 상품명" placeholder="예: 수제 비누" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Field name="prepared" label="준비 수량" type="number" placeholder="0" />
+              <Field name="sold" label="판매 수량" type="number" placeholder="0" />
+              <Field name="price" label="단가(원)" type="number" placeholder="선택 상품 단가 자동 적용" />
+            </div>
+            <Button type="submit" variant="outline" size="sm" className="self-start">
+              판매 실적 추가
             </Button>
           </form>
         </CardContent>

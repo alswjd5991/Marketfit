@@ -18,7 +18,17 @@ export interface DashboardStats {
   monthlyParticipationCounts: MonthlyCount[];
   /** 매출을 입력한 참가 기록만, 행사 시작일 순으로 정렬한 매출·순이익 추이. */
   eventRevenueTrend: EventTrendPoint[];
+  /** 상품별 판매 실적(event_product_sales)을 상품명으로 합산해 매출 높은 순 정렬, 상위 N개. */
+  popularProducts: PopularProduct[];
 }
+
+export interface PopularProduct {
+  productName: string;
+  totalSold: number;
+  totalRevenue: number;
+}
+
+export const POPULAR_PRODUCTS_LIMIT = 8;
 
 export interface MonthlyCount {
   monthKey: string; // "2026-09"
@@ -55,7 +65,7 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
   try {
     const { data: rows, error } = await supabase
       .from("event_participations")
-      .select("status, total_revenue, net_profit, satisfaction, event_id")
+      .select("id, status, total_revenue, net_profit, satisfaction, event_id")
       .eq("store_id", store.id);
     if (error) throw error;
     const participations = rows ?? [];
@@ -125,6 +135,11 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
 
     eventRevenueTrend.sort((a, b) => a.startDate.localeCompare(b.startDate));
 
+    const popularProducts = await getPopularProducts(
+      supabase,
+      participations.map((p) => p.id)
+    );
+
     return {
       totalParticipations: participations.length,
       statusCounts,
@@ -137,10 +152,41 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
       satisfactionEntryCount,
       monthlyParticipationCounts,
       eventRevenueTrend,
+      popularProducts,
     };
   } catch {
     return null; // 62번 항목: 네트워크 오류로 페이지 전체가 죽지 않도록
   }
+}
+
+/**
+ * 이 가게의 모든 참가 건에 기록된 event_product_sales를 상품명으로 합산해
+ * 매출 높은 순 상위 N개를 돌려준다. 참가 건이 없으면 빈 배열(0건을 지어내지 않음).
+ */
+async function getPopularProducts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  participationIds: string[]
+): Promise<PopularProduct[]> {
+  if (participationIds.length === 0) return [];
+
+  const { data: sales, error } = await supabase
+    .from("event_product_sales")
+    .select("product_name, sold, revenue")
+    .in("participation_id", participationIds);
+  if (error) throw error;
+
+  const byName = new Map<string, { totalSold: number; totalRevenue: number }>();
+  for (const s of sales ?? []) {
+    const entry = byName.get(s.product_name) ?? { totalSold: 0, totalRevenue: 0 };
+    entry.totalSold += s.sold;
+    entry.totalRevenue += s.revenue;
+    byName.set(s.product_name, entry);
+  }
+
+  return Array.from(byName.entries())
+    .map(([productName, agg]) => ({ productName, ...agg }))
+    .sort((a, b) => b.totalRevenue - a.totalRevenue)
+    .slice(0, POPULAR_PRODUCTS_LIMIT);
 }
 
 /** "2026-09" -> "2026년 9월" */

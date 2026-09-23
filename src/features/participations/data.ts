@@ -1,6 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import type { EventChecklistItem, EventParticipation, ParticipationStatus } from "@/types/database";
-import { getMyStore } from "@/features/store/data";
+import type {
+  EventChecklistItem,
+  EventParticipation,
+  EventProductSale,
+  ParticipationStatus,
+  Product,
+} from "@/types/database";
+import { getMyStore, getMyProducts } from "@/features/store/data";
 
 export interface MyParticipation {
   participationId: string;
@@ -149,6 +155,10 @@ export interface ParticipationDetail {
   endDate: string | null;
   detailSeedId: string | null;
   checklist: EventChecklistItem[];
+  /** 이 참가 건에 기록된 상품별 판매 실적. 매출(revenue) 높은 순. */
+  productSales: EventProductSale[];
+  /** 판매 실적 입력 폼의 "내 상품" 드롭다운용 — 가게에 등록된 상품 목록. */
+  myProducts: Product[];
 }
 
 /**
@@ -171,25 +181,37 @@ export async function getParticipationDetail(participationId: string): Promise<P
     if (error) throw error;
     if (!participation) return null;
 
-    const [{ data: event }, { data: recruitment }, { data: checklist, error: checklistError }] =
-      await Promise.all([
-        supabase
-          .from("events")
-          .select("name, region, venue, start_date, end_date")
-          .eq("id", participation.event_id)
-          .maybeSingle(),
-        supabase
-          .from("event_recruitments")
-          .select("source_post_id")
-          .eq("event_id", participation.event_id)
-          .maybeSingle(),
-        supabase
-          .from("event_checklists")
-          .select("*")
-          .eq("participation_id", participationId)
-          .order("sort_order", { ascending: true }),
-      ]);
+    const [
+      { data: event },
+      { data: recruitment },
+      { data: checklist, error: checklistError },
+      { data: productSales, error: productSalesError },
+      myProducts,
+    ] = await Promise.all([
+      supabase
+        .from("events")
+        .select("name, region, venue, start_date, end_date")
+        .eq("id", participation.event_id)
+        .maybeSingle(),
+      supabase
+        .from("event_recruitments")
+        .select("source_post_id")
+        .eq("event_id", participation.event_id)
+        .maybeSingle(),
+      supabase
+        .from("event_checklists")
+        .select("*")
+        .eq("participation_id", participationId)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("event_product_sales")
+        .select("*")
+        .eq("participation_id", participationId)
+        .order("revenue", { ascending: false }),
+      getMyProducts(store.id),
+    ]);
     if (checklistError) throw checklistError;
+    if (productSalesError) throw productSalesError;
 
     let detailSeedId: string | null = null;
     if (recruitment?.source_post_id) {
@@ -206,6 +228,8 @@ export async function getParticipationDetail(participationId: string): Promise<P
       endDate: event?.end_date ?? null,
       detailSeedId,
       checklist: checklist ?? [],
+      productSales: productSales ?? [],
+      myProducts,
     };
   } catch {
     return null;

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarRow } from "@/components/ui/bar-row";
 import { LineChart } from "@/components/ui/line-chart";
 import { getCurrentUser } from "@/features/store/data";
-import { getDashboardStats } from "@/features/dashboard/data";
+import { getDashboardStats, POPULAR_PRODUCTS_LIMIT } from "@/features/dashboard/data";
 import { STATUS_LABEL, STATUS_ORDER } from "@/features/participations/status-labels";
 import type { ParticipationStatus } from "@/types/database";
 
@@ -82,6 +82,7 @@ export default async function DashboardPage() {
   const maxStatusCount = Math.max(...STATUS_ORDER.map((s) => stats.statusCounts[s]), 1);
   const categoryEntries = Object.entries(stats.categoryCounts).sort((a, b) => b[1] - a[1]);
   const maxCategoryCount = Math.max(...categoryEntries.map(([, count]) => count), 1);
+  const maxProductRevenue = Math.max(...stats.popularProducts.map((p) => p.totalRevenue), 1);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -191,6 +192,31 @@ export default async function DashboardPage() {
               }))}
               valueFormatter={(v) => `${v.toLocaleString()}원`}
             />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>인기 품목 TOP {POPULAR_PRODUCTS_LIMIT}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          {stats.popularProducts.length === 0 ? (
+            <p className="text-sm text-neutral-400">
+              아직 상품별 판매 실적이 없어서 인기 품목을 보여드릴 수 없어요. 내 행사 상세의
+              &ldquo;상품별 판매 실적&rdquo;에서 판매 내역을 기록하면 여기 채워집니다.
+            </p>
+          ) : (
+            stats.popularProducts.map((p) => (
+              <BarRow
+                key={p.productName}
+                label={p.productName}
+                value={p.totalRevenue}
+                max={maxProductRevenue}
+                color="#1baf7a"
+                valueLabel={`${p.totalRevenue.toLocaleString()}원`}
+              />
+            ))
           )}
         </CardContent>
       </Card>
