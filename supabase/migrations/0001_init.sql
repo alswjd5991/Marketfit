@@ -268,6 +268,12 @@ create policy "recruitments are publicly readable" on event_recruitments for sel
 create policy "reviews are publicly readable" on event_reviews for select using (true);
 create policy "reviews: owner can write" on event_reviews for insert with check (auth.uid() = user_id);
 
+-- RAG 지식베이스: 클라이언트(anon/authenticated)는 직접 접근할 필요가 없다 —
+-- AI 챗봇 기능은 서버(service role, RLS 우회)에서만 조회/삽입한다.
+-- 정책을 만들지 않고 RLS만 켜서 기본적으로 anon/authenticated 접근을 전면 차단한다.
+alter table knowledge_documents enable row level security;
+alter table knowledge_chunks enable row level security;
+
 create policy "own profile" on profiles for select using (auth.uid() = id);
 create policy "own profile update" on profiles for update using (auth.uid() = id);
 
