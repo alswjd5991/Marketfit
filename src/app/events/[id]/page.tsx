@@ -2,12 +2,18 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getEventById } from "@/features/events/data";
 import { computeRecruitmentStatus, formatDday } from "@/features/events/status";
+import { getMyParticipationStatus } from "@/features/participations/data";
+import { addParticipation } from "@/features/participations/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default async function EventDetailPage(props: PageProps<"/events/[id]">) {
   const { id } = await props.params;
+  const sp = await props.searchParams;
+  const error = typeof sp.error === "string" ? sp.error : null;
+  const notice = typeof sp.notice === "string" ? sp.notice : null;
+
   const event = await getEventById(id);
   if (!event) notFound();
 
@@ -17,6 +23,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
   });
   const closed = status === "closed";
   const dday = !closed ? formatDday(event.recruitEnd) : null;
+  const participationStatus = await getMyParticipationStatus(event.sourceDataset, event.id);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -76,11 +83,29 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
               </>
             )}
           </div>
-          <Button variant="outline" disabled>
-            내 행사에 추가 (로그인 연동 후 이용 가능)
-          </Button>
+          {participationStatus ? (
+            <Button asChild variant="secondary">
+              <Link href="/my-events">내 행사에 추가됨 · 내 행사에서 보기</Link>
+            </Button>
+          ) : (
+            <form action={addParticipation}>
+              <input type="hidden" name="source_dataset" value={event.sourceDataset} />
+              <input type="hidden" name="seed_id" value={event.id} />
+              <input type="hidden" name="back_to" value={`/events/${event.id}`} />
+              <Button type="submit" variant="outline">
+                내 행사에 추가
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
+
+      {notice && (
+        <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{notice}</p>
+      )}
+      {error && (
+        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+      )}
 
       <p className="mt-6 text-xs text-neutral-400">
         이 정보는 공개된 모집공고를 1차 코딩한 실제 자료입니다. 발표·의사결정
