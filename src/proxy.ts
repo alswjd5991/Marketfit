@@ -38,7 +38,14 @@ export async function proxy(request: NextRequest) {
 
   // Refresh the session if needed — do not remove, and do not run logic
   // between client creation and this call (see Supabase SSR docs).
-  await supabase.auth.getUser();
+  // Wrapped in try/catch: a network blip to Supabase must not 500 every
+  // page on the site (62번 항목) — worst case, the session just doesn't
+  // refresh on this one request.
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    return NextResponse.next({ request });
+  }
 
   return supabaseResponse;
 }

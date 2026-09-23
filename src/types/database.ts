@@ -1,6 +1,13 @@
 // 손으로 유지 관리하는 Supabase 타입 정의.
 // Supabase 프로젝트가 연결되면 `supabase gen types typescript`로 자동 생성본으로
 // 교체할 수 있다(구조는 supabase/migrations/0001_init.sql과 반드시 일치시킬 것).
+//
+// 주의: 아래 Row 타입들은 반드시 `interface`가 아니라 `type`으로 선언한다.
+// TypeScript는 object type literal(`type X = {...}`)에만 암묵적 string 인덱스
+// 시그니처를 부여하고 `interface`에는 부여하지 않기 때문에, Database.Tables를
+// postgrest-js의 `Record<string, GenericTable>`에 대입할 때 interface로 선언된
+// Row 타입은 조용히 `never`로 좁혀져 .insert()/.update()가 전부 깨진다.
+// (Supabase 공식 codegen도 이 이유로 항상 `type Database = {...}`를 출력한다.)
 
 export type ParticipationStatus =
   | "interested"
@@ -19,14 +26,14 @@ export type SourceType =
   | "official_site"
   | "other";
 
-export interface Profile {
+export type Profile = {
   id: string;
   email: string | null;
   name: string | null;
   created_at: string;
-}
+};
 
-export interface Store {
+export type Store = {
   id: string;
   owner_id: string;
   name: string;
@@ -37,9 +44,9 @@ export interface Store {
   contact: string | null;
   email: string | null;
   created_at: string;
-}
+};
 
-export interface Product {
+export type Product = {
   id: string;
   store_id: string;
   name: string;
@@ -48,9 +55,9 @@ export interface Product {
   cost: number | null;
   description: string | null;
   created_at: string;
-}
+};
 
-export interface Event {
+export type Event = {
   id: string;
   name: string;
   image_url: string | null;
@@ -65,9 +72,9 @@ export interface Event {
   description: string | null;
   recurring_of_event_id: string | null;
   created_at: string;
-}
+};
 
-export interface EventRecruitment {
+export type EventRecruitment = {
   id: string;
   event_id: string;
   source_name: string;
@@ -89,9 +96,9 @@ export interface EventRecruitment {
   last_checked_at: string | null;
   is_sample_data: boolean;
   created_at: string;
-}
+};
 
-export interface EventReview {
+export type EventReview = {
   id: string;
   event_id: string;
   user_id: string | null;
@@ -99,9 +106,9 @@ export interface EventReview {
   body: string;
   visit_age_groups: string[] | null;
   created_at: string;
-}
+};
 
-export interface EventParticipation {
+export type EventParticipation = {
   id: string;
   store_id: string;
   event_id: string;
@@ -128,9 +135,9 @@ export interface EventParticipation {
   would_reattend: boolean | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface EventProductSale {
+export type EventProductSale = {
   id: string;
   participation_id: string;
   product_id: string | null;
@@ -140,43 +147,43 @@ export interface EventProductSale {
   price: number;
   revenue: number; // generated column
   sell_through_rate: number | null; // generated column
-}
+};
 
-export interface EventChecklistItem {
+export type EventChecklistItem = {
   id: string;
   participation_id: string;
   label: string;
   checked: boolean;
   is_custom: boolean;
   sort_order: number | null;
-}
+};
 
-export interface Notification {
+export type Notification = {
   id: string;
   user_id: string;
   type: "deadline_d3" | "attend_d1" | "record_result" | "new_recommendation";
   payload: Record<string, unknown> | null;
   read_at: string | null;
   created_at: string;
-}
+};
 
-export interface ChatConversation {
+export type ChatConversation = {
   id: string;
   user_id: string;
   title: string | null;
   created_at: string;
-}
+};
 
-export interface ChatMessage {
+export type ChatMessage = {
   id: string;
   conversation_id: string;
   role: "user" | "assistant";
   content: string;
   cited_sources: { title: string; url?: string }[] | null;
   created_at: string;
-}
+};
 
-export interface KnowledgeDocument {
+export type KnowledgeDocument = {
   id: string;
   title: string;
   author: string | null;
@@ -185,61 +192,50 @@ export interface KnowledgeDocument {
   document_type: string | null;
   published_at: string | null;
   created_at: string;
-}
+};
 
-export interface KnowledgeChunk {
+export type KnowledgeChunk = {
   id: string;
   document_id: string;
   content: string;
   embedding: number[] | null;
-}
+};
+
+/**
+ * @supabase/ssr (postgrest-js) expects each table to satisfy `GenericTable`
+ * (Row/Insert/Update/Relationships) and the schema to satisfy `GenericSchema`
+ * (Tables/Views/Functions) — see node_modules/@supabase/postgrest-js/src/types/common/common.ts.
+ * Leaving out `Relationships`/`Views`/`Functions` silently breaks type
+ * inference on `.insert()`/`.update()` (they resolve to `never`), so we
+ * declare them explicitly even though this project has none of the latter two.
+ */
+type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
+  Row: Row;
+  Insert: Insert;
+  Update: Update;
+  Relationships: [];
+};
 
 /** @supabase/ssr expects a `Database` generic shaped like this. */
-export interface Database {
+export type Database = {
   public: {
     Tables: {
-      profiles: { Row: Profile; Insert: Partial<Profile>; Update: Partial<Profile> };
-      stores: { Row: Store; Insert: Partial<Store>; Update: Partial<Store> };
-      products: { Row: Product; Insert: Partial<Product>; Update: Partial<Product> };
-      events: { Row: Event; Insert: Partial<Event>; Update: Partial<Event> };
-      event_recruitments: {
-        Row: EventRecruitment;
-        Insert: Partial<EventRecruitment>;
-        Update: Partial<EventRecruitment>;
-      };
-      event_reviews: { Row: EventReview; Insert: Partial<EventReview>; Update: Partial<EventReview> };
-      event_participations: {
-        Row: EventParticipation;
-        Insert: Partial<EventParticipation>;
-        Update: Partial<EventParticipation>;
-      };
-      event_product_sales: {
-        Row: EventProductSale;
-        Insert: Partial<EventProductSale>;
-        Update: Partial<EventProductSale>;
-      };
-      event_checklists: {
-        Row: EventChecklistItem;
-        Insert: Partial<EventChecklistItem>;
-        Update: Partial<EventChecklistItem>;
-      };
-      notifications: { Row: Notification; Insert: Partial<Notification>; Update: Partial<Notification> };
-      chat_conversations: {
-        Row: ChatConversation;
-        Insert: Partial<ChatConversation>;
-        Update: Partial<ChatConversation>;
-      };
-      chat_messages: { Row: ChatMessage; Insert: Partial<ChatMessage>; Update: Partial<ChatMessage> };
-      knowledge_documents: {
-        Row: KnowledgeDocument;
-        Insert: Partial<KnowledgeDocument>;
-        Update: Partial<KnowledgeDocument>;
-      };
-      knowledge_chunks: {
-        Row: KnowledgeChunk;
-        Insert: Partial<KnowledgeChunk>;
-        Update: Partial<KnowledgeChunk>;
-      };
+      profiles: Table<Profile>;
+      stores: Table<Store>;
+      products: Table<Product>;
+      events: Table<Event>;
+      event_recruitments: Table<EventRecruitment>;
+      event_reviews: Table<EventReview>;
+      event_participations: Table<EventParticipation>;
+      event_product_sales: Table<EventProductSale>;
+      event_checklists: Table<EventChecklistItem>;
+      notifications: Table<Notification>;
+      chat_conversations: Table<ChatConversation>;
+      chat_messages: Table<ChatMessage>;
+      knowledge_documents: Table<KnowledgeDocument>;
+      knowledge_chunks: Table<KnowledgeChunk>;
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
   };
-}
+};
