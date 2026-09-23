@@ -38,8 +38,8 @@ export default async function MyEventsPage() {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-xl font-bold text-neutral-950">내 행사</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        &ldquo;내 행사에 추가&rdquo;한 행사 목록이에요. 참가 전/후 준비 데이터 기록(체크리스트,
-        매출 기록 등)은 다음 단계에서 지원할 예정입니다.
+        &ldquo;내 행사에 추가&rdquo;한 행사 목록이에요. 각 항목의 &ldquo;관리하기&rdquo;에서
+        참가 상태·체크리스트·참가 결과를 기록할 수 있어요.
       </p>
 
       {participations.length === 0 ? (
@@ -67,11 +67,16 @@ export default async function MyEventsPage() {
                       {p.startDate && ` · ${formatRange(p.startDate, p.endDate)}`}
                     </p>
                   </div>
-                  {p.detailSeedId && (
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/events/${p.detailSeedId}`}>행사 보기</Link>
+                  <div className="flex gap-2">
+                    {p.detailSeedId && (
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/events/${p.detailSeedId}`}>행사 보기</Link>
+                      </Button>
+                    )}
+                    <Button asChild size="sm">
+                      <Link href={`/my-events/${p.participationId}`}>관리하기</Link>
                     </Button>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
             </li>

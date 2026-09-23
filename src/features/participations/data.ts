@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { ParticipationStatus } from "@/types/database";
+import type { EventChecklistItem, EventParticipation, ParticipationStatus } from "@/types/database";
 import { getMyStore } from "@/features/store/data";
 
 export interface MyParticipation {
@@ -137,5 +137,77 @@ export async function getMyParticipations(): Promise<MyParticipation[]> {
     });
   } catch {
     return []; // 62번 항목: 네트워크 오류로 페이지 전체가 죽지 않도록
+  }
+}
+
+export interface ParticipationDetail {
+  participation: EventParticipation;
+  eventName: string;
+  region: string | null;
+  venue: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  detailSeedId: string | null;
+  checklist: EventChecklistItem[];
+}
+
+/**
+ * 참가 상세 관리 화면(/my-events/[participationId])용 데이터.
+ * store_id로 한 번 더 좁혀서 앱 레벨에서도 소유자 확인(RLS로도 이미
+ * 막히지만 이중 방어 — 61번 항목).
+ */
+export async function getParticipationDetail(participationId: string): Promise<ParticipationDetail | null> {
+  const store = await getMyStore();
+  if (!store) return null;
+
+  const supabase = await createClient();
+  try {
+    const { data: participation, error } = await supabase
+      .from("event_participations")
+      .select("*")
+      .eq("id", participationId)
+      .eq("store_id", store.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!participation) return null;
+
+    const [{ data: event }, { data: recruitment }, { data: checklist, error: checklistError }] =
+      await Promise.all([
+        supabase
+          .from("events")
+          .select("name, region, venue, start_date, end_date")
+          .eq("id", participation.event_id)
+          .maybeSingle(),
+        supabase
+          .from("event_recruitments")
+          .select("source_post_id")
+          .eq("event_id", participation.event_id)
+          .maybeSingle(),
+        supabase
+          .from("event_checklists")
+          .select("*")
+          .eq("participation_id", participationId)
+          .order("sort_order", { ascending: true }),
+      ]);
+    if (checklistError) throw checklistError;
+
+    let detailSeedId: string | null = null;
+    if (recruitment?.source_post_id) {
+      const idx = recruitment.source_post_id.indexOf(":");
+      if (idx !== -1) detailSeedId = recruitment.source_post_id.slice(idx + 1);
+    }
+
+    return {
+      participation,
+      eventName: event?.name ?? "(정보를 찾을 수 없는 행사)",
+      region: event?.region ?? null,
+      venue: event?.venue ?? null,
+      startDate: event?.start_date ?? null,
+      endDate: event?.end_date ?? null,
+      detailSeedId,
+      checklist: checklist ?? [],
+    };
+  } catch {
+    return null;
   }
 }
