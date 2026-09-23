@@ -12,7 +12,8 @@ import { getPosterTheme, seededUnit, type PosterIconKey } from "@/features/event
 // 정적인 카드에 미세한 생동감(모션)을 더한다 — prefers-reduced-motion이면
 // globals.css에서 꺼진다.
 
-const CREAM = "#fbf9f2";
+export const POSTER_CREAM = "#fbf9f2";
+const CREAM = POSTER_CREAM;
 
 const ICON_PATHS: Record<PosterIconKey, React.ReactNode> = {
   // 플리마켓 — 토트백
@@ -215,14 +216,19 @@ export function EventPoster({
         </g>
       </svg>
 
-      {badgeLabel && (
-        <span
-          className="absolute left-3 top-3 -rotate-3 rounded-full px-3 py-1 text-[11px] font-bold tracking-tight shadow-sm"
-          style={{ backgroundColor: CREAM, color: theme.bg }}
-        >
-          {badgeLabel}
-        </span>
-      )}
+      {badgeLabel && <PosterBadge label={badgeLabel} textColor={theme.bg} />}
     </div>
+  );
+}
+
+/** 포스터 코너의 회전된 스티커 배지. 실사진 포스터(poster-frame.tsx)에서도 같은 스타일을 쓴다. */
+export function PosterBadge({ label, textColor = "#1f2937" }: { label: string; textColor?: string }) {
+  return (
+    <span
+      className="absolute left-3 top-3 -rotate-3 rounded-full px-3 py-1 text-[11px] font-bold tracking-tight shadow-sm"
+      style={{ backgroundColor: CREAM, color: textColor }}
+    >
+      {label}
+    </span>
   );
 }

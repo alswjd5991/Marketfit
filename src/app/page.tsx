@@ -10,11 +10,15 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
-      <section className="flex flex-col items-start gap-4 py-10 sm:py-16">
-        <h1 className="text-3xl font-bold tracking-tight text-neutral-950 sm:text-4xl">
-          어떤 마켓에 나가야 잘 팔릴까요?
+      <section className="flex flex-col items-start gap-4 py-12 sm:py-20">
+        <span className="rounded-full bg-brand-light px-3 py-1 text-xs font-semibold text-brand">
+          소상공인 마켓 참가 데이터 플랫폼
+        </span>
+        <h1 className="text-4xl font-bold tracking-tight text-neutral-950 sm:text-5xl">
+          어떤 마켓에 나가야
+          <br />잘 팔릴까요?
         </h1>
-        <p className="max-w-xl text-neutral-500">
+        <p className="max-w-xl text-base text-neutral-500">
           전국 행사 모집정보를 찾고, 참가 데이터를 쌓아 우리 가게에 맞는 마켓을
           찾아보세요.
         </p>
@@ -59,8 +63,8 @@ function HomeSection({
     <section className="py-8">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
-        <Link href={href} className="text-sm text-neutral-500 hover:text-neutral-900">
-          더보기
+        <Link href={href} className="text-sm text-neutral-500 transition-colors hover:text-brand">
+          더보기 →
         </Link>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">{children}</div>
@@ -70,7 +74,7 @@ function HomeSection({
 
 function EmptyPlaceholder({ text }: { text: string }) {
   return (
-    <div className="col-span-full rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-400">
+    <div className="col-span-full rounded-2xl border border-dashed border-neutral-300 bg-white/60 p-8 text-center text-sm text-neutral-400">
       {text}
     </div>
   );

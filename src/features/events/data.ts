@@ -1,4 +1,5 @@
 import { seedEvents, type SeedEvent } from "@/lib/data/seed-events";
+import posterManifest from "@/lib/data/event-poster-manifest.json";
 import { computeRecruitmentStatus, formatDday } from "./status";
 import type { RecruitmentStatus } from "@/types/database";
 
@@ -19,6 +20,18 @@ export interface EventListItem {
   sourceName: string | null;
   sourceUrl: string | null;
   isSampleData: boolean;
+  /** 원본 모집공고(sourceUrl)의 og:image를 1회 추출해 하드링크한 실제 포스터
+   *  사진. 못 찾았거나 사이트 공용 로고뿐이었던 행사는 null — 화면에서는
+   *  EventPoster(카테고리별 생성 그래픽)로 대체한다. poster-manifest.md 참고. */
+  posterImage: string | null;
+}
+
+/** src/lib/data/event-poster-manifest.json에서 행사 id로 실제 포스터 이미지
+ *  URL을 찾는다. 이 파일이 events/data.ts 안에만 있는 게 아니라 함수로 빠져
+ *  있는 이유: getEventById()가 돌려주는 SeedEvent(상세 페이지용)에도 같은
+ *  이미지가 필요해서(EventListItem에만 있으면 상세 페이지에서 못 씀). */
+export function getPosterImage(id: string): string | null {
+  return (posterManifest as Record<string, string>)[id] ?? null;
 }
 
 // TODO(Supabase 연결 후): 아래 두 함수의 구현만 교체하면 나머지 화면 코드는
@@ -47,6 +60,7 @@ function toListItem(e: SeedEvent): EventListItem {
     sourceName: e.organizer,
     sourceUrl: e.sourceUrl,
     isSampleData: false, // 42건 전부 실제 공개 자료 — 6번 섹션 참고
+    posterImage: getPosterImage(e.id),
   };
 }
 

@@ -1,39 +1,32 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/features/auth/actions";
-
-const NAV_ITEMS = [
-  { href: "/events", label: "행사 찾기" },
-  { href: "/my-events", label: "내 행사" },
-  { href: "/dashboard", label: "대시보드" },
-  { href: "/ai", label: "AI 도우미" },
-  { href: "/store", label: "내 가게" },
-] as const;
+import { NavLinks } from "./nav-links";
 
 export async function NavBar() {
   const user = await getCurrentUser();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white/80 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <Link href="/" className="font-semibold tracking-tight text-neutral-900">
+    <header className="sticky top-0 z-40 border-b border-neutral-200/80 bg-background/85 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-1.5 font-bold tracking-tight text-neutral-950">
+          <span className="inline-block size-2 rounded-full bg-brand" aria-hidden />
           마켓핏
         </Link>
-        <nav className="hidden items-center gap-6 text-sm text-neutral-600 sm:flex">
-          {NAV_ITEMS.map((item) => (
-            <Link key={item.href} href={item.href} className="hover:text-neutral-950">
-              {item.label}
-            </Link>
-          ))}
+        <nav className="hidden items-center gap-7 text-sm sm:flex">
+          <NavLinks />
           {user ? (
-            <form action={signOut} className="flex items-center gap-3">
+            <form action={signOut} className="flex items-center gap-3 border-l border-neutral-200 pl-7">
               <span className="text-neutral-400">{user.email}</span>
-              <button type="submit" className="hover:text-neutral-950">
+              <button type="submit" className="text-neutral-600 transition-colors hover:text-neutral-950">
                 로그아웃
               </button>
             </form>
           ) : (
-            <Link href="/login" className="hover:text-neutral-950">
+            <Link
+              href="/login"
+              className="rounded-lg bg-brand px-3.5 py-1.5 text-white transition-colors hover:bg-brand-dark"
+            >
               로그인
             </Link>
           )}

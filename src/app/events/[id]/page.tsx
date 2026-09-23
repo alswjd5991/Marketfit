@@ -7,7 +7,8 @@ import { addParticipation } from "@/features/participations/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { EventPoster } from "@/components/ui/event-poster";
+import { PosterFrame } from "@/components/ui/poster-frame";
+import { getPosterImage } from "@/features/events/data";
 import { cn } from "@/lib/utils";
 
 export default async function EventDetailPage(props: PageProps<"/events/[id]">) {
@@ -33,10 +34,12 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
         ← 행사 찾기로 돌아가기
       </Link>
 
-      <div className={cn("mt-4 aspect-[16/7] overflow-hidden rounded-2xl", closed && "grayscale")}>
-        {/* 실제 포스터 사진 대신, 카테고리별 고정 색·아이콘 그래픽 포스터
-            (event-poster.tsx 주석 참고). */}
-        <EventPoster
+      <div className={cn("mt-4 aspect-[16/7] overflow-hidden rounded-2xl shadow-sm", closed && "grayscale")}>
+        {/* 실제 포스터 사진이 있으면(event-poster-manifest.json) 그걸, 없으면
+            카테고리별 생성 그래픽 포스터를 보여준다(poster-frame.tsx 참고). */}
+        <PosterFrame
+          imageUrl={getPosterImage(event.id)}
+          alt={`${event.name} 포스터`}
           category={event.category}
           seed={event.id}
           size="hero"
@@ -45,7 +48,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
       </div>
 
       {closed && (
-        <div className="mt-4 rounded-lg bg-neutral-900 px-4 py-3 text-sm text-white">
+        <div className="mt-4 rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white">
           이 모집공고는 종료되었습니다. 아래 정보는 계속 확인할 수 있고, 과거
           참가 이력으로 등록할 수 있습니다.
         </div>
@@ -105,9 +108,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
               <input type="hidden" name="source_dataset" value={event.sourceDataset} />
               <input type="hidden" name="seed_id" value={event.id} />
               <input type="hidden" name="back_to" value={`/events/${event.id}`} />
-              <Button type="submit" variant="outline">
-                내 행사에 추가
-              </Button>
+              <Button type="submit">내 행사에 추가</Button>
             </form>
           )}
         </CardContent>
@@ -130,7 +131,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3">
+    <div className="rounded-xl border border-neutral-200/80 bg-white px-4 py-3">
       <dt className="text-xs text-neutral-400">{label}</dt>
       <dd className="mt-0.5 text-sm text-neutral-800">{value || "미기재"}</dd>
     </div>
