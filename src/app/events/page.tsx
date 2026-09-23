@@ -1,4 +1,5 @@
 import { getCategories, getEvents, getRegions } from "@/features/events/data";
+import type { EventPeriod, EventSort } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
 import { EventFiltersBar } from "@/features/events/filters-bar";
 import type { RecruitmentStatus } from "@/types/database";
@@ -9,9 +10,13 @@ export default async function EventsPage(props: PageProps<"/events">) {
   const category = firstParam(sp.category);
   const status = firstParam(sp.status) as RecruitmentStatus | undefined;
   const query = firstParam(sp.q);
+  const period = firstParam(sp.period) as EventPeriod | undefined;
+  const sort = firstParam(sp.sort) as EventSort | undefined;
+  const dateFrom = firstParam(sp.from);
+  const dateTo = firstParam(sp.to);
 
   const [events, regions, categories] = await Promise.all([
-    getEvents({ region, category, status, query }),
+    getEvents({ region, category, status, query, period, sort, dateFrom, dateTo }),
     getRegions(),
     getCategories(),
   ]);

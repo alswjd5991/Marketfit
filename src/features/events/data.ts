@@ -60,11 +60,22 @@ function categoryFromItems(items: string | null): string | null {
   return "기타";
 }
 
+export type EventPeriod = "this_week" | "this_month" | "next_month" | "past" | "custom";
+export type EventSort = "deadline" | "start_date" | "recent";
+// "인기순"(48번 필터 항목)은 조회수·참가등록 수 같은 실제 신호가 있어야
+// 의미가 있다. 그 데이터가 없는 지금은 지어내지 않고 옵션 자체를 빼둔다
+// (65번 원칙: 실제 데이터 또는 명확히 구분된 샘플 데이터만 쓴다).
+// Phase 3~4에서 참가/조회 데이터가 쌓이면 여기에 추가한다.
+
 export interface EventFilters {
   region?: string;
   category?: string;
   status?: RecruitmentStatus;
   query?: string;
+  period?: EventPeriod;
+  dateFrom?: string;
+  dateTo?: string;
+  sort?: EventSort;
 }
 
 export async function getEvents(filters: EventFilters = {}): Promise<EventListItem[]> {
@@ -77,16 +88,74 @@ export async function getEvents(filters: EventFilters = {}): Promise<EventListIt
     const q = filters.query.trim();
     items = items.filter((e) => e.name.includes(q) || (e.venue ?? "").includes(q));
   }
+  if (filters.period) items = items.filter((e) => matchesPeriod(e, filters));
 
-  // 마감 임박순: 모집중/예정을 먼저, 그 안에서 마감일이 가까운 순.
-  // 모집종료는 뒤로 보내되 최신순으로.
-  return items.sort((a, b) => {
+  return items.sort(compareBy(filters.sort ?? "deadline"));
+}
+
+function matchesPeriod(e: EventListItem, filters: EventFilters): boolean {
+  if (!e.startDate) return false;
+  const start = new Date(e.startDate);
+  const { start: weekStart, end: weekEnd } = weekRange(new Date());
+  const now = new Date();
+
+  switch (filters.period) {
+    case "this_week":
+      return start >= weekStart && start <= weekEnd;
+    case "this_month":
+      return start.getFullYear() === now.getFullYear() && start.getMonth() === now.getMonth();
+    case "next_month": {
+      const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      return start.getFullYear() === next.getFullYear() && start.getMonth() === next.getMonth();
+    }
+    case "past":
+      return start < now;
+    case "custom": {
+      if (filters.dateFrom && start < new Date(filters.dateFrom)) return false;
+      if (filters.dateTo && start > new Date(filters.dateTo)) return false;
+      return true;
+    }
+    default:
+      return true;
+  }
+}
+
+function weekRange(d: Date) {
+  const day = d.getDay(); // 0(일)~6(토)
+  const start = new Date(d);
+  start.setDate(d.getDate() - day);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start, end };
+}
+
+function compareBy(sort: EventSort) {
+  return (a: EventListItem, b: EventListItem) => {
     const rank = (s: RecruitmentStatus) => (s === "closed" ? 1 : 0);
+
+    if (sort === "start_date") {
+      // 행사 시작일순: 상태와 무관하게 빠른 날짜부터.
+      const aStart = a.startDate ? new Date(a.startDate).getTime() : Infinity;
+      const bStart = b.startDate ? new Date(b.startDate).getTime() : Infinity;
+      return aStart - bStart;
+    }
+
+    if (sort === "recent") {
+      // 최신 등록순: 이 데이터셋엔 실제 "등록일시"가 없어 행사 시작일이 늦은
+      // 순(=최근에 열리는/열린 행사)을 근사치로 쓴다. Supabase 연결 후
+      // event_recruitments.collected_at으로 교체할 것.
+      const aStart = a.startDate ? new Date(a.startDate).getTime() : -Infinity;
+      const bStart = b.startDate ? new Date(b.startDate).getTime() : -Infinity;
+      return bStart - aStart;
+    }
+
+    // deadline(기본, 마감 임박순): 모집중/예정을 먼저, 마감일이 가까운 순.
+    // 모집종료는 뒤로 보내되 "과거 최신순"(가장 최근에 마감된 것부터).
     if (rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
     const aEnd = a.recruitEnd ? new Date(a.recruitEnd).getTime() : Infinity;
     const bEnd = b.recruitEnd ? new Date(b.recruitEnd).getTime() : Infinity;
     return a.status === "closed" ? bEnd - aEnd : aEnd - bEnd;
-  });
+  };
 }
 
 export async function getEventById(id: string): Promise<SeedEvent | null> {
