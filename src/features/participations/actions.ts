@@ -5,16 +5,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getMyStore } from "@/features/store/data";
 import { findEventIdBySource } from "./data";
+import { STATUS_ORDER } from "./status-labels";
 import type { ParticipationStatus } from "@/types/database";
-
-const PARTICIPATION_STATUSES: readonly ParticipationStatus[] = [
-  "interested",
-  "planning_to_apply",
-  "applied",
-  "planning_to_attend",
-  "attended",
-  "cancelled",
-];
 
 function detailPath(participationId: string) {
   return `/my-events/${participationId}`;
@@ -101,7 +93,7 @@ export async function updateParticipationStatus(formData: FormData) {
   const participationId = String(formData.get("participation_id") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!participationId) redirect("/my-events");
-  if (!PARTICIPATION_STATUSES.includes(status as ParticipationStatus)) {
+  if (!STATUS_ORDER.includes(status as ParticipationStatus)) {
     redirect(`${detailPath(participationId)}?error=${encodeURIComponent("올바르지 않은 상태값입니다.")}`);
   }
 

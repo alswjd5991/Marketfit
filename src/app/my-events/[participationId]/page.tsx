@@ -13,25 +13,7 @@ import {
   updateParticipationResult,
   updateParticipationStatus,
 } from "@/features/participations/actions";
-import type { ParticipationStatus } from "@/types/database";
-
-const STATUS_LABEL: Record<ParticipationStatus, string> = {
-  interested: "관심",
-  planning_to_apply: "신청 예정",
-  applied: "신청 완료",
-  planning_to_attend: "참가 예정",
-  attended: "참가 완료",
-  cancelled: "참가 취소",
-};
-
-const STATUS_OPTIONS: ParticipationStatus[] = [
-  "interested",
-  "planning_to_apply",
-  "applied",
-  "planning_to_attend",
-  "attended",
-  "cancelled",
-];
+import { STATUS_LABEL, STATUS_ORDER } from "@/features/participations/status-labels";
 
 export default async function ParticipationDetailPage(
   props: PageProps<"/my-events/[participationId]">
@@ -103,7 +85,7 @@ export default async function ParticipationDetailPage(
               defaultValue={p.status}
               className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
             >
-              {STATUS_OPTIONS.map((s) => (
+              {STATUS_ORDER.map((s) => (
                 <option key={s} value={s}>
                   {STATUS_LABEL[s]}
                 </option>

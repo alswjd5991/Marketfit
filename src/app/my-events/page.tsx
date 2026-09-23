@@ -4,16 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyParticipations } from "@/features/participations/data";
-import type { ParticipationStatus } from "@/types/database";
-
-const STATUS_LABEL: Record<ParticipationStatus, string> = {
-  interested: "관심",
-  planning_to_apply: "신청 예정",
-  applied: "신청 완료",
-  planning_to_attend: "참가 예정",
-  attended: "참가 완료",
-  cancelled: "참가 취소",
-};
+import { STATUS_LABEL } from "@/features/participations/status-labels";
 
 export default async function MyEventsPage() {
   const user = await getCurrentUser();
