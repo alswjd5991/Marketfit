@@ -7,6 +7,8 @@ import { addParticipation } from "@/features/participations/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EventPoster } from "@/components/ui/event-poster";
+import { cn } from "@/lib/utils";
 
 export default async function EventDetailPage(props: PageProps<"/events/[id]">) {
   const { id } = await props.params;
@@ -30,6 +32,17 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
       <Link href="/events" className="text-sm text-neutral-500 hover:text-neutral-900">
         ← 행사 찾기로 돌아가기
       </Link>
+
+      <div className={cn("mt-4 aspect-[16/7] overflow-hidden rounded-2xl", closed && "grayscale")}>
+        {/* 실제 포스터 사진 대신, 카테고리별 고정 색·아이콘 그래픽 포스터
+            (event-poster.tsx 주석 참고). */}
+        <EventPoster
+          category={event.category}
+          seed={event.id}
+          size="hero"
+          badgeLabel={event.category}
+        />
+      </div>
 
       {closed && (
         <div className="mt-4 rounded-lg bg-neutral-900 px-4 py-3 text-sm text-white">

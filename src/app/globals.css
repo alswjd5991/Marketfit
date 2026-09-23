@@ -17,3 +17,24 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* 행사 포스터(EventPoster)의 블롭 도형용 아주 느린 흔들림 애니메이션.
+   컴포넌트마다 --poster-rot-a/--poster-rot-b로 회전 각도만 바꿔 쓴다. */
+@keyframes poster-blob-float {
+  from {
+    transform: rotate(var(--poster-rot-a, -6deg));
+  }
+  to {
+    transform: rotate(var(--poster-rot-b, 6deg));
+  }
+}
+
+.poster-blob {
+  animation: poster-blob-float 7s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-blob {
+    animation: none;
+  }
+}
