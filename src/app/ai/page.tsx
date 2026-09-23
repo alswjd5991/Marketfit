@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Send, Sparkles, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, Send, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyConversations, getConversationDetail } from "@/features/ai/data";
@@ -34,7 +34,8 @@ export default async function AiPage(props: PageProps<"/ai">) {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-xl font-bold text-neutral-950">AI 도우미</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        내가 실제로 기록한 참가·판매 데이터를 근거로만 답해요. 기록에 없는 숫자는 지어내지 않아요.
+        내 참가·판매 데이터에 대한 질문은 실제 기록만 근거로 답하고, 그 외 질문은 구글 검색으로 찾은
+        내용을 출처와 함께 답해요. 둘 다 없는 내용은 지어내지 않아요.
       </p>
 
       {!geminiReady && (
@@ -111,6 +112,28 @@ export default async function AiPage(props: PageProps<"/ai">) {
                     <p className="whitespace-pre-wrap rounded-2xl rounded-tl-md bg-neutral-100 px-4 py-2.5 text-sm text-neutral-900">
                       {m.content}
                     </p>
+                    {m.cited_sources && m.cited_sources.length > 0 && (
+                      <div className="flex flex-col gap-0.5 px-1">
+                        {m.cited_sources.map((s, i) =>
+                          s.url ? (
+                            <a
+                              key={i}
+                              href={s.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-brand"
+                            >
+                              <ExternalLink className="size-3 shrink-0" />
+                              <span className="truncate">{s.title}</span>
+                            </a>
+                          ) : (
+                            <span key={i} className="text-[11px] text-neutral-400">
+                              {s.title}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    )}
                     <span className="px-1 text-[11px] text-neutral-400">{formatTime(m.created_at)}</span>
                   </div>
                 </div>
