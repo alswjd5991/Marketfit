@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PosterFrame } from "@/components/ui/poster-frame";
-import { cn } from "@/lib/utils";
 import type { EventListItem } from "./data";
 
 const STATUS_LABEL: Record<EventListItem["status"], string> = {
@@ -12,20 +11,17 @@ const STATUS_LABEL: Record<EventListItem["status"], string> = {
 };
 
 /**
- * 10번 항목: 마감 공고는 삭제하지 않고, 흑백 처리·opacity·"모집 종료" 배지·
- * "마감" 표기로 현재 공고와 시각적으로만 구분한다. 클릭·상세조회는 항상 가능.
+ * 10번 항목: 마감 공고는 삭제하지 않고 "모집 종료" 배지로만 현재 공고와
+ * 구분한다(흑백 처리 등 시각적으로 죽여 보이게 하지 않음 — 과거 참가 이력
+ * 등록 등으로 계속 쓰이는 정보라 눈에 덜 띄게 만들 이유가 없음). 클릭·상세조회는
+ * 항상 가능.
  */
 export function EventCard({ event }: { event: EventListItem }) {
   const closed = event.status === "closed";
 
   return (
     <Link href={`/events/${event.id}`} className="group block h-full">
-      <Card
-        className={cn(
-          "h-full overflow-hidden transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:shadow-neutral-900/10",
-          closed && "opacity-60 grayscale"
-        )}
-      >
+      <Card className="h-full overflow-hidden transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:shadow-neutral-900/10">
         <div className="aspect-[16/9] overflow-hidden">
           {/* 실제 포스터 사진이 있으면(event-poster-manifest.json) 그걸,
               없으면 카테고리별 생성 그래픽 포스터를 보여준다(poster-frame.tsx 참고). */}
@@ -54,7 +50,7 @@ export function EventCard({ event }: { event: EventListItem }) {
           <p className="text-xs text-neutral-500">
             {[event.region, event.venue].filter(Boolean).join(" · ") || "지역 미기재"}
           </p>
-          <p className={cn("text-xs", closed ? "text-neutral-300" : "text-neutral-400")}>
+          <p className="text-xs text-neutral-400">
             {formatRange(event.startDate, event.endDate) ?? "행사 기간 미기재"}
           </p>
         </CardContent>

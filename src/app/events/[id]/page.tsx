@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PosterFrame } from "@/components/ui/poster-frame";
 import { getPosterImage } from "@/features/events/data";
-import { cn } from "@/lib/utils";
 
 export default async function EventDetailPage(props: PageProps<"/events/[id]">) {
   const { id } = await props.params;
@@ -34,7 +33,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
         ← 행사 찾기로 돌아가기
       </Link>
 
-      <div className={cn("mt-4 aspect-[16/7] overflow-hidden rounded-2xl shadow-sm", closed && "grayscale")}>
+      <div className="mt-4 aspect-[16/7] overflow-hidden rounded-2xl shadow-sm">
         {/* 실제 포스터 사진이 있으면(event-poster-manifest.json) 그걸, 없으면
             카테고리별 생성 그래픽 포스터를 보여준다(poster-frame.tsx 참고). */}
         <PosterFrame

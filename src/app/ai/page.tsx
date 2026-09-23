@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { Plus, Send, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyConversations, getConversationDetail } from "@/features/ai/data";
 import { isGeminiConfigured } from "@/features/ai/gemini";
@@ -45,85 +45,137 @@ export default async function AiPage(props: PageProps<"/ai">) {
       )}
       {notice && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{notice}</p>}
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <form action={startConversation}>
-          <Button type="submit" variant="outline" size="sm">
-            + 새 대화
-          </Button>
-        </form>
-        {conversations.map((c) => (
-          <Link
-            key={c.id}
-            href={`/ai?c=${c.id}`}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs transition-colors",
-              c.id === activeId
-                ? "border-brand bg-brand-light text-brand"
-                : "border-neutral-200 text-neutral-500 hover:border-neutral-300"
-            )}
-          >
-            {c.title ?? "새 대화"}
-          </Link>
-        ))}
-      </div>
+      {/* 대화가 여러 개면 채팅창 위에 전환용 칩을 보여준다. */}
+      {conversations.length > 1 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {conversations.map((c) => (
+            <Link
+              key={c.id}
+              href={`/ai?c=${c.id}`}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                c.id === activeId
+                  ? "border-brand bg-brand-light text-brand"
+                  : "border-neutral-200 text-neutral-500 hover:border-neutral-300"
+              )}
+            >
+              {c.title ?? "새 대화"}
+            </Link>
+          ))}
+        </div>
+      )}
 
-      {!detail ? (
-        <Card className="mt-4">
-          <CardContent className="py-10 text-center text-sm text-neutral-400">
-            {conversations.length === 0
-              ? "아직 대화가 없어요. “+ 새 대화”로 시작해 보세요."
-              : "왼쪽 목록에서 대화를 선택하거나 새 대화를 시작해 보세요."}
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <Card className="mt-4">
-            <CardContent className="flex flex-col gap-3 py-4">
-              {detail.messages.length === 0 ? (
-                <p className="py-6 text-center text-sm text-neutral-400">
-                  궁금한 걸 물어보세요. 예: &ldquo;내가 참가한 행사 중 순이익이 제일 높았던 건 뭐야?&rdquo;
-                </p>
-              ) : (
-                detail.messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}
-                  >
-                    <p
-                      className={cn(
-                        "max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm",
-                        m.role === "user"
-                          ? "bg-brand text-white"
-                          : "bg-neutral-100 text-neutral-900"
-                      )}
-                    >
+      {/* 채팅창 — 헤더(아바타+이름+상태) / 메시지 스크롤 영역 / 입력창을 한 패널로 묶는다. */}
+      <div className="mt-4 flex flex-col overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-sm shadow-neutral-900/5">
+        <div className="flex items-center gap-3 border-b border-neutral-100 px-5 py-4">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand text-white">
+            <Sparkles className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-neutral-900">AI 도우미</p>
+            <p className="flex items-center gap-1.5 text-xs text-neutral-400">
+              <span
+                className={cn("inline-block size-1.5 rounded-full", geminiReady ? "bg-emerald-500" : "bg-neutral-300")}
+                aria-hidden
+              />
+              {geminiReady ? "내 참가 데이터 기반으로 답해요" : "GEMINI_API_KEY 연결 필요"}
+            </p>
+          </div>
+          <form action={startConversation}>
+            <button
+              type="submit"
+              aria-label="새 대화 시작"
+              title="새 대화 시작"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+            >
+              <Plus className="size-5" />
+            </button>
+          </form>
+        </div>
+
+        <div className="flex max-h-[520px] min-h-[360px] flex-col gap-4 overflow-y-auto px-5 py-5">
+          {!detail || detail.messages.length === 0 ? (
+            <div className="m-auto max-w-xs text-center text-sm text-neutral-400">
+              {!detail
+                ? "아직 대화가 없어요. 아래 “새 대화 시작”을 눌러 물어보세요."
+                : "궁금한 걸 물어보세요. 예: “내가 참가한 행사 중 순이익이 제일 높았던 건 뭐야?”"}
+            </div>
+          ) : (
+            detail.messages.map((m) =>
+              m.role === "assistant" ? (
+                <div key={m.id} className="flex items-start gap-2.5">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-light text-brand">
+                    <Sparkles className="size-4" />
+                  </div>
+                  <div className="flex max-w-[80%] flex-col items-start gap-1">
+                    <p className="whitespace-pre-wrap rounded-2xl rounded-tl-md bg-neutral-100 px-4 py-2.5 text-sm text-neutral-900">
                       {m.content}
                     </p>
+                    <span className="px-1 text-[11px] text-neutral-400">{formatTime(m.created_at)}</span>
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+                </div>
+              ) : (
+                <div key={m.id} className="flex justify-end">
+                  <div className="flex max-w-[80%] flex-col items-end gap-1">
+                    <p className="whitespace-pre-wrap rounded-2xl rounded-tr-md bg-brand px-4 py-2.5 text-sm text-white">
+                      {m.content}
+                    </p>
+                    <span className="px-1 text-[11px] text-neutral-400">{formatTime(m.created_at)}</span>
+                  </div>
+                </div>
+              )
+            )
+          )}
+        </div>
 
-          <form action={sendMessage} className="mt-3 flex items-end gap-2">
+        {detail ? (
+          <form action={sendMessage} className="flex items-center gap-2 border-t border-neutral-100 px-4 py-3">
             <input type="hidden" name="conversation_id" value={activeId!} />
-            <textarea
+            <input
               name="content"
-              rows={2}
+              autoComplete="off"
               placeholder="메시지를 입력하세요"
-              className="flex-1 rounded-xl border border-neutral-200 px-3 py-2 text-sm"
+              className="flex-1 rounded-full border border-neutral-200 px-4 py-2.5 text-sm outline-none focus:border-brand"
             />
-            <Button type="submit">보내기</Button>
+            <button
+              type="submit"
+              aria-label="보내기"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand text-white transition-colors hover:bg-brand-dark"
+            >
+              <Send className="size-4" />
+            </button>
           </form>
+        ) : (
+          <div className="border-t border-neutral-100 px-4 py-3">
+            <form action={startConversation}>
+              <Button type="submit" className="w-full">
+                새 대화 시작
+              </Button>
+            </form>
+          </div>
+        )}
+      </div>
 
-          <form action={deleteConversation} className="mt-2 text-right">
-            <input type="hidden" name="conversation_id" value={activeId!} />
-            <Button type="submit" variant="ghost" size="sm">
-              이 대화 삭제
-            </Button>
-          </form>
-        </>
+      {detail && (
+        <form action={deleteConversation} className="mt-2 flex justify-end">
+          <input type="hidden" name="conversation_id" value={activeId!} />
+          <button
+            type="submit"
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-neutral-400 transition-colors hover:text-red-600"
+          >
+            <Trash2 className="size-3.5" />이 대화 삭제
+          </button>
+        </form>
       )}
     </div>
   );
+}
+
+/** ISO 타임스탬프 -> "오후 3:42" 같은 표시용 시각. */
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("ko-KR", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Seoul",
+  });
 }
