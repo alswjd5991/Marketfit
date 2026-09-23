@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarRow } from "@/components/ui/bar-row";
+import { LineChart } from "@/components/ui/line-chart";
 import { getCurrentUser } from "@/features/store/data";
 import { getDashboardStats } from "@/features/dashboard/data";
 import { STATUS_LABEL, STATUS_ORDER } from "@/features/participations/status-labels";
@@ -144,6 +145,55 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>월별 참가 추이</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats.monthlyParticipationCounts.length === 0 ? (
+            <p className="text-sm text-neutral-400">
+              행사 시작일이 등록된 참가 기록이 없어서 월별 추이를 보여드릴 수 없어요.
+            </p>
+          ) : (
+            <LineChart
+              points={stats.monthlyParticipationCounts.map((m) => ({
+                label: m.monthLabel.replace("년 ", ".").replace("월", ""),
+                value: m.count,
+                title: `${m.monthLabel}: ${m.count}건`,
+              }))}
+              valueFormatter={(v) => `${v}건`}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>행사별 매출 추이</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats.eventRevenueTrend.length === 0 ? (
+            <p className="text-sm text-neutral-400">
+              총 매출을 입력한 참가 기록이 없어서 매출 추이를 보여드릴 수 없어요. 내 행사 상세의
+              &ldquo;참가 후 결과&rdquo;에서 매출을 입력하면 여기 채워집니다.
+            </p>
+          ) : (
+            <LineChart
+              color="#1baf7a"
+              points={stats.eventRevenueTrend.map((e) => ({
+                label: e.eventName.length > 6 ? `${e.eventName.slice(0, 6)}…` : e.eventName,
+                value: e.revenue,
+                sublabel: e.netProfit != null ? `순이익 ${e.netProfit.toLocaleString()}원` : undefined,
+                title: `${e.eventName} (${e.startDate}): 매출 ${e.revenue.toLocaleString()}원${
+                  e.netProfit != null ? ` · 순이익 ${e.netProfit.toLocaleString()}원` : ""
+                }`,
+              }))}
+              valueFormatter={(v) => `${v.toLocaleString()}원`}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <p className="mt-6 text-xs text-neutral-400">
         매출·순이익·만족도는 내 행사 상세에서 직접 입력한 기록만 집계돼요. 아직 입력하지 않은 값은

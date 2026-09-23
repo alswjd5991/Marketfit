@@ -14,6 +14,23 @@ export interface DashboardStats {
   netProfitEntryCount: number;
   averageSatisfaction: number | null;
   satisfactionEntryCount: number;
+  /** 행사 시작월 기준 참가 건수 추이(오래된 달 -> 최근 달). start_date가 없는 행사는 제외. */
+  monthlyParticipationCounts: MonthlyCount[];
+  /** 매출을 입력한 참가 기록만, 행사 시작일 순으로 정렬한 매출·순이익 추이. */
+  eventRevenueTrend: EventTrendPoint[];
+}
+
+export interface MonthlyCount {
+  monthKey: string; // "2026-09"
+  monthLabel: string; // "2026년 9월"
+  count: number;
+}
+
+export interface EventTrendPoint {
+  eventName: string;
+  startDate: string;
+  revenue: number;
+  netProfit: number | null;
 }
 
 const EMPTY_STATUS_COUNTS: Record<ParticipationStatus, number> = {
@@ -68,20 +85,45 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
     }
 
     const categoryCounts: Record<string, number> = {};
+    const monthCounts = new Map<string, number>();
+    const eventRevenueTrend: EventTrendPoint[] = [];
+
     const eventIds = participations.map((p) => p.event_id);
     if (eventIds.length > 0) {
       const { data: events, error: eventsError } = await supabase
         .from("events")
-        .select("id, category")
+        .select("id, name, category, start_date")
         .in("id", eventIds);
       if (eventsError) throw eventsError;
-      const categoryByEvent = new Map((events ?? []).map((e) => [e.id, e.category]));
+      const eventById = new Map((events ?? []).map((e) => [e.id, e]));
+
       for (const p of participations) {
-        const category = categoryByEvent.get(p.event_id) ?? "기타";
-        const key = category ?? "기타";
-        categoryCounts[key] = (categoryCounts[key] ?? 0) + 1;
+        const event = eventById.get(p.event_id);
+
+        const category = event?.category ?? "기타";
+        categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
+
+        if (event?.start_date) {
+          const monthKey = event.start_date.slice(0, 7); // "YYYY-MM"
+          monthCounts.set(monthKey, (monthCounts.get(monthKey) ?? 0) + 1);
+
+          if (p.total_revenue != null) {
+            eventRevenueTrend.push({
+              eventName: event.name,
+              startDate: event.start_date,
+              revenue: p.total_revenue,
+              netProfit: p.net_profit,
+            });
+          }
+        }
       }
     }
+
+    const monthlyParticipationCounts: MonthlyCount[] = Array.from(monthCounts.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([monthKey, count]) => ({ monthKey, monthLabel: formatMonthLabel(monthKey), count }));
+
+    eventRevenueTrend.sort((a, b) => a.startDate.localeCompare(b.startDate));
 
     return {
       totalParticipations: participations.length,
@@ -93,8 +135,18 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
       netProfitEntryCount,
       averageSatisfaction: satisfactionEntryCount > 0 ? satisfactionSum / satisfactionEntryCount : null,
       satisfactionEntryCount,
+      monthlyParticipationCounts,
+      eventRevenueTrend,
     };
   } catch {
     return null; // 62번 항목: 네트워크 오류로 페이지 전체가 죽지 않도록
   }
+}
+
+/** "2026-09" -> "2026년 9월" */
+function formatMonthLabel(monthKey: string): string {
+  const [year, month] = monthKey.split("-");
+  const monthNum = Number(month);
+  if (!year || !Number.isFinite(monthNum)) return monthKey;
+  return `${year}년 ${monthNum}월`;
 }
