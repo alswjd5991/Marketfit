@@ -17,6 +17,7 @@ import {
   updateProductSale,
 } from "@/features/participations/actions";
 import { STATUS_LABEL, STATUS_ORDER } from "@/features/participations/status-labels";
+import { BOOTH_PROVIDED_OPTIONS, PAYMENT_METHODS } from "@/features/store/constants";
 
 export default async function ParticipationDetailPage(
   props: PageProps<"/my-events/[participationId]">
@@ -123,6 +124,39 @@ export default async function ParticipationDetailPage(
                 defaultValue={p.target_revenue ?? ""}
               />
             </div>
+            {/* 2026-09-24 추가: 부스 로지스틱스(다른 마켓 신청서 조사 반영) —
+                신청 단계에서 미리 확인해두면 좋은 항목들이라 "참가 전 정보"에 둔다. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-neutral-600">부스/매대 제공</span>
+                <select
+                  name="booth_provided"
+                  defaultValue={p.booth_provided ?? ""}
+                  className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">미정</option>
+                  {BOOTH_PROVIDED_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Field
+                name="booth_size"
+                label="부스 크기"
+                defaultValue={p.booth_size ?? ""}
+                placeholder="예: 2m x 2m"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <TriStateField name="power_available" label="전기 사용 가능 여부" defaultValue={p.power_available} />
+              <TriStateField
+                name="vehicle_access"
+                label="차량 출입/주차 가능 여부"
+                defaultValue={p.vehicle_access}
+              />
+            </div>
             <Button type="submit" variant="secondary" className="self-start">
               저장
             </Button>
@@ -189,7 +223,11 @@ export default async function ParticipationDetailPage(
           <CardTitle>참가 후 결과</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={updateParticipationResult} className="flex flex-col gap-3">
+          <form
+            action={updateParticipationResult}
+            encType="multipart/form-data"
+            className="flex flex-col gap-3"
+          >
             <input type="hidden" name="participation_id" value={p.id} />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field
@@ -260,6 +298,66 @@ export default async function ParticipationDetailPage(
                 placeholder="예: 많음"
               />
             </div>
+            {/* 2026-09-24 추가: 참가 후 기록되는 부스 정보(다른 마켓 신청서 조사 반영) —
+                전체 만족도(satisfaction)와 별개로 부스 위치만 따로 평가하는 건 조사에서
+                자주 보인 구분점이라, 위치가 나빴는데 전체 만족도만 보면 원인을 놓치기 쉽다. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field
+                name="booth_number"
+                label="부스 위치/번호"
+                defaultValue={p.booth_number ?? ""}
+                placeholder="예: A-12"
+              />
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-neutral-600">부스 위치 만족도(1~5)</span>
+                <select
+                  name="booth_location_rating"
+                  defaultValue={p.booth_location_rating ?? ""}
+                  className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">선택 안 함</option>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <fieldset className="flex flex-col gap-1.5 text-sm">
+              <legend className="text-neutral-600">현장에서 실제 쓴 결제수단</legend>
+              <div className="flex flex-wrap gap-3 pt-1">
+                {PAYMENT_METHODS.map((m) => (
+                  <label key={m} className="flex items-center gap-1.5 text-neutral-700">
+                    <input
+                      type="checkbox"
+                      name="payment_methods_used"
+                      value={m}
+                      defaultChecked={(p.payment_methods_used ?? []).includes(m)}
+                      className="size-4 rounded border-neutral-300 accent-brand"
+                    />
+                    {m}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="text-neutral-600">부스 사진</span>
+              {p.booth_photo_url && (
+                // eslint-disable-next-line @next/next/no-img-element -- 사용자 업로드 URL
+                <img
+                  src={p.booth_photo_url}
+                  alt=""
+                  className="h-24 w-32 rounded-xl border border-neutral-200 object-cover"
+                />
+              )}
+              <input
+                name="booth_photo"
+                type="file"
+                accept="image/*"
+                className="text-sm text-neutral-500 file:mr-3 file:rounded-full file:border-0 file:bg-brand-light file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-brand"
+              />
+            </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-neutral-600">메모</span>
               <textarea
@@ -378,6 +476,33 @@ function Field({
         placeholder={placeholder}
         className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
       />
+    </label>
+  );
+}
+
+/** "잘 모름/선택 안 함" 상태가 있는 boolean 선택 — 부스 전기/차량 접근성처럼
+ * 신청 단계엔 확정 안 될 수 있는 값용(0/1 강제 대신 null 허용, 65번 원칙). */
+function TriStateField({
+  name,
+  label,
+  defaultValue,
+}: {
+  name: string;
+  label: string;
+  defaultValue?: boolean | null;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-sm">
+      <span className="text-neutral-600">{label}</span>
+      <select
+        name={name}
+        defaultValue={defaultValue == null ? "" : String(defaultValue)}
+        className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+      >
+        <option value="">잘 모름</option>
+        <option value="true">가능</option>
+        <option value="false">불가능</option>
+      </select>
     </label>
   );
 }

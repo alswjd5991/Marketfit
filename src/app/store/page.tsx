@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser, getMyProducts, getMyStore } from "@/features/store/data";
 import { addProduct, createStore, deleteProduct, updateStore } from "@/features/store/actions";
-import { STORE_CATEGORIES } from "@/features/store/constants";
+import { STORE_CATEGORIES, PAYMENT_METHODS } from "@/features/store/constants";
+import type { Store } from "@/types/database";
 
 export default async function StorePage(props: PageProps<"/store">) {
   const sp = await props.searchParams;
@@ -57,7 +58,7 @@ function CreateStoreForm() {
         <CardTitle>가게 등록하기</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={createStore} className="flex flex-col gap-3">
+        <form action={createStore} encType="multipart/form-data" className="flex flex-col gap-3">
           <Field name="name" label="가게 이름 *" required />
           <CategorySelect />
           <Field name="nickname" label="닉네임 (선택)" />
@@ -65,6 +66,15 @@ function CreateStoreForm() {
           <Field name="active_region" label="주요 활동 지역 (선택)" placeholder="예: 서울 마포구" />
           <Field name="contact" label="연락처 (선택)" />
           <Field name="email" label="이메일 (선택)" type="email" />
+          <Field
+            name="business_registration_number"
+            label="사업자등록번호 (선택)"
+            placeholder="없으면 비워두세요 — 비사업자/부업 판매도 괜찮아요"
+          />
+          <Field name="sns_url" label="SNS/인스타그램 링크 (선택)" placeholder="https://instagram.com/..." />
+          <PaymentMethodsField />
+          <HygieneCertifiedField />
+          <ImageField name="logo" label="대표 사진/로고 (선택)" />
           <Button type="submit" className="mt-2">
             등록하기
           </Button>
@@ -74,27 +84,14 @@ function CreateStoreForm() {
   );
 }
 
-function StoreCard({
-  store,
-}: {
-  store: {
-    id: string;
-    name: string;
-    nickname: string | null;
-    category: string;
-    flagship_product: string | null;
-    active_region: string | null;
-    contact: string | null;
-    email: string | null;
-  };
-}) {
+function StoreCard({ store }: { store: Store }) {
   return (
     <Card className="mt-6">
       <CardHeader>
         <CardTitle>가게 정보</CardTitle>
       </CardHeader>
       <CardContent>
-        <form action={updateStore} className="flex flex-col gap-3">
+        <form action={updateStore} encType="multipart/form-data" className="flex flex-col gap-3">
           <input type="hidden" name="store_id" value={store.id} />
           <Field name="name" label="가게 이름 *" required defaultValue={store.name} />
           <CategorySelect defaultValue={store.category} />
@@ -103,12 +100,94 @@ function StoreCard({
           <Field name="active_region" label="주요 활동 지역" defaultValue={store.active_region ?? ""} />
           <Field name="contact" label="연락처" defaultValue={store.contact ?? ""} />
           <Field name="email" label="이메일" type="email" defaultValue={store.email ?? ""} />
+          <Field
+            name="business_registration_number"
+            label="사업자등록번호"
+            defaultValue={store.business_registration_number ?? ""}
+            placeholder="없으면 비워두세요"
+          />
+          <Field name="sns_url" label="SNS/인스타그램 링크" defaultValue={store.sns_url ?? ""} />
+          <PaymentMethodsField defaultValue={store.payment_methods ?? []} />
+          <HygieneCertifiedField defaultValue={store.hygiene_certified} />
+          <ImageField name="logo" label="대표 사진/로고" currentUrl={store.logo_url} />
           <Button type="submit" variant="secondary" className="mt-2">
             정보 저장
           </Button>
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+function PaymentMethodsField({ defaultValue = [] }: { defaultValue?: string[] }) {
+  return (
+    <fieldset className="flex flex-col gap-1.5 text-sm">
+      <legend className="text-neutral-600">지원 결제수단 (선택)</legend>
+      <div className="flex flex-wrap gap-3 pt-1">
+        {PAYMENT_METHODS.map((m) => (
+          <label key={m} className="flex items-center gap-1.5 text-neutral-700">
+            <input
+              type="checkbox"
+              name="payment_methods"
+              value={m}
+              defaultChecked={defaultValue.includes(m)}
+              className="size-4 rounded border-neutral-300 accent-brand"
+            />
+            {m}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/** 식품위생법상 음식류 판매자에게 실제로 요구되는 항목이라, 값이 없어도
+ * "선택 안 함"으로 지어내지 않고 그대로 둔다(65번 원칙) — 대신 카테고리가
+ * 음식/디저트/농산물일 때만 스토어 카드 상단에서 안내 문구를 보여준다. */
+function HygieneCertifiedField({ defaultValue }: { defaultValue?: boolean | null }) {
+  return (
+    <label className="flex flex-col gap-1 text-sm">
+      <span className="text-neutral-600">위생교육 이수 여부 (음식류 판매 시, 선택)</span>
+      <select
+        name="hygiene_certified"
+        defaultValue={defaultValue == null ? "" : String(defaultValue)}
+        className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+      >
+        <option value="">선택 안 함</option>
+        <option value="true">이수함</option>
+        <option value="false">아직 안 함</option>
+      </select>
+    </label>
+  );
+}
+
+function ImageField({
+  name,
+  label,
+  currentUrl,
+}: {
+  name: string;
+  label: string;
+  currentUrl?: string | null;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5 text-sm">
+      <span className="text-neutral-600">{label}</span>
+      {currentUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- 사용자 업로드 URL, next/image 최적화 불필요
+        <img
+          src={currentUrl}
+          alt=""
+          className="h-20 w-20 rounded-xl border border-neutral-200 object-cover"
+        />
+      )}
+      <input
+        name={name}
+        type="file"
+        accept="image/*"
+        className="text-sm text-neutral-500 file:mr-3 file:rounded-full file:border-0 file:bg-brand-light file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-brand"
+      />
+    </label>
   );
 }
 
