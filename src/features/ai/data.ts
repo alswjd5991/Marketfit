@@ -83,6 +83,12 @@ export async function buildStoreContextSummary(): Promise<string | null> {
   lines.push(`업종: ${store.category}`);
   if (store.flagship_product) lines.push(`대표 상품: ${store.flagship_product}`);
   if (store.active_region) lines.push(`주 활동 지역: ${store.active_region}`);
+  if (store.payment_methods && store.payment_methods.length > 0) {
+    lines.push(`지원 결제수단: ${store.payment_methods.join(", ")}`);
+  }
+  if (store.hygiene_certified != null) {
+    lines.push(`위생교육 이수 여부: ${store.hygiene_certified ? "이수함" : "아직 안 함"}`);
+  }
 
   try {
     const products = await getMyProducts(store.id);
@@ -97,7 +103,7 @@ export async function buildStoreContextSummary(): Promise<string | null> {
     const { data: participations, error: participationsError } = await supabase
       .from("event_participations")
       .select(
-        "id, status, event_id, fee, expected_revenue, target_revenue, total_revenue, net_profit, satisfaction, would_reattend, weather, indoor_outdoor, memo, created_at"
+        "id, status, event_id, fee, expected_revenue, target_revenue, total_revenue, net_profit, satisfaction, would_reattend, weather, indoor_outdoor, memo, created_at, booth_provided, booth_size, power_available, vehicle_access, booth_number, booth_location_rating, payment_methods_used"
       )
       .eq("store_id", store.id)
       .order("created_at", { ascending: false })
@@ -128,6 +134,9 @@ export async function buildStoreContextSummary(): Promise<string | null> {
           p.satisfaction != null ? `만족도:${p.satisfaction}/5` : null,
           p.would_reattend != null ? `재참가의향:${p.would_reattend ? "있음" : "없음"}` : null,
           p.weather ? `날씨:${p.weather}` : null,
+          p.booth_number ? `부스위치:${p.booth_number}` : null,
+          p.booth_location_rating != null ? `부스위치만족도:${p.booth_location_rating}/5` : null,
+          p.booth_provided ? `부스제공:${p.booth_provided === "organizer" ? "주최측 제공" : "자비 지참"}` : null,
           p.memo ? `메모:"${p.memo}"` : null,
         ].filter(Boolean);
         lines.push(`- ${parts.join(" / ")}`);
