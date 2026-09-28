@@ -28,24 +28,34 @@ export default async function StorePage(props: PageProps<"/store">) {
   const store = await getMyStore();
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-xl font-bold text-neutral-950">내 가게</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        행사 참가 추천과 데이터 기록에 쓰일 가게·상품 정보입니다.
-      </p>
+    <div className="min-h-screen bg-fixed bg-[linear-gradient(135deg,#FFF3DC_0%,#F6FAFD_30%,#E3F2FC_68%,#F8FBFD_100%)]">
+      <div className="mx-auto w-full max-w-6xl px-6 py-10 lg:px-8">
+        <div className="mx-auto max-w-3xl">
+          <h1 className="text-xl font-bold text-neutral-950">내 가게</h1>
 
-      {error && (
-        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-      )}
+          <p className="mt-1 text-sm text-neutral-500">
+            행사 참가 추천과 데이터 기록에 쓰일 가게·상품 정보입니다.
+          </p>
 
-      {!store ? (
-        <CreateStoreForm />
-      ) : (
-        <>
-          <StoreCard store={store} />
-          <ProductsSection storeId={store.id} products={await getMyProducts(store.id)} />
-        </>
-      )}
+          {error && (
+            <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+
+          {!store ? (
+            <CreateStoreForm />
+          ) : (
+            <>
+              <StoreCard store={store} />
+              <ProductsSection
+                storeId={store.id}
+                products={await getMyProducts(store.id)}
+              />
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

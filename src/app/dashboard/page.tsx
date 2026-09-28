@@ -85,7 +85,8 @@ export default async function DashboardPage() {
   const maxProductRevenue = Math.max(...stats.popularProducts.map((p) => p.totalRevenue), 1);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="min-h-screen bg-fixed bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
+    <div className="mx-auto w-full max-w-5xl px-6 py-10 lg:px-8">
       <h1 className="text-xl font-bold text-neutral-950">대시보드</h1>
       <p className="mt-1 text-sm text-neutral-500">지금까지 기록한 참가 데이터 요약이에요.</p>
 
@@ -225,6 +226,7 @@ export default async function DashboardPage() {
         매출·순이익·만족도는 내 행사 상세에서 직접 입력한 기록만 집계돼요. 아직 입력하지 않은 값은
         0원으로 지어내지 않고 &ldquo;아직 기록 없음&rdquo;으로 표시합니다.
       </p>
+    </div>
     </div>
   );
 }

@@ -4,6 +4,9 @@ import { EventCard } from "@/features/events/event-card";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { PosterFrame } from "@/components/ui/poster-frame";
+import { getMyParticipations } from "@/features/participations/data";
+import { getDashboardStats } from "@/features/dashboard/data";
+import { STATUS_LABEL } from "@/features/participations/status-labels";
 
 export default async function HomePage() {
   const events = await getEvents();
@@ -14,6 +17,13 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
 
   const isLoggedIn = Boolean(user);
+  const participations = isLoggedIn
+  ? await getMyParticipations()
+  : [];
+
+const dashboardStats = isLoggedIn
+  ? await getDashboardStats()
+  : null;
 
   const closingSoon = events
     .filter((e) => e.status === "open")
@@ -42,11 +52,10 @@ export default async function HomePage() {
   ).slice(0, 3);
 
   return (
-    <main className="min-h-screen bg-[#F8FBFD]">
+    <main className="h-[calc(100vh-72px)] overflow-y-auto snap-y snap-mandatory bg-[#F8FBFD]">
 
       {/* 랜딩 / 히어로 영역 */}
-      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#FFE8C2_0%,#F3F9FF_32%,#CFEAFF_68%,#EEF8FD_100%)]">
-
+      <section className="relative min-h-[calc(100vh-72px)] snap-start snap-always overflow-hidden bg-[linear-gradient(135deg,#FFE8C2_0%,#F3F9FF_32%,#D6EEFF_68%,#EEF8FD_100%)]">
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-6 py-20 lg:grid-cols-[1.35fr_0.65fr] lg:py-24">
 
           {/* 왼쪽 메인 타이틀 영역 */}
@@ -262,85 +271,67 @@ export default async function HomePage() {
 
 
         {/* 아래 콘텐츠 영역과 자연스럽게 연결 */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-[#F8FBFD]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-[#EEF8FD]" />
 
       </section>
 
 
       {/* 메인 콘텐츠 영역 */}
-      <div className="mx-auto max-w-6xl px-4 py-10">
+      <section className="min-h-[calc(100vh-72px)] snap-start snap-always bg-[linear-gradient(180deg,#EEF8FD_0%,#E8F4FA_45%,#F5FAFD_100%)] py-12">
 
-        <HomeSection
-          title="마감 임박 행사"
-          href="/events?sort=deadline"
-        >
-          {closingSoon.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-            />
-          ))}
-        </HomeSection>
+        <div className="mx-auto w-full max-w-6xl px-6 lg:px-8">
 
+          <HomeSection title="마감 임박 행사" href="/events?sort=deadline">
+            {closingSoon.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+              />
+            ))}
+          </HomeSection>
 
-        <HomeSection
-          title="최근 등록 행사"
-          href="/events"
-        >
-          {recentlyAdded.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-            />
-          ))}
-        </HomeSection>
+          <HomeSection title="최근 등록 행사" href="/events">
+            {recentlyAdded.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+              />
+            ))}
+          </HomeSection>
 
+          <HomeSection title="내 참가 예정 행사" href="/my-events">
+            {isLoggedIn ? (
+              <MyEventsPreview participations={participations.slice(0, 3)} />
+            ) : (
+              <EmptyState
+                label="MY EVENTS"
+                title="참가할 행사를 한곳에서 관리하세요"
+                description="로그인하면 저장하거나 참가 예정으로 등록한 행사를 빠르게 확인할 수 있어요."
+                buttonText="로그인하고 확인하기"
+                href="/login"
+                accent="blue"
+              />
+            )}
+          </HomeSection>
 
-        <HomeSection title="내 참가 예정 행사" href="/my-events">
-          {isLoggedIn ? (
-            <EmptyState
-              label="MY EVENTS"
-              title="내 참가 예정 행사를 확인하세요"
-              description="참가 예정으로 등록한 행사와 저장한 행사를 한곳에서 관리할 수 있어요."
-              buttonText="내 행사 보기"
-              href="/my-events"
-              accent="blue"
-            />
-          ) : (
-            <EmptyState
-              label="MY EVENTS"
-              title="참가할 행사를 한곳에서 관리하세요"
-              description="로그인하면 저장하거나 참가 예정으로 등록한 행사를 빠르게 확인할 수 있어요."
-              buttonText="로그인하고 확인하기"
-              href="/login"
-              accent="blue"
-            />
-          )}
-        </HomeSection>
+          <HomeSection title="최근 성과" href="/dashboard">
+            {isLoggedIn ? (
+              <DashboardPreview stats={dashboardStats} />
+            ) : (
+              <EmptyState
+                label="PERFORMANCE"
+                title="참가 결과를 기록해보세요"
+                description="로그인하면 행사 참가 후 매출과 순이익을 기록하고 성과를 확인할 수 있어요."
+                buttonText="로그인하고 확인하기"
+                href="/login"
+                accent="green"
+              />
+            )}
+          </HomeSection>
 
-        <HomeSection title="최근 성과" href="/dashboard">
-          {isLoggedIn ? (
-            <EmptyState
-              label="PERFORMANCE"
-              title="내 참가 성과를 확인하세요"
-              description="기록한 매출과 순이익을 바탕으로 최근 참가 성과를 확인할 수 있어요."
-              buttonText="대시보드 보기"
-              href="/dashboard"
-              accent="green"
-            />
-          ) : (
-            <EmptyState
-              label="PERFORMANCE"
-              title="참가 결과를 기록해보세요"
-              description="로그인하면 행사 참가 후 매출과 순이익을 기록하고 성과를 확인할 수 있어요."
-              buttonText="로그인하고 확인하기"
-              href="/login"
-              accent="green"
-            />
-          )}
-        </HomeSection>
+        </div>
 
-      </div>
+      </section>
 
     </main>
   );
@@ -453,6 +444,191 @@ function EmptyState({
         </Link>
 
       </div>
+    </div>
+  );
+}
+
+type HomeParticipation =
+  Awaited<ReturnType<typeof getMyParticipations>>[number];
+
+type HomeDashboardStats =
+  NonNullable<Awaited<ReturnType<typeof getDashboardStats>>>;
+
+function MyEventsPreview({
+  participations,
+}: {
+  participations: HomeParticipation[];
+}) {
+  if (participations.length === 0) {
+    return (
+      <div className="col-span-full rounded-[24px] border border-[#E3EDF5] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
+        <p className="text-sm font-medium text-[#607080]">
+          아직 추가한 행사가 없어요.
+        </p>
+
+        <Link
+          href="/events"
+          className="mt-3 inline-block text-sm font-semibold text-brand hover:underline"
+        >
+          참가할 행사 찾아보기 →
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {participations.map((p) => (
+        <Link
+          key={p.participationId}
+          href={`/my-events/${p.participationId}`}
+          className="
+            rounded-[22px] border border-[#E3EDF5] bg-white p-5
+            shadow-[0_12px_30px_rgba(40,80,120,0.06)]
+            transition-all duration-200
+            hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(40,80,120,0.10)]
+          "
+        >
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full bg-[#EAF4FF] px-3 py-1 text-xs font-semibold text-brand">
+              {STATUS_LABEL[p.status] ?? p.status}
+            </span>
+
+            {p.category && (
+              <span className="rounded-full bg-[#F2F5F7] px-3 py-1 text-xs font-medium text-[#607080]">
+                {p.category}
+              </span>
+            )}
+          </div>
+
+          <h3 className="mt-4 line-clamp-2 text-base font-bold text-[#15202B]">
+            {p.eventName}
+          </h3>
+
+          <p className="mt-2 text-sm text-[#728090]">
+            {[p.region, p.venue].filter(Boolean).join(" · ") ||
+              "지역 미기재"}
+          </p>
+
+          {p.startDate && (
+            <p className="mt-2 text-xs text-[#9AA7B4]">
+              {p.endDate && p.endDate !== p.startDate
+                ? `${p.startDate} ~ ${p.endDate}`
+                : p.startDate}
+            </p>
+          )}
+        </Link>
+      ))}
+    </>
+  );
+}
+function DashboardPreview({
+  stats,
+}: {
+  stats: HomeDashboardStats | null;
+}) {
+  if (!stats) {
+    return (
+      <div className="col-span-full rounded-[24px] border border-[#E3EDF5] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
+        <p className="text-sm font-medium text-[#607080]">
+          가게를 등록하면 참가 성과를 확인할 수 있어요.
+        </p>
+
+        <Link
+          href="/store"
+          className="mt-3 inline-block text-sm font-semibold text-[#279566] hover:underline"
+        >
+          가게 등록하기 →
+        </Link>
+      </div>
+    );
+  }
+
+  if (stats.totalParticipations === 0) {
+    return (
+      <div className="col-span-full rounded-[24px] border border-[#E3EDF5] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
+        <p className="text-sm font-medium text-[#607080]">
+          아직 참가 기록이 없어요.
+        </p>
+
+        <p className="mt-1 text-xs text-[#9AA7B4]">
+          참가 기록을 추가하면 이곳에서 성과를 바로 확인할 수 있어요.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="col-span-full rounded-[24px] border border-[#E3EDF5] bg-white p-7 shadow-[0_12px_35px_rgba(40,80,120,0.06)]">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+
+        <PerformanceTile
+          label="총 참가 행사"
+          value={`${stats.totalParticipations}건`}
+        />
+
+        <PerformanceTile
+          label="참가 완료"
+          value={`${stats.statusCounts.attended}건`}
+        />
+
+        <PerformanceTile
+          label="총 매출"
+          value={
+            stats.totalRevenue != null
+              ? `${stats.totalRevenue.toLocaleString()}원`
+              : "기록 없음"
+          }
+        />
+
+        <PerformanceTile
+          label="총 순이익"
+          value={
+            stats.totalNetProfit != null
+              ? `${stats.totalNetProfit.toLocaleString()}원`
+              : "기록 없음"
+          }
+        />
+
+      </div>
+
+      {stats.averageSatisfaction != null && (
+        <div className="mt-5 flex items-center justify-between rounded-2xl bg-[#F3FAF7] px-5 py-4">
+          <div>
+            <p className="text-xs font-medium text-[#728090]">
+              평균 만족도
+            </p>
+
+            <p className="mt-1 text-lg font-bold text-[#15202B]">
+              {stats.averageSatisfaction.toFixed(1)} / 5
+            </p>
+          </div>
+
+          <span className="rounded-full bg-[#E3F5EC] px-4 py-2 text-xs font-semibold text-[#279566]">
+            {stats.satisfactionEntryCount}건 기준
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PerformanceTile({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-[#F8FBFD] p-5">
+      <p className="text-xs font-medium text-[#728090]">
+        {label}
+      </p>
+
+      <p className="mt-2 text-xl font-bold tracking-tight text-[#15202B]">
+        {value}
+      </p>
     </div>
   );
 }
