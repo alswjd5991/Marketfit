@@ -2,9 +2,18 @@ import Link from "next/link";
 import { getEvents } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/server";
+import { PosterFrame } from "@/components/ui/poster-frame";
 
 export default async function HomePage() {
   const events = await getEvents();
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isLoggedIn = Boolean(user);
 
   const closingSoon = events
     .filter((e) => e.status === "open")
@@ -36,26 +45,36 @@ export default async function HomePage() {
     <main className="min-h-screen bg-[#F8FBFD]">
 
       {/* 랜딩 / 히어로 영역 */}
-      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#FFF4DE_0%,#F7FBFF_35%,#E5F5FF_70%,#F8FBFD_100%)]">
+      <section className="relative overflow-hidden bg-[linear-gradient(135deg,#FFE8C2_0%,#F3F9FF_32%,#CFEAFF_68%,#EEF8FD_100%)]">
 
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-6 py-20 lg:grid-cols-[1.35fr_0.65fr] lg:py-24">
 
-          {/* 왼쪽 메인 타이틀 카드 */}
-          <div className="w-full rounded-[30px] border border-white/80 bg-white/70 p-8 shadow-[0_20px_60px_rgba(47,128,237,0.10)] backdrop-blur-md sm:p-12">
+          {/* 왼쪽 메인 타이틀 영역 */}
+          <div className="relative w-full px-4 py-10 sm:px-8 sm:py-14">
 
-            <span className="inline-block rounded-full bg-brand-light px-4 py-2 text-xs font-semibold text-brand">
-              소상공인 마켓 참가 데이터 플랫폼
+            {/* 왼쪽 위 코너 */}
+            <div className="pointer-events-none absolute left-[-24px] top-0 h-14 w-14 border-l-[8px] border-t-[8px] border-[#465563]" />
+
+            {/* 오른쪽 아래 코너 */}
+            <div className="pointer-events-none absolute bottom-0 right-0 h-14 w-14 border-b-[8px] border-r-[8px] border-[#465563]" />
+
+            <span className="inline-block rounded-full bg-white/65 px-4 py-2 text-xs font-semibold text-brand shadow-sm backdrop-blur-sm">
+              소상공인을 위한 마켓 인사이트 플랫폼
             </span>
 
-            <h1 className="mt-6 text-4xl font-bold leading-[1.15] tracking-tight text-[#15202B] sm:text-6xl">
-              어떤 마켓에 나가야
-              <br />
-              잘 팔릴까요?
+            <h1 className="mt-7 tracking-tight">
+              <span className="block text-xl font-medium leading-tight text-[#607080] sm:text-2xl">
+                어디에 나갈지 고민될 때,
+              </span>
+
+              <span className="mt-3 block text-5xl font-bold leading-none text-[#15202B] sm:text-7xl">
+                Marketfit.
+              </span>
             </h1>
 
-            <p className="mt-6 max-w-2xl text-base leading-7 text-[#607080] sm:text-lg">
-              전국 행사 모집정보를 찾고, 참가 데이터를 쌓아 우리 가게에 맞는 마켓을
-              찾아보세요.
+            <p className="mt-3 max-w-2xl text-base leading-7 text-[#607080] sm:text-lg">
+              전국 행사 정보를 한눈에 확인하고, 데이터를 바탕으로 더 나은 마켓 선택을
+              시작해보세요.
             </p>
 
             <Button
@@ -63,9 +82,7 @@ export default async function HomePage() {
               size="lg"
               className="mt-8 rounded-xl bg-brand px-7 text-white shadow-sm transition-all hover:bg-brand-dark hover:shadow-md"
             >
-              <Link href="/events">
-                행사 찾아보기
-              </Link>
+              <Link href="/events">행사 찾아보기</Link>
             </Button>
 
           </div>
@@ -80,120 +97,164 @@ export default async function HomePage() {
 
             {/* 실제 모집 중인 행사 카드 */}
             {featuredEvent && (
-              <a
-                href={featuredEvent.sourceUrl ?? "/events"}
-                target={featuredEvent.sourceUrl ? "_blank" : undefined}
-                rel={featuredEvent.sourceUrl ? "noreferrer" : undefined}
-                className="absolute left-0 top-8 z-10 block w-[285px] rounded-[24px] border border-white/80 bg-white p-5 shadow-[0_20px_50px_rgba(47,128,237,0.14)] transition-shadow duration-200 hover:z-50 hover:shadow-[0_24px_60px_rgba(47,128,237,0.22)]"
-              >
+              <div className="group absolute left-0 top-4 z-10 h-[360px] w-[285px] hover:z-50">
 
-                <div className="mb-4 flex items-center justify-between">
+                <a
+                  href={featuredEvent.sourceUrl ?? "/events"}
+                  target={featuredEvent.sourceUrl ? "_blank" : undefined}
+                  rel={featuredEvent.sourceUrl ? "noreferrer" : undefined}
+                  className="
+                    absolute left-0 top-0 block w-[285px]
+                    -rotate-3
+                    rounded-[24px] border border-white/80 bg-white p-5
+                    shadow-[0_20px_50px_rgba(47,128,237,0.14)]
+                    transition-all duration-300 ease-out
 
-                  <span className="text-xs font-semibold text-brand">
-                    지금 모집 중
-                  </span>
+                    group-hover:z-50
+                    group-hover:translate-x-[50px]
+                    group-hover:translate-y-[30px]
+                    group-hover:rotate-0
+                    group-hover:scale-[1.04]
+                    group-hover:shadow-[0_28px_70px_rgba(47,128,237,0.22)]
+                  "
+                >
+                  <div className="mb-4 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-brand">
+                      지금 모집 중
+                    </span>
 
-                  <span className="rounded-full bg-[#E8F7EF] px-3 py-1 text-xs font-semibold text-[#279566]">
-                    {featuredEvent.dday ?? "모집중"}
-                  </span>
+                    <span className="rounded-full bg-[#E8F7EF] px-3 py-1 text-xs font-semibold text-[#279566]">
+                      {featuredEvent.dday ?? "모집중"}
+                    </span>
+                  </div>
 
-                </div>
+                  <div className="mb-4 aspect-[16/9] overflow-hidden rounded-2xl">
+                    <PosterFrame
+                      imageUrl={featuredEvent.posterImage}
+                      alt={`${featuredEvent.name} 포스터`}
+                      category={featuredEvent.category}
+                      seed={featuredEvent.id}
+                      size="card"
+                    />
+                  </div>
 
+                  <h3 className="text-lg font-bold text-[#15202B]">
+                    {featuredEvent.name}
+                  </h3>
 
-                {/* 행사 이미지 영역 */}
-                <div className="mb-4 h-28 rounded-2xl bg-gradient-to-br from-[#DDF3FF] via-[#EEF9FF] to-[#FFF1D8]" />
+                  <p className="mt-1 text-sm text-[#728090]">
+                    {[featuredEvent.region, featuredEvent.venue]
+                      .filter(Boolean)
+                      .join(" · ") || "지역 미기재"}
+                  </p>
 
+                  {featuredEvent.category && (
+                    <p className="mt-1 text-xs font-medium text-brand">
+                      {featuredEvent.category}
+                    </p>
+                  )}
+                </a>
 
-                {/* 실제 행사명 자동 출력 */}
-                <h3 className="text-lg font-bold text-[#15202B]">
-                  {featuredEvent.name}
-                </h3>
-
-
-                {/* 실제 지역 + 카테고리 자동 출력 */}
-                <p className="mt-1 text-sm text-[#728090]">
-                  {featuredEvent.region ?? "지역 미정"}
-                  {" · "}
-                  {featuredEvent.category ?? "카테고리 미정"}
-                </p>
-
-              </a>
+              </div>
             )}
 
 
             {/* 현재 모집 중인 행사 수 */}
-            <Link
-              href="/events"
-              className="absolute right-[-10px] top-[205px] z-20 block w-[220px] rounded-[22px] border border-white/80 bg-white p-5 shadow-[0_20px_50px_rgba(47,128,237,0.12)] transition-shadow duration-200 hover:z-50 hover:shadow-[0_24px_60px_rgba(47,128,237,0.22)]"
-            >
+            <div className="group absolute right-[-10px] top-[205px] z-20 h-[150px] w-[220px] hover:z-50">
 
-              <p className="text-xs font-medium text-[#728090]">
-                현재 모집 중인 행사
-              </p>
+              <Link
+                href="/events"
+                className="
+                  absolute inset-0 block
+                  rotate-3
+                  rounded-[22px] border border-white/80 bg-white p-5
+                  shadow-[0_20px_50px_rgba(47,128,237,0.12)]
+                  transition-all duration-300 ease-out
 
-              <div className="mt-2 flex items-end gap-2">
+                  group-hover:-translate-x-[90px]
+                  group-hover:-translate-y-[55px]
+                  group-hover:rotate-0
+                  group-hover:scale-[1.04]
+                  group-hover:shadow-[0_28px_70px_rgba(47,128,237,0.22)]
+                "
+              >
+                <p className="text-xs font-medium text-[#728090]">
+                  현재 모집 중인 행사
+                </p>
 
-                <span className="text-4xl font-bold tracking-tight text-[#15202B]">
-                  {openEventCount}
-                </span>
+                <div className="mt-2 flex items-end gap-2">
+                  <span className="text-4xl font-bold tracking-tight text-[#15202B]">
+                    {openEventCount}
+                  </span>
 
-                <span className="pb-1 text-sm text-[#728090]">
-                  개
-                </span>
+                  <span className="pb-1 text-sm text-[#728090]">
+                    개
+                  </span>
+                </div>
 
-              </div>
+                <div className="mt-4 flex gap-1">
+                  <div className="h-2 flex-1 rounded-full bg-brand" />
+                  <div className="h-2 flex-1 rounded-full bg-[#82CFFF]" />
+                  <div className="h-2 flex-1 rounded-full bg-[#BDE7FF]" />
+                  <div className="h-2 flex-1 rounded-full bg-[#E0F3FF]" />
+                </div>
+              </Link>
 
-              <div className="mt-4 flex gap-1">
-                <div className="h-2 flex-1 rounded-full bg-brand" />
-                <div className="h-2 flex-1 rounded-full bg-[#82CFFF]" />
-                <div className="h-2 flex-1 rounded-full bg-[#BDE7FF]" />
-                <div className="h-2 flex-1 rounded-full bg-[#E0F3FF]" />
-              </div>
-
-            </Link>
+            </div>
 
 
             {/* 카테고리 탐색 카드 */}
-            <Link
-              href="/events"
-              className="absolute bottom-0 left-10 z-30 block w-[230px] rounded-[20px] border border-white/80 bg-white p-5 shadow-[0_18px_40px_rgba(47,128,237,0.10)] transition-shadow duration-200 hover:z-50 hover:shadow-[0_24px_60px_rgba(47,128,237,0.22)]"
-            >
+            <div className="group absolute bottom-0 left-10 z-30 h-[145px] w-[230px] hover:z-50">
 
-              <p className="text-xs font-medium text-[#728090]">
-                다양한 마켓을 한눈에
-              </p>
+              <Link
+                href="/events"
+                className="
+                  absolute inset-0 block
+                  -rotate-2
+                  rounded-[20px] border border-white/80 bg-white p-5
+                  shadow-[0_18px_40px_rgba(47,128,237,0.10)]
+                  transition-all duration-300 ease-out
 
-              <p className="mt-2 text-lg font-bold text-[#15202B]">
-                지역 · 카테고리별 탐색
-              </p>
+                  group-hover:translate-x-[55px]
+                  group-hover:-translate-y-[150px]
+                  group-hover:rotate-0
+                  group-hover:scale-[1.04]
+                  group-hover:shadow-[0_28px_70px_rgba(47,128,237,0.22)]
+                "
+              >
+                <p className="text-xs font-medium text-[#728090]">
+                  다양한 마켓을 한눈에
+                </p>
 
+                <p className="mt-2 text-lg font-bold text-[#15202B]">
+                  지역 · 카테고리별 탐색
+                </p>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-
-                {topCategories.length > 0 ? (
-                  topCategories.map((category, index) => (
-                    <span
-                      key={category}
-                      className={
-                        index === 0
-                          ? "rounded-full bg-brand-light px-2.5 py-1 text-xs font-medium text-brand"
-                          : index === 1
-                          ? "rounded-full bg-[#E8F7EF] px-2.5 py-1 text-xs font-medium text-[#279566]"
-                          : "rounded-full bg-[#FFF3DF] px-2.5 py-1 text-xs font-medium text-[#C47A16]"
-                      }
-                    >
-                      {category}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {topCategories.length > 0 ? (
+                    topCategories.map((category, index) => (
+                      <span
+                        key={category}
+                        className={
+                          index === 0
+                            ? "rounded-full bg-brand-light px-2.5 py-1 text-xs font-medium text-brand"
+                            : index === 1
+                            ? "rounded-full bg-[#E8F7EF] px-2.5 py-1 text-xs font-medium text-[#279566]"
+                            : "rounded-full bg-[#FFF3DF] px-2.5 py-1 text-xs font-medium text-[#C47A16]"
+                        }
+                      >
+                        {category}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="rounded-full bg-brand-light px-2.5 py-1 text-xs font-medium text-brand">
+                      행사 찾아보기
                     </span>
-                  ))
-                ) : (
-                  <span className="rounded-full bg-brand-light px-2.5 py-1 text-xs font-medium text-brand">
-                    행사 찾아보기
-                  </span>
-                )}
+                  )}
+                </div>
+              </Link>
 
-              </div>
-
-            </Link>
+            </div>
 
           </div>
 
@@ -235,19 +296,48 @@ export default async function HomePage() {
         </HomeSection>
 
 
-        <HomeSection
-          title="내 참가 예정 행사"
-          href="/my-events"
-        >
-          <EmptyPlaceholder text="로그인하면 참가 예정 행사가 여기에 표시됩니다." />
+        <HomeSection title="내 참가 예정 행사" href="/my-events">
+          {isLoggedIn ? (
+            <EmptyState
+              label="MY EVENTS"
+              title="내 참가 예정 행사를 확인하세요"
+              description="참가 예정으로 등록한 행사와 저장한 행사를 한곳에서 관리할 수 있어요."
+              buttonText="내 행사 보기"
+              href="/my-events"
+              accent="blue"
+            />
+          ) : (
+            <EmptyState
+              label="MY EVENTS"
+              title="참가할 행사를 한곳에서 관리하세요"
+              description="로그인하면 저장하거나 참가 예정으로 등록한 행사를 빠르게 확인할 수 있어요."
+              buttonText="로그인하고 확인하기"
+              href="/login"
+              accent="blue"
+            />
+          )}
         </HomeSection>
 
-
-        <HomeSection
-          title="최근 성과"
-          href="/dashboard"
-        >
-          <EmptyPlaceholder text="참가 결과를 기록하면 매출·순이익 요약이 여기에 표시됩니다." />
+        <HomeSection title="최근 성과" href="/dashboard">
+          {isLoggedIn ? (
+            <EmptyState
+              label="PERFORMANCE"
+              title="내 참가 성과를 확인하세요"
+              description="기록한 매출과 순이익을 바탕으로 최근 참가 성과를 확인할 수 있어요."
+              buttonText="대시보드 보기"
+              href="/dashboard"
+              accent="green"
+            />
+          ) : (
+            <EmptyState
+              label="PERFORMANCE"
+              title="참가 결과를 기록해보세요"
+              description="로그인하면 행사 참가 후 매출과 순이익을 기록하고 성과를 확인할 수 있어요."
+              buttonText="로그인하고 확인하기"
+              href="/login"
+              accent="green"
+            />
+          )}
         </HomeSection>
 
       </div>
@@ -293,14 +383,76 @@ function HomeSection({
 }
 
 
-function EmptyPlaceholder({
-  text,
+function EmptyState({
+  label,
+  title,
+  description,
+  buttonText,
+  href,
+  accent,
 }: {
-  text: string;
+  label: string;
+  title: string;
+  description: string;
+  buttonText: string;
+  href: string;
+  accent: "blue" | "green";
 }) {
+  const isBlue = accent === "blue";
+
   return (
-    <div className="col-span-full rounded-2xl border border-dashed border-neutral-300 bg-white/60 p-8 text-center text-sm text-neutral-400">
-      {text}
+    <div className="col-span-full overflow-hidden rounded-[24px] border border-[#E3EDF5] bg-white shadow-[0_12px_35px_rgba(40,80,120,0.06)]">
+      <div className="flex flex-col items-start justify-between gap-8 p-7 sm:flex-row sm:items-center sm:p-8">
+
+        {/* 왼쪽 설명 */}
+        <div className="flex items-start gap-5">
+
+          {/* 작은 아이콘 영역 */}
+          <div
+            className={
+              isBlue
+                ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EAF4FF] text-sm font-bold text-brand"
+                : "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#E8F7EF] text-sm font-bold text-[#279566]"
+            }
+          >
+            {isBlue ? "MY" : "%"}
+          </div>
+
+          <div>
+            <p
+              className={
+                isBlue
+                  ? "text-xs font-semibold tracking-wide text-brand"
+                  : "text-xs font-semibold tracking-wide text-[#279566]"
+              }
+            >
+              {label}
+            </p>
+
+            <h3 className="mt-2 text-lg font-bold text-[#15202B]">
+              {title}
+            </h3>
+
+            <p className="mt-2 max-w-xl text-sm leading-6 text-[#728090]">
+              {description}
+            </p>
+          </div>
+
+        </div>
+
+        {/* 오른쪽 버튼 */}
+        <Link
+          href={href}
+          className={
+            isBlue
+              ? "shrink-0 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-dark hover:shadow-md"
+              : "shrink-0 rounded-xl bg-[#279566] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#23825A] hover:shadow-md"
+          }
+        >
+          {buttonText} →
+        </Link>
+
+      </div>
     </div>
   );
 }
