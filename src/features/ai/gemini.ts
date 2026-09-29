@@ -4,9 +4,19 @@
 //
 // 모델/엔드포인트: 2026-09 기준 Gemini API 문서(ai.google.dev/api/generate-content)로
 // 확인한 현재 값. generateContent는 활성 API이고(2026-06 "Interactions API"가
-// 새로 나왔지만 generateContent도 계속 지원됨), 기본 flash 모델은 gemini-3.8-flash.
-const GEMINI_MODEL = "gemini-3.8-flash";
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+// 새로 나왔지만 generateContent도 계속 지원됨).
+//
+// 2026-09-29: 무료 등급에서 기본 모델(gemini-3.8-flash)이 429(TooManyRequests)/503
+// (ServiceUnavailable)을 내는 걸 AI Studio 사용량 대시보드로 확인 — 같은 GEMINI_API_KEY라도
+// 무료 등급 한도는 "모델별로 따로" 집계된다(대시보드에 Gemini 3.8 Flash/2.5 Flash 등이 각자
+// RPM/TPM/RPD를 갖고 있고, 하나가 막혀도 다른 모델은 남아있는 걸 실제로 확인). 그래서 새
+// API 제공사로 갈아타는 대신, 같은 계정 안에서 기본 모델이 429/503일 때만 예비 모델로
+// 자동 전환하는 방식을 택함 — 새 키 발급이나 요금제 가입 없이 바로 적용 가능.
+const MODEL_CANDIDATES = ["gemini-3.8-flash", "gemini-2.5-flash"] as const;
+
+function endpointFor(model: string) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
 
 export interface GeminiTurn {
   role: "user" | "model";
@@ -44,6 +54,11 @@ interface GenerateContentResponse {
  * 근거로 답할 수 있게 한다. 근거로 쓴 웹 페이지는 sources로 함께 돌려줘서
  * 화면에 출처로 보여준다(37번 항목: 근거 없는 숫자 생성 방지 — 검색 결과도
  * 출처를 밝혀야 근거가 된다).
+ *
+ * `MODEL_CANDIDATES`를 앞에서부터 순서대로 시도한다 — 429/503(할당량·일시 과부하)이면
+ * 다음 후보 모델로 자동 전환하고, 그 외 오류(인증 문제 등 모델을 바꿔도 똑같이 날 문제)는
+ * 즉시 실패로 반환한다. 후보를 다 써도 안 되면 그때 비로소 사용자에게 "잠시 후 재시도"
+ * 안내를 보여준다.
  * 키 미설정/네트워크 오류/빈 응답 등 실패 케이스는 전부 { ok: false }로 돌려주고
  * 절대 그럴듯한 답을 지어내 채우지 않는다(65번 원칙).
  */
@@ -59,54 +74,68 @@ export async function generateGeminiReply(
     return { ok: false, error: "빈 대화는 전송할 수 없어요." };
   }
 
+  const requestBody = JSON.stringify({
+    systemInstruction: { parts: [{ text: systemInstruction }] },
+    contents: history.map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] })),
+    tools: [{ google_search: {} }],
+    generationConfig: {
+      temperature: 0.3, // 근거 데이터 밖으로 나가는 창작을 줄이기 위해 낮게
+      maxOutputTokens: 1024,
+    },
+  });
+
+  let lastRetryableError: string | null = null;
+
   try {
-    const res = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: history.map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] })),
-        tools: [{ google_search: {} }],
-        generationConfig: {
-          temperature: 0.3, // 근거 데이터 밖으로 나가는 창작을 줄이기 위해 낮게
-          maxOutputTokens: 1024,
-        },
-      }),
-    });
+    for (const model of MODEL_CANDIDATES) {
+      const res = await fetch(`${endpointFor(model)}?key=${encodeURIComponent(apiKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody,
+      });
 
-    if (!res.ok) {
-      const bodyText = await res.text().catch(() => "");
-      // 429(쿼터/속도 제한)·503(구글 쪽 일시 과부하)은 사용자 잘못이 아니라 잠깐 기다리면
-      // 풀리는 경우가 대부분이라, 원시 에러 대신 안내 문구로 바꿔서 보여준다. 그 외
-      // 상태 코드(인증 오류 등 실제로 고쳐야 하는 문제)는 진단에 필요하니 원문을 그대로 남긴다.
-      if (res.status === 429 || res.status === 503) {
-        return {
-          ok: false,
-          error: "지금 요청이 많이 몰려서 답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.",
-          retryable: true,
-        };
+      if (!res.ok) {
+        const bodyText = await res.text().catch(() => "");
+        const rawError = `Gemini API 오류 (${res.status}): ${bodyText.slice(0, 200)}`;
+
+        if (res.status === 429 || res.status === 503) {
+          // 이 모델의 무료 할당량이 찼거나 구글 쪽이 일시 과부하 — 다음 후보 모델로 넘어간다.
+          console.error(`[gemini] ${model} 응답 실패(${res.status}) — 다음 후보 모델로 전환`, bodyText.slice(0, 200));
+          lastRetryableError = rawError;
+          continue;
+        }
+
+        // 429/503이 아닌 오류(인증 문제 등)는 모델을 바꿔도 똑같이 날 가능성이 높아 바로 반환.
+        return { ok: false, error: rawError };
       }
-      return { ok: false, error: `Gemini API 오류 (${res.status}): ${bodyText.slice(0, 200)}` };
+
+      const data = (await res.json()) as GenerateContentResponse;
+      const candidate = data.candidates?.[0];
+      const text = candidate?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+      if (!text.trim()) {
+        return { ok: false, error: "응답이 비어 있어요." };
+      }
+
+      const chunks = candidate?.groundingMetadata?.groundingChunks ?? [];
+      const seen = new Set<string>();
+      const sources: GeminiSource[] = [];
+      for (const chunk of chunks) {
+        const uri = chunk.web?.uri;
+        if (!uri || seen.has(uri)) continue;
+        seen.add(uri);
+        sources.push({ title: chunk.web?.title ?? uri, url: uri });
+      }
+
+      return { ok: true, text: text.trim(), sources };
     }
 
-    const data = (await res.json()) as GenerateContentResponse;
-    const candidate = data.candidates?.[0];
-    const text = candidate?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-    if (!text.trim()) {
-      return { ok: false, error: "응답이 비어 있어요." };
-    }
-
-    const chunks = candidate?.groundingMetadata?.groundingChunks ?? [];
-    const seen = new Set<string>();
-    const sources: GeminiSource[] = [];
-    for (const chunk of chunks) {
-      const uri = chunk.web?.uri;
-      if (!uri || seen.has(uri)) continue;
-      seen.add(uri);
-      sources.push({ title: chunk.web?.title ?? uri, url: uri });
-    }
-
-    return { ok: true, text: text.trim(), sources };
+    // 후보 모델을 전부 시도했는데도 다 429/503 — 사용자 잘못이 아님을 명확히 안내한다.
+    console.error("[gemini] 모든 후보 모델이 429/503으로 실패", lastRetryableError);
+    return {
+      ok: false,
+      error: "지금 요청이 많이 몰려서 답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.",
+      retryable: true,
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "알 수 없는 오류가 발생했어요." };
   }
