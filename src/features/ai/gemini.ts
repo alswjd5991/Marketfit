@@ -12,7 +12,17 @@
 // RPM/TPM/RPD를 갖고 있고, 하나가 막혀도 다른 모델은 남아있는 걸 실제로 확인). 그래서 새
 // API 제공사로 갈아타는 대신, 같은 계정 안에서 기본 모델이 429/503일 때만 예비 모델로
 // 자동 전환하는 방식을 택함 — 새 키 발급이나 요금제 가입 없이 바로 적용 가능.
-const MODEL_CANDIDATES = ["gemini-3.8-flash", "gemini-2.5-flash"] as const;
+//
+// 2026-09-29 추가 수정: 처음엔 예비 모델로 gemini-2.5-flash를 넣었는데, 실제로 써보니
+// 404 "This model models/gemini-2.5-flash is no longer available to new users. Please
+// update your code to use models/gemini-3.8-flash..." 오류가 남 — 2.5 계열 모델은
+// "과거에 써본 적 있는 사용자"에게만 남아있고, 새 프로젝트/신규 사용자에게는 완전히
+// 막혀 있다(ai.google.dev/gemini-api/docs/deprecations 확인). 그래서 예비 모델을
+// Google이 신규 프로젝트에 공식 추천하는 gemini-3.6-flash / gemini-3.5-flash-lite로
+// 교체 — 두 모델 다 google_search 그라운딩 도구를 지원하고(ai.google.dev/gemini-api/docs/
+// generate-content/google-search 확인), AI Studio 대시보드에서 3.8-flash와는 별도로
+// RPM/RPD가 집계돼 진짜 예비 한도로 쓸 수 있다.
+const MODEL_CANDIDATES = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"] as const;
 
 function endpointFor(model: string) {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -56,9 +66,9 @@ interface GenerateContentResponse {
  * 출처를 밝혀야 근거가 된다).
  *
  * `MODEL_CANDIDATES`를 앞에서부터 순서대로 시도한다 — 429/503(할당량·일시 과부하)이면
- * 다음 후보 모델로 자동 전환하고, 그 외 오류(인증 문제 등 모델을 바꿔도 똑같이 날 문제)는
- * 즉시 실패로 반환한다. 후보를 다 써도 안 되면 그때 비로소 사용자에게 "잠시 후 재시도"
- * 안내를 보여준다.
+ * 다음 후보 모델로 자동 전환하고, 그 외 오류(인증 문제, 404로 모델 자체가 없는 경우 등
+ * 모델을 바꿔도 똑같이 날 문제)는 즉시 실패로 반환한다. 후보를 다 써도 안 되면 그때
+ * 비로소 사용자에게 "잠시 후 재시도" 안내를 보여준다.
  * 키 미설정/네트워크 오류/빈 응답 등 실패 케이스는 전부 { ok: false }로 돌려주고
  * 절대 그럴듯한 답을 지어내 채우지 않는다(65번 원칙).
  */
@@ -105,7 +115,8 @@ export async function generateGeminiReply(
           continue;
         }
 
-        // 429/503이 아닌 오류(인증 문제 등)는 모델을 바꿔도 똑같이 날 가능성이 높아 바로 반환.
+        // 429/503이 아닌 오류(인증 문제, 모델 자체가 없어진 404 등)는 모델을 바꿔도
+        // 똑같이 날 가능성이 높아 바로 반환한다.
         return { ok: false, error: rawError };
       }
 
