@@ -27,9 +27,24 @@ export function NavLinks() {
       pathname.startsWith(item.href)
     );
 
+    // 메인 페이지처럼 활성 메뉴가 없으면 밑줄 숨기기
+    if (activeIndex === -1) {
+      setIndicator({
+        x: 0,
+        width: 0,
+      });
+      return;
+    }
+
     const activeLink = linkRefs.current[activeIndex];
 
-    if (!activeLink) return;
+    if (!activeLink) {
+      setIndicator({
+        x: 0,
+        width: 0,
+      });
+      return;
+    }
 
     const updateIndicator = () => {
       setIndicator({

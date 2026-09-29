@@ -52,10 +52,11 @@ const dashboardStats = isLoggedIn
   ).slice(0, 3);
 
   return (
-    <main className="h-[calc(100vh-72px)] overflow-y-auto snap-y snap-mandatory bg-[#F8FBFD]">
+    <main className="h-[calc(100vh-72px)] overflow-y-auto snap-y snap-mandatory">
+      <div className="bg-[linear-gradient(180deg,#FFE8C2_0%,#F4F9FF_18%,#D8EEFF_38%,#EAF6FF_58%,#F4F8FA_76%,#FFF1DE_100%)]">
 
       {/* 랜딩 / 히어로 영역 */}
-      <section className="relative min-h-[calc(100vh-72px)] snap-start snap-always overflow-hidden bg-[linear-gradient(135deg,#FFE8C2_0%,#F3F9FF_32%,#D6EEFF_68%,#EEF8FD_100%)]">
+      <section className="relative min-h-[calc(100vh-72px)] snap-start snap-always overflow-hidden">
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-6 py-20 lg:grid-cols-[1.35fr_0.65fr] lg:py-24">
 
           {/* 왼쪽 메인 타이틀 영역 */}
@@ -269,70 +270,86 @@ const dashboardStats = isLoggedIn
 
         </div>
 
-
-        {/* 아래 콘텐츠 영역과 자연스럽게 연결 */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-[#EEF8FD]" />
-
       </section>
 
 
       {/* 메인 콘텐츠 영역 */}
-      <section className="min-h-[calc(100vh-72px)] snap-start snap-always bg-[linear-gradient(180deg,#EEF8FD_0%,#E8F4FA_45%,#F5FAFD_100%)] py-12">
+      <div className="mx-auto w-full max-w-6xl px-6 lg:px-8">
 
-        <div className="mx-auto w-full max-w-6xl px-6 lg:px-8">
+          {/* 2. 마감 임박 행사 */}
+          <section className="min-h-[calc(100vh-72px)] snap-start snap-always flex items-center">
+            <div className="w-full">
+              <HomeSection title="마감 임박 행사" href="/events?sort=deadline">
+                {closingSoon.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                  />
+                ))}
+              </HomeSection>
+            </div>
+          </section>
 
-          <HomeSection title="마감 임박 행사" href="/events?sort=deadline">
-            {closingSoon.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-              />
-            ))}
-          </HomeSection>
 
-          <HomeSection title="최근 등록 행사" href="/events">
-            {recentlyAdded.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-              />
-            ))}
-          </HomeSection>
+          {/* 3. 최근 등록 행사 */}
+          <section className="min-h-[calc(100vh-72px)] snap-start snap-always flex items-center">
+            <div className="w-full">
+              <HomeSection title="최근 등록 행사" href="/events">
+                {recentlyAdded.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                  />
+                ))}
+              </HomeSection>
+            </div>
+          </section>
 
-          <HomeSection title="내 참가 예정 행사" href="/my-events">
-            {isLoggedIn ? (
-              <MyEventsPreview participations={participations.slice(0, 3)} />
-            ) : (
-              <EmptyState
-                label="MY EVENTS"
-                title="참가할 행사를 한곳에서 관리하세요"
-                description="로그인하면 저장하거나 참가 예정으로 등록한 행사를 빠르게 확인할 수 있어요."
-                buttonText="로그인하고 확인하기"
-                href="/login"
-                accent="blue"
-              />
-            )}
-          </HomeSection>
 
-          <HomeSection title="최근 성과" href="/dashboard">
-            {isLoggedIn ? (
-              <DashboardPreview stats={dashboardStats} />
-            ) : (
-              <EmptyState
-                label="PERFORMANCE"
-                title="참가 결과를 기록해보세요"
-                description="로그인하면 행사 참가 후 매출과 순이익을 기록하고 성과를 확인할 수 있어요."
-                buttonText="로그인하고 확인하기"
-                href="/login"
-                accent="green"
-              />
-            )}
-          </HomeSection>
+          {/* 4. 내 참가 예정 행사 */}
+          <section className="min-h-[calc(100vh-72px)] snap-start snap-always flex items-center">
+            <div className="w-full">
+              <HomeSection title="내 참가 예정 행사" href="/my-events">
+                {isLoggedIn ? (
+                  <MyEventsPreview participations={participations.slice(0, 3)} />
+                ) : (
+                  <EmptyState
+                    label="MY EVENTS"
+                    title="참가할 행사를 한곳에서 관리하세요"
+                    description="로그인하면 저장하거나 참가 예정으로 등록한 행사를 빠르게 확인할 수 있어요."
+                    buttonText="로그인하고 확인하기"
+                    href="/login"
+                    accent="blue"
+                  />
+                )}
+              </HomeSection>
+            </div>
+          </section>
+
+
+          {/* 5. 최근 성과 */}
+          <section className="min-h-[calc(100vh-72px)] snap-start snap-always flex items-center">
+            <div className="w-full">
+              <HomeSection title="최근 성과" href="/dashboard">
+                {isLoggedIn ? (
+                  <DashboardPreview stats={dashboardStats} />
+                ) : (
+                  <EmptyState
+                    label="PERFORMANCE"
+                    title="참가 결과를 기록해보세요"
+                    description="로그인하면 행사 참가 후 매출과 순이익을 기록하고 성과를 확인할 수 있어요."
+                    buttonText="로그인하고 확인하기"
+                    href="/login"
+                    accent="green"
+                  />
+                )}
+              </HomeSection>
+            </div>
+          </section>  
 
         </div>
 
-      </section>
-
+    </div>
     </main>
   );
 }
