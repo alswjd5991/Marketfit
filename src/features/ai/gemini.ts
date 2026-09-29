@@ -20,7 +20,7 @@ export interface GeminiSource {
 
 export type GeminiResult =
   | { ok: true; text: string; sources: GeminiSource[] }
-  | { ok: false; error: string };
+  | { ok: false; error: string; retryable?: boolean };
 
 export function isGeminiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
@@ -76,6 +76,16 @@ export async function generateGeminiReply(
 
     if (!res.ok) {
       const bodyText = await res.text().catch(() => "");
+      // 429(쿼터/속도 제한)·503(구글 쪽 일시 과부하)은 사용자 잘못이 아니라 잠깐 기다리면
+      // 풀리는 경우가 대부분이라, 원시 에러 대신 안내 문구로 바꿔서 보여준다. 그 외
+      // 상태 코드(인증 오류 등 실제로 고쳐야 하는 문제)는 진단에 필요하니 원문을 그대로 남긴다.
+      if (res.status === 429 || res.status === 503) {
+        return {
+          ok: false,
+          error: "지금 요청이 많이 몰려서 답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.",
+          retryable: true,
+        };
+      }
       return { ok: false, error: `Gemini API 오류 (${res.status}): ${bodyText.slice(0, 200)}` };
     }
 
