@@ -22,6 +22,18 @@
 // 교체 — 두 모델 다 google_search 그라운딩 도구를 지원하고(ai.google.dev/gemini-api/docs/
 // generate-content/google-search 확인), AI Studio 대시보드에서 3.8-flash와는 별도로
 // RPM/RPD가 집계돼 진짜 예비 한도로 쓸 수 있다.
+//
+// 2026-09-29 추가 진단: 위 모델 폴백(3.8-flash → 3.6-flash → 3.5-flash-lite)을 반영한
+// 뒤에도 세 모델이 "전부" 즉시 429로 실패하는 게 실사용 로그로 확인됨 — 3.6-flash/
+// 3.5-flash-lite는 이 계정에서 이번이 첫 호출이라 자체 RPM/RPD가 이미 소진됐을 리는
+// 없는데도 첫 시도부터 실패한다는 건, 진짜 원인이 "모델별 한도"가 아니라 "프로젝트
+// 전체에 걸린 한도"(예: 그라운딩 도구 자체의 무료 쿼터, 또는 프로젝트 단위 일일/분당
+// 총량 제한)일 가능성이 높다는 신호. 정확한 원인(quotaId/quotaMetric)을 알아내려면
+// 구글이 돌려주는 전체 오류 본문이 필요한데, 기존 코드는 사용자에게 보여줄 rawError만
+// 만들려고 응답 본문을 200자로 잘라서 콘솔에도 그 잘린 버전만 남겼음 — 그래서 실제
+// 어떤 쿼터가 걸렸는지(quotaId 등)가 로그에서 안 보였다. 진단을 위해 실패할 때마다
+// 서버 콘솔에는 잘리지 않은 전체 응답 본문을 남기도록 바꿈(사용자에게 보여주는
+// rawError/URL 파라미터는 계속 짧게 유지 — URL이 너무 길어지지 않게).
 const MODEL_CANDIDATES = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"] as const;
 
 function endpointFor(model: string) {
@@ -71,6 +83,11 @@ interface GenerateContentResponse {
  * 비로소 사용자에게 "잠시 후 재시도" 안내를 보여준다.
  * 키 미설정/네트워크 오류/빈 응답 등 실패 케이스는 전부 { ok: false }로 돌려주고
  * 절대 그럴듯한 답을 지어내 채우지 않는다(65번 원칙).
+ *
+ * 실패 시 서버 콘솔에는(사용자에게 보여주는 메시지와 별도로) 구글이 돌려준 전체 오류
+ * 본문을 그대로 남긴다 — 429 응답의 `details` 배열에 있는 quotaId/quotaMetric까지 봐야
+ * "이게 모델별 한도인지, 그라운딩 도구 자체의 한도인지, 프로젝트 전체 한도인지"를 구분할
+ * 수 있기 때문(2026-09-29에 이 값이 200자로 잘려서 콘솔에도 안 남던 문제를 고침).
  */
 export async function generateGeminiReply(
   systemInstruction: string,
@@ -108,9 +125,13 @@ export async function generateGeminiReply(
         const bodyText = await res.text().catch(() => "");
         const rawError = `Gemini API 오류 (${res.status}): ${bodyText.slice(0, 200)}`;
 
+        // 사용자에게 보여줄 메시지는 짧게 자르지만, 서버 콘솔에는 원인 진단(quotaId 등)을
+        // 위해 항상 전체 응답 본문을 그대로 남긴다 — 429/503뿐 아니라 다른 오류도 마찬가지.
+        console.error(`[gemini] ${model} 응답 실패(${res.status}) — 전체 응답 본문:`, bodyText);
+
         if (res.status === 429 || res.status === 503) {
           // 이 모델의 무료 할당량이 찼거나 구글 쪽이 일시 과부하 — 다음 후보 모델로 넘어간다.
-          console.error(`[gemini] ${model} 응답 실패(${res.status}) — 다음 후보 모델로 전환`, bodyText.slice(0, 200));
+          console.error(`[gemini] ${model} — 다음 후보 모델로 전환`);
           lastRetryableError = rawError;
           continue;
         }
