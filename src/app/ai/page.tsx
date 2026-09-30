@@ -31,7 +31,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
   const geminiReady = isGeminiConfigured();
 
   return (
-    <div className="min-h-screen bg-fixed bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
+    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
     <div className="mx-auto w-full max-w-4xl px-6 py-10 lg:px-8">
       <h1 className="text-xl font-bold text-neutral-950">AI 도우미</h1>
       <p className="mt-1 text-sm text-neutral-500">

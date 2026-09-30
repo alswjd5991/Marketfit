@@ -28,7 +28,7 @@ export default async function StorePage(props: PageProps<"/store">) {
   const store = await getMyStore();
 
   return (
-    <div className="min-h-screen bg-fixed bg-[linear-gradient(135deg,#FFF3DC_0%,#F6FAFD_30%,#E3F2FC_68%,#F8FBFD_100%)]">
+    <div className="min-h-screen bg-[linear-gradient(135deg,#FFF3DC_0%,#F6FAFD_30%,#E3F2FC_68%,#F8FBFD_100%)]">
       <div className="mx-auto w-full max-w-6xl px-6 py-10 lg:px-8">
         <div className="mx-auto max-w-3xl">
           <h1 className="text-xl font-bold text-neutral-950">내 가게</h1>
@@ -46,13 +46,10 @@ export default async function StorePage(props: PageProps<"/store">) {
           {!store ? (
             <CreateStoreForm />
           ) : (
-            <>
-              <StoreCard store={store} />
-              <ProductsSection
-                storeId={store.id}
-                products={await getMyProducts(store.id)}
-              />
-            </>
+            <StoreProfile
+              store={store}
+              products={await getMyProducts(store.id)}
+            />
           )}
         </div>
       </div>
@@ -137,34 +134,73 @@ function ProductsSection({
   }[];
 }) {
   return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle>판매 상품 ({products.length})</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+    <details className="group rounded-2xl border border-neutral-200 bg-white/90 shadow-sm">
+
+      {/* 접혀 있을 때 보이는 제목 */}
+      <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-5">
+        <div>
+          <p className="font-semibold text-neutral-900">
+            판매 상품 관리
+          </p>
+
+          <p className="mt-1 text-sm font-normal text-neutral-500">
+            등록된 상품 {products.length}개
+          </p>
+        </div>
+
+        <span className="text-neutral-400 transition-transform duration-200 group-open:rotate-180">
+          ↓
+        </span>
+      </summary>
+
+
+      {/* 펼쳤을 때 보이는 영역 */}
+      <div className="border-t border-neutral-100 px-6 pb-6 pt-5">
+
         {products.length === 0 ? (
-          <p className="text-sm text-neutral-400">아직 등록된 상품이 없습니다.</p>
+          <p className="text-sm text-neutral-400">
+            아직 등록된 상품이 없습니다.
+          </p>
         ) : (
           <ul className="flex flex-col gap-2">
             {products.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center justify-between rounded-lg border border-neutral-200 px-3 py-2"
+                className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white px-4 py-3"
               >
                 <div>
-                  <p className="text-sm font-medium text-neutral-900">
-                    {p.name}
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-neutral-900">
+                      {p.name}
+                    </p>
+
                     {p.category && (
-                      <span className="ml-2 text-xs text-neutral-400">{p.category}</span>
+                      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500">
+                        {p.category}
+                      </span>
                     )}
-                  </p>
+                  </div>
+
                   {p.price != null && (
-                    <p className="text-xs text-neutral-500">{p.price.toLocaleString()}원</p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {p.price.toLocaleString()}원
+                    </p>
                   )}
                 </div>
+
                 <form action={deleteProduct}>
-                  <input type="hidden" name="product_id" value={p.id} />
-                  <Button type="submit" variant="ghost" size="sm">
+                  <input
+                    type="hidden"
+                    name="product_id"
+                    value={p.id}
+                  />
+
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="sm"
+                    className="text-neutral-400 hover:text-red-500"
+                  >
                     삭제
                   </Button>
                 </form>
@@ -173,21 +209,63 @@ function ProductsSection({
           </ul>
         )}
 
-        <form action={addProduct} className="flex flex-col gap-3 border-t border-neutral-100 pt-4">
-          <input type="hidden" name="store_id" value={storeId} />
-          <Field name="name" label="상품명 *" required />
+
+        {/* 상품 추가 */}
+        <form
+          action={addProduct}
+          className="mt-5 flex flex-col gap-3 border-t border-neutral-100 pt-5"
+        >
+          <input
+            type="hidden"
+            name="store_id"
+            value={storeId}
+          />
+
+          <p className="mb-1 font-medium text-neutral-900">
+            새 상품 추가
+          </p>
+
+          <Field
+            name="name"
+            label="상품명 *"
+            required
+          />
+
           <div className="grid grid-cols-2 gap-3">
-            <Field name="price" label="판매가 (원)" type="number" />
-            <Field name="cost" label="원가 (원)" type="number" />
+            <Field
+              name="price"
+              label="판매가 (원)"
+              type="number"
+            />
+
+            <Field
+              name="cost"
+              label="원가 (원)"
+              type="number"
+            />
           </div>
-          <Field name="category" label="카테고리 (선택)" />
-          <Field name="description" label="설명 (선택)" />
-          <Button type="submit" variant="outline" className="mt-1">
+
+          <Field
+            name="category"
+            label="카테고리 (선택)"
+          />
+
+          <Field
+            name="description"
+            label="설명 (선택)"
+          />
+
+          <Button
+            type="submit"
+            variant="outline"
+            className="mt-1"
+          >
             상품 추가
           </Button>
         </form>
-      </CardContent>
-    </Card>
+
+      </div>
+    </details>
   );
 }
 
@@ -241,5 +319,250 @@ function CategorySelect({ defaultValue }: { defaultValue?: string }) {
         ))}
       </select>
     </label>
+  );
+}
+function StoreProfile({
+  store,
+  products,
+}: {
+  store: {
+    id: string;
+    name: string;
+    nickname: string | null;
+    category: string;
+    flagship_product: string | null;
+    active_region: string | null;
+    contact: string | null;
+    email: string | null;
+  };
+  products: {
+    id: string;
+    name: string;
+    category: string | null;
+    price: number | null;
+    cost: number | null;
+    description: string | null;
+  }[];
+}) {
+  return (
+    <div className="mt-6 space-y-5">
+
+      {/* 프로필 카드 */}
+      <Card className="overflow-hidden border-white/70 bg-white/90 shadow-sm">
+        <CardContent className="p-0">
+
+          {/* 상단 프로필 */}
+          <div className="flex flex-col gap-5 p-7 sm:flex-row sm:items-center">
+
+            {/* 프로필 이미지 임시 */}
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#D6EEFF,#EEF8FD)] text-3xl font-bold text-[#3C78B4] shadow-sm">
+              {store.name.slice(0, 1)}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-2xl font-bold tracking-tight text-neutral-950">
+                  {store.name}
+                </h2>
+
+                {store.nickname && (
+                  <span className="text-sm text-neutral-400">
+                    @{store.nickname}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                  {store.category}
+                </span>
+
+                {store.active_region && (
+                  <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600">
+                    {store.active_region}
+                  </span>
+                )}
+              </div>
+
+              <p className="mt-4 text-sm leading-6 text-neutral-500">
+                {store.flagship_product
+                  ? `${store.flagship_product}을(를) 중심으로 판매하는 ${store.category} 브랜드입니다.`
+                  : `${store.category} 카테고리의 상품을 판매하고 있어요.`}
+              </p>
+            </div>
+          </div>
+
+          {/* 간단한 가게 정보 */}
+          <div className="grid border-t border-neutral-100 sm:grid-cols-3">
+            <ProfileInfo
+              label="대표 상품"
+              value={store.flagship_product ?? "아직 등록되지 않았어요"}
+            />
+
+            <ProfileInfo
+              label="주요 활동 지역"
+              value={store.active_region ?? "아직 등록되지 않았어요"}
+            />
+
+            <ProfileInfo
+              label="등록 상품"
+              value={`${products.length}개`}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+
+      {/* 주력 상품 */}
+      <Card className="border-white/70 bg-white/90 shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>주력 상품</CardTitle>
+            <p className="mt-1 text-sm font-normal text-neutral-500">
+              등록한 상품을 한눈에 확인해보세요.
+            </p>
+          </div>
+
+          <span className="text-sm text-neutral-400">
+            {products.length}개
+          </span>
+        </CardHeader>
+
+        <CardContent>
+          {products.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-neutral-200 px-6 py-10 text-center">
+              <p className="text-sm text-neutral-400">
+                아직 등록한 상품이 없어요.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  {/* 상품 이미지 임시 */}
+                  <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(135deg,#F3F9FF,#E5F3FF)]">
+                    <span className="text-3xl">🛍️</span>
+                  </div>
+
+                  <div className="p-4">
+                    {product.category && (
+                      <span className="text-xs font-medium text-brand">
+                        {product.category}
+                      </span>
+                    )}
+
+                    <h3 className="mt-1 font-semibold text-neutral-950">
+                      {product.name}
+                    </h3>
+
+                    {product.price != null && (
+                      <p className="mt-2 font-medium text-neutral-900">
+                        {product.price.toLocaleString()}원
+                      </p>
+                    )}
+
+                    {product.description && (
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-neutral-500">
+                        {product.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
+      {/* 수정 영역 */}
+      <details className="group rounded-2xl border border-neutral-200 bg-white/90 shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-5 font-semibold text-neutral-900">
+          가게 정보 수정
+
+          <span className="text-neutral-400 transition-transform group-open:rotate-180">
+            ↓
+          </span>
+        </summary>
+
+        <div className="border-t border-neutral-100 p-6">
+          <form action={updateStore} className="flex flex-col gap-3">
+            <input type="hidden" name="store_id" value={store.id} />
+
+            <Field
+              name="name"
+              label="가게 이름 *"
+              required
+              defaultValue={store.name}
+            />
+
+            <CategorySelect defaultValue={store.category} />
+
+            <Field
+              name="nickname"
+              label="닉네임"
+              defaultValue={store.nickname ?? ""}
+            />
+
+            <Field
+              name="flagship_product"
+              label="대표 상품"
+              defaultValue={store.flagship_product ?? ""}
+            />
+
+            <Field
+              name="active_region"
+              label="주요 활동 지역"
+              defaultValue={store.active_region ?? ""}
+            />
+
+            <Field
+              name="contact"
+              label="연락처"
+              defaultValue={store.contact ?? ""}
+            />
+
+            <Field
+              name="email"
+              label="이메일"
+              type="email"
+              defaultValue={store.email ?? ""}
+            />
+
+            <Button type="submit" className="mt-2">
+              정보 저장
+            </Button>
+          </form>
+        </div>
+      </details>
+
+
+      {/* 기존 상품 등록 기능 */}
+      <ProductsSection
+        storeId={store.id}
+        products={products}
+      />
+
+    </div>
+  );
+}
+
+function ProfileInfo({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="border-t border-neutral-100 px-6 py-4 sm:border-r sm:border-t-0 last:border-r-0">
+      <p className="text-xs text-neutral-400">{label}</p>
+      <p className="mt-1 text-sm font-medium text-neutral-900">
+        {value}
+      </p>
+    </div>
   );
 }

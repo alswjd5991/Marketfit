@@ -52,12 +52,13 @@ const dashboardStats = isLoggedIn
   ).slice(0, 3);
 
   return (
-    <main className="h-[calc(100vh-72px)] overflow-y-auto snap-y snap-mandatory">
-      <div className="bg-[linear-gradient(180deg,#FFE8C2_0%,#F4F9FF_18%,#D8EEFF_38%,#EAF6FF_58%,#F4F8FA_76%,#FFF1DE_100%)]">
+    <main className="fixed inset-x-0 bottom-16 top-16 isolate overflow-y-auto overscroll-contain snap-y snap-mandatory scroll-smooth bg-[#F4F8FB] sm:bottom-0">
 
+      <div className="relative snap-start snap-always">
       {/* 랜딩 / 히어로 영역 */}
-      <section className="relative min-h-[calc(100vh-72px)] snap-start snap-always overflow-hidden">
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-6 py-20 lg:grid-cols-[1.35fr_0.65fr] lg:py-24">
+      <section className="sticky top-0 z-0 h-[calc(100vh-64px)] overflow-hidden bg-[linear-gradient(135deg,#FFE8C2_0%,#F3F9FF_38%,#D6EEFF_72%,#EEF8FD_100%)]">
+
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-6 pb-40 pt-20 lg:grid-cols-[1.35fr_0.65fr] lg:pb-44 lg:pt-24">
 
           {/* 왼쪽 메인 타이틀 영역 */}
           <div className="relative w-full px-4 py-10 sm:px-8 sm:py-14">
@@ -94,7 +95,6 @@ const dashboardStats = isLoggedIn
             >
               <Link href="/events">행사 찾아보기</Link>
             </Button>
-
           </div>
 
 
@@ -108,7 +108,6 @@ const dashboardStats = isLoggedIn
             {/* 실제 모집 중인 행사 카드 */}
             {featuredEvent && (
               <div className="group absolute left-0 top-4 z-10 h-[360px] w-[285px] hover:z-50">
-
                 <a
                   href={featuredEvent.sourceUrl ?? "/events"}
                   target={featuredEvent.sourceUrl ? "_blank" : undefined}
@@ -164,7 +163,6 @@ const dashboardStats = isLoggedIn
                     </p>
                   )}
                 </a>
-
               </div>
             )}
 
@@ -267,19 +265,93 @@ const dashboardStats = isLoggedIn
             </div>
 
           </div>
-
         </div>
-
       </section>
 
 
-      {/* 메인 콘텐츠 영역 */}
-      <div className="mx-auto w-full max-w-6xl px-6 lg:px-8">
+      {/* 아래 콘텐츠 전체를 감싸는 흰색 패널 */}
+      <section
+        className="
+          relative z-20
+          -mt-20
+          min-h-screen
+          snap-start snap-always
+          rounded-t-[56px]
+          bg-[#FCFDFE]
+          shadow-[0_-24px_70px_rgba(40,80,120,0.12)]
+        "
+      >
+         {/* 배경 효과만 잘라주는 영역 */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-t-[56px]">
+
+        {/* 왼쪽 위 - 따뜻한 주황빛 */}
+        <div
+          className="
+            pointer-events-none
+            absolute
+            -left-40
+            top-[12%]
+            h-[520px]
+            w-[520px]
+            rounded-full
+            bg-[#FFE4B8]/45
+            blur-[110px]
+          "
+        />
+
+        {/* 오른쪽 아래 - 하늘빛 */}
+        <div
+          className="
+            pointer-events-none
+            absolute
+            -right-44
+            top-[48%]
+            h-[600px]
+            w-[600px]
+            rounded-full
+            bg-[#CDEAFF]/55
+            blur-[120px]
+          "
+        />
+        {/* 추가 1 - 가운데 왼쪽의 연한 파랑빛 */}
+        <div
+          className="
+            absolute
+            -left-28
+            top-[38%]
+            h-[460px]
+            w-[460px]
+            rounded-full
+            bg-[#DDF2FF]/45
+            blur-[110px]
+          "
+        />
+
+        {/* 추가 2 - 아래쪽 오른쪽의 연한 주황빛 */}
+        <div
+          className="
+            absolute
+            -right-32
+            top-[78%]
+            h-[500px]
+            w-[500px]
+            rounded-full
+            bg-[#FFE9C8]/40
+            blur-[115px]
+          "
+        />
+        </div>
+
+        <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24 pt-20 lg:px-8">
+
 
           {/* 2. 마감 임박 행사 */}
-          <section className="min-h-[calc(100vh-72px)] snap-start snap-always flex items-center">
+          <section className="flex min-h-[calc(100vh-64px)] items-center">
             <div className="w-full">
-              <HomeSection title="마감 임박 행사" href="/events?sort=deadline">
+              <HomeSection
+                title="마감 임박 행사"
+                href="/events?sort=deadline"
+              >
                 {closingSoon.map((event) => (
                   <EventCard
                     key={event.id}
@@ -292,9 +364,12 @@ const dashboardStats = isLoggedIn
 
 
           {/* 3. 최근 등록 행사 */}
-          <section className="min-h-[calc(100vh-72px)] snap-start snap-always flex items-center">
+          <section className="flex min-h-[calc(100vh-64px)] snap-start snap-always items-center">
             <div className="w-full">
-              <HomeSection title="최근 등록 행사" href="/events">
+              <HomeSection
+                title="최근 등록 행사"
+                href="/events"
+              >
                 {recentlyAdded.map((event) => (
                   <EventCard
                     key={event.id}
@@ -307,11 +382,16 @@ const dashboardStats = isLoggedIn
 
 
           {/* 4. 내 참가 예정 행사 */}
-          <section className="min-h-[calc(100vh-72px)] snap-start snap-always flex items-center">
+          <section className="flex min-h-[calc(100vh-64px)] snap-start snap-always items-center">
             <div className="w-full">
-              <HomeSection title="내 참가 예정 행사" href="/my-events">
+              <HomeSection
+                title="내 참가 예정 행사"
+                href="/my-events"
+              >
                 {isLoggedIn ? (
-                  <MyEventsPreview participations={participations.slice(0, 3)} />
+                  <MyEventsPreview
+                    participations={participations.slice(0, 3)}
+                  />
                 ) : (
                   <EmptyState
                     label="MY EVENTS"
@@ -328,9 +408,12 @@ const dashboardStats = isLoggedIn
 
 
           {/* 5. 최근 성과 */}
-          <section className="min-h-[calc(100vh-72px)] snap-start snap-always flex items-center">
+          <section className="flex min-h-[calc(100vh-64px)] snap-start snap-always items-center">
             <div className="w-full">
-              <HomeSection title="최근 성과" href="/dashboard">
+              <HomeSection
+                title="최근 성과"
+                href="/dashboard"
+              >
                 {isLoggedIn ? (
                   <DashboardPreview stats={dashboardStats} />
                 ) : (
@@ -345,11 +428,12 @@ const dashboardStats = isLoggedIn
                 )}
               </HomeSection>
             </div>
-          </section>  
+          </section>
 
         </div>
+      </section>
+      </div>
 
-    </div>
     </main>
   );
 }

@@ -22,7 +22,7 @@ export default async function EventsPage(props: PageProps<"/events">) {
   ]);
 
   return (
-    <div className="min-h-screen bg-fixed bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
+    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
     <div className="mx-auto w-full max-w-6xl px-6 py-10 lg:px-8">
       <h1 className="mb-1 text-2xl font-bold text-neutral-950">행사 찾기</h1>
       <p className="mb-6 text-sm text-neutral-500">
