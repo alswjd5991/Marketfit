@@ -35,8 +35,8 @@ export default async function AiPage(props: PageProps<"/ai">) {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-xl font-bold text-neutral-950">AI 도우미</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        내 참가·판매 데이터에 대한 질문은 실제 기록만 근거로 답하고, 그 외 질문은 구글 검색으로 찾은
-        내용을 출처와 함께 답해요. 둘 다 없는 내용은 지어내지 않아요.
+        내 참가·판매 질문은 내 기록으로 분석하고, 행사·모집 일정은 Marketfit 등록 행사부터 찾아요.
+        Marketfit 행사가 적으면 다른 웹사이트에서 찾아 출처를 함께 알려드려요.
       </p>
 
       {!geminiReady && (
