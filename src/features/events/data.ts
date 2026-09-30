@@ -160,9 +160,14 @@ function compareBy(sort: EventSort) {
 
     // deadline(기본, 마감 임박순): 모집중/예정을 먼저, 마감일이 가까운 순.
     // 모집종료는 뒤로 보내되 "과거 최신순"(가장 최근에 마감된 것부터).
+    // recruitEnd가 없으면 endDate·startDate로 대체한다 — 둘 다 없어서 Infinity로
+    // 남는 행사끼리는 Infinity - Infinity = NaN이 되어 정렬이 먹히지 않고
+    // 원래 배열 순서 그대로 뒤섞여 나왔었다.
     if (rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
-    const aEnd = a.recruitEnd ? new Date(a.recruitEnd).getTime() : Infinity;
-    const bEnd = b.recruitEnd ? new Date(b.recruitEnd).getTime() : Infinity;
+    const bestDate = (e: EventListItem) => e.recruitEnd ?? e.endDate ?? e.startDate;
+    const aEnd = bestDate(a) ? new Date(bestDate(a) as string).getTime() : Infinity;
+    const bEnd = bestDate(b) ? new Date(bestDate(b) as string).getTime() : Infinity;
+    if (aEnd === Infinity && bEnd === Infinity) return 0;
     return a.status === "closed" ? bEnd - aEnd : aEnd - bEnd;
   };
 }
