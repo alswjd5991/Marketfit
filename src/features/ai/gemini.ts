@@ -78,10 +78,14 @@ function sourcesFrom(candidate: NonNullable<GenerateContentResponse["candidates"
   return [...sources.values()];
 }
 
-/** 검색 포함 모델 전환 → 검색 없는 모델 전환. 각 단계와 요청에 시간 제한을 둔다. */
+/**
+ * 검색 포함 모델 전환 → 검색 없는 모델 전환. 각 단계와 요청에 시간 제한을 둔다.
+ * searchModes로 단계를 고른다: [false]는 가게 기록만 쓰는 개인 질문, [true]는 웹 검색 결과만 필요한 보충 조회.
+ */
 export async function generateGeminiReply(
   systemInstruction: string,
-  history: GeminiTurn[]
+  history: GeminiTurn[],
+  searchModes: boolean[] = [true, false]
 ): Promise<GeminiResult> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) return { ok: false, error: "AI 연결 설정이 필요해요. 관리자에게 문의해 주세요." };
@@ -109,7 +113,7 @@ export async function generateGeminiReply(
   }
 
   let quotaLimited = false;
-  for (const searchEnabled of [true, false]) {
+  for (const searchEnabled of searchModes) {
     // 검색 요청이 느려도 검색 없는 답변을 시도할 시간을 따로 확보한다.
     const deadline = Date.now() + MODE_TIMEOUT_MS;
     const body = JSON.stringify({
@@ -171,7 +175,8 @@ export async function generateGeminiReply(
         cooldowns.delete(stateKey);
         return {
           ok: true,
-          text: searchEnabled ? text : `${SEARCH_UNAVAILABLE_NOTICE}\n\n${text}`,
+          // 처음부터 검색 없이 요청한 경우(개인 질문)에는 검색 실패 안내를 붙이지 않는다.
+          text: searchEnabled || !searchModes.includes(true) ? text : `${SEARCH_UNAVAILABLE_NOTICE}\n\n${text}`,
           sources: searchEnabled && candidate ? sourcesFrom(candidate) : [],
           model,
           searchEnabled,

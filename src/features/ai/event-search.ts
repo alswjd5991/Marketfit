@@ -1,4 +1,3 @@
-import { seedEvents } from "../../lib/data/seed-events";
 import type { GeminiSource, GeminiTurn } from "./gemini";
 
 const SEOUL_SEARCH = "https://festival.seoul.go.kr/festival/main/searchModal.do";
@@ -28,12 +27,16 @@ const REGIONS: [string, RegExp, string[], string][] = [
   ["제주", /제주/, ["제주"], "50"],
 ];
 
-const TOPIC = /행사|축제|페스티벌|페스타|마켓|장터|야시장|벼룩|박람회|이벤트/;
+export const TOPIC = /행사|축제|페스티벌|페스타|마켓|장터|야시장|벼룩|박람회|이벤트/;
 const MARKET = /플리\s*마켓|마켓|장터|벼룩|야시장/;
-// 개인 기록·모집·가격·장르처럼 행사 목록만으로 답할 수 없는 조건은 AI 경로로 보낸다.
-const NEEDS_AI = /모집|셀러|신청|참가비|부스|매출|순이익|수익|참가한|참여한|내가|내\s*가게|우리\s*가게|추천|분석|비교|공연|전시|콘서트|무료|유료|입장료|가격/;
+// 셀러 모집 질문은 Marketfit 모집 공고(마감일·참가비·신청 방법)로 답한다.
+const RECRUIT = /모집|셀러|신청|참가비|부스/;
+// 개인 기록·추천·가격·장르처럼 행사 목록만으로 답할 수 없는 조건은 AI 경로로 보낸다.
+const NEEDS_AI = /매출|순이익|수익|참가한|참여한|내가|내\s*가게|우리\s*가게|추천|분석|비교|공연|전시|콘서트|무료|유료|입장료|가격/;
 // 시·군·구나 동네 조건을 임의로 무시해 시·도 전체 결과로 답하지 않는다.
 const SUB_AREA = /[가-힣]{1,5}(?:구|군)(?:에서|의|\s|$)|[가-힣]{2,5}시(?:에서|의|\s|$)|한강|강남|홍대|성수|명동|잠실|여의도|해운대|광안리|서면/;
+// 대학 축제("서울대 축제", "OO대학교 행사")는 특정 장소 조건이라 원문(시·도 이름을 지우기 전)에서 확인한다.
+const CAMPUS = /대학|캠퍼스|[가-힣]{1,4}대\s*(?:축제|행사)/;
 // 시·도 이름 자체("대구 ", "부산시에서")나 흔한 단어("친구", "혹시")는 세부 지역 조건으로 보지 않는다.
 const NOT_SUB_AREA = /친구|연구|가구|도시|당시|동시|역시|잠시|혹시|(?:서울|부산|대구|인천|대전|울산|세종|제주)(?:특별자치시|특별자치도|특별시|광역시|시|도)?|광주광역시|광주(?!시)/g;
 
@@ -42,25 +45,28 @@ export interface EventQuery {
   to: string;
   today: string;
   marketOnly: boolean;
+  recruit: boolean; // 셀러 모집 공고가 있는 행사만
   region: string; // REGIONS의 짧은 이름 또는 "전국"
 }
 
-interface EventRecord {
+export interface EventRecord {
   name: string;
   start: string;
   end: string;
   place: string;
   url: string;
   tentative: boolean;
+  detail?: string; // 모집 마감·참가비 등 Marketfit 모집 공고 정보
 }
 
-export interface EventReply {
-  ok: true;
-  text: string;
-  sources: GeminiSource[];
+export interface OfficialEvents {
+  label: string; // 질문자에게 보여줄 출처 이름
+  short: string; // 출처 링크 앞에 붙이는 짧은 이름
+  calendar: GeminiSource;
+  events: EventRecord[];
 }
 
-function koreaDate(now: Date): string {
+export function koreaDate(now: Date): string {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 
@@ -97,29 +103,35 @@ function rangeOf(text: string, today: string): [string, string] | undefined {
   return undefined;
 }
 
-/** 공식 목록으로 답할 수 있는 "지역 + 기간 + 행사" 질문만 처리하고, 나머지는 AI 경로로 보낸다. */
+/**
+ * 목록으로 답할 수 있는 "(지역) + 기간 + 행사/모집" 질문만 처리하고, 나머지는 AI 경로로 보낸다.
+ * 지역이 없으면 전국, 기간 없는 모집 질문("서울 셀러 모집 중인 곳")은 오늘부터 90일로 본다.
+ */
 export function parseEventQuery(history: GeminiTurn[], now = new Date()): EventQuery | null {
   const users = history.filter((turn) => turn.role === "user");
   const latest = users.at(-1)?.text.trim() ?? "";
   const today = koreaDate(now);
   // 날짜나 범위를 함께 명시한 복합 질문은 월 전체로 잘못 해석하지 않는다.
   if (NEEDS_AI.test(latest) || /\d{1,2}\s*일|부터|까지|~/.test(latest)) return null;
-  if (SUB_AREA.test(latest.replace(NOT_SUB_AREA, ""))) return null;
+  if (CAMPUS.test(latest) || SUB_AREA.test(latest.replace(NOT_SUB_AREA, ""))) return null;
 
   const region = regionOf(latest);
   const range = rangeOf(latest, today);
   if (region === null) return null;
+  const recruit = RECRUIT.test(latest);
 
   // "그럼 다음 달은?", "부산은?" 같은 짧은 후속 질문은 직전 질문의 조건을 이어받는다.
-  if (!TOPIC.test(latest)) {
+  if (!TOPIC.test(latest) && !recruit) {
     if (latest.length >= 30 || (!region && !range) || users.length < 2) return null;
     const base = parseEventQuery([users.at(-2)!], now);
     if (!base) return null;
     const [from, to] = range ?? [base.from, base.to];
     return { ...base, from, to, region: region ?? base.region, marketOnly: base.marketOnly || MARKET.test(latest) };
   }
-  if (!region || !range) return null;
-  return { from: range[0], to: range[1], today, marketOnly: MARKET.test(latest), region };
+  const [year, month, day] = today.split("-").map(Number);
+  const [from, to] = range ?? (recruit ? [today, iso(year, month, day + 90)] : []);
+  if (!from || !to) return null;
+  return { from, to, today, marketOnly: MARKET.test(latest), recruit, region: region ?? "전국" };
 }
 
 function validDate(value: unknown): value is string {
@@ -131,7 +143,7 @@ function plain(value: unknown): string {
   return typeof value === "string" ? value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim().slice(0, 200) : "";
 }
 
-const isMarket = (text: string) => /마켓|장터|벼룩|야시장/i.test(text);
+export const isMarket = (text: string) => /마켓|장터|벼룩|야시장/i.test(text);
 
 export function parseSeoulEvents(data: unknown, query: EventQuery): EventRecord[] {
   if (!Array.isArray(data)) throw new Error("Unexpected Seoul event response");
@@ -204,60 +216,76 @@ async function fetchTourEvents(query: EventQuery, key: string): Promise<EventRec
   return parseTourEvents(rows, query);
 }
 
-function storedEvents(query: EventQuery): EventRecord[] {
-  return seedEvents.filter((e) => (query.region === "전국" ? e.region : e.region === query.region) && e.startDate && e.endDate && e.sourceUrl
-    && e.startDate <= query.to && e.endDate >= query.from
-    && (!query.marketOnly || isMarket(e.name)))
-    .map((e) => ({ name: e.name, start: e.startDate!, end: e.endDate!, place: e.venue ?? "장소 미기재", url: e.sourceUrl!, tentative: false }));
+/**
+ * 다른 웹사이트(서울시 공식 축제 찾기 → 한국관광공사 TourAPI)의 공개 행사 목록. 대화/가게 정보는 전송하지 않는다.
+ * 사용할 수 있는 출처가 없거나 모두 실패하면 null.
+ */
+export async function getOfficialEvents(query: EventQuery): Promise<OfficialEvents | null> {
+  const tourKey = process.env.TOUR_API_KEY?.trim();
+  const lookups: [string, string, GeminiSource, () => Promise<EventRecord[]>][] = [];
+  if (query.region === "서울") lookups.push(["서울시 공식 축제 찾기(festival.seoul.go.kr)", "서울시", { title: "서울시 공식 행사 달력", url: SEOUL_CALENDAR }, () => fetchSeoulEvents(query)]);
+  if (tourKey) lookups.push(["한국관광공사 전국 축제 정보(지자체 등록 자료)", "한국관광공사", { title: "대한민국 구석구석 축제 달력", url: TOUR_CALENDAR }, () => fetchTourEvents(query, tourKey)]);
+  for (const [label, short, calendar, lookup] of lookups) {
+    try {
+      return { label, short, calendar, events: await lookup() };
+    } catch { /* 다음 출처로 넘어간다. */ }
+  }
+  return null;
 }
 
-/** 공개 행사 목록 조회. 대화/가게 정보는 전송하지 않는다. 처리할 수 없으면 null(AI 경로). */
-export async function getEventReply(history: GeminiTurn[], now = new Date()): Promise<EventReply | null> {
-  const query = parseEventQuery(history, now);
-  if (!query) return null;
-  const tourKey = process.env.TOUR_API_KEY?.trim();
-  const lookups: [string, string, () => Promise<EventRecord[]>][] = [];
-  if (query.region === "서울") lookups.push(["서울시 공식 행사 자료", SEOUL_CALENDAR, () => fetchSeoulEvents(query)]);
-  if (tourKey) lookups.push(["한국관광공사 전국 축제 정보(지자체 등록 자료)", TOUR_CALENDAR, () => fetchTourEvents(query, tourKey)]);
-
-  let events: EventRecord[] | undefined;
-  let source: [string, string] | undefined;
-  for (const [label, calendar, lookup] of lookups) {
-    try {
-      events = await lookup();
-      source = [label, calendar];
-      break;
-    } catch { /* 다음 공식 출처 또는 저장 자료로 넘어간다. */ }
-  }
-  if (!events) {
-    events = storedEvents(query);
-    // 서울 외 지역은 저장 자료가 적어, 비어 있으면 "없다"고 답하기보다 AI 경로에 맡긴다.
-    if (!events.length && query.region !== "서울") return null;
-  }
-
-  // 종료한 행사는 뒤로, 조회 기간 안에 시작하는 행사를 몇 달째 이어지는 상설 행사보다 앞에 둔다.
-  const unique = [...new Map(events.map((e) => [e.url, e])).values()].sort((a, b) =>
+/** 종료한 행사는 뒤로, 조회 기간 안에 시작하는 행사를 몇 달째 이어지는 상설 행사보다 앞에 둔다. */
+export function sortEvents(events: EventRecord[], query: EventQuery): EventRecord[] {
+  return [...new Map(events.map((e) => [e.url, e])).values()].sort((a, b) =>
     Number(a.end < query.today) - Number(b.end < query.today)
     || Number(a.start < query.from) - Number(b.start < query.from)
     || a.start.localeCompare(b.start));
-  const shown = unique.slice(0, 8);
-  const range = query.from === query.to ? query.from : `${query.from} ~ ${query.to}`;
-  const kind = query.marketOnly ? "마켓" : "행사";
-  const lines = [source
-    ? `${source[0]}에서 확인한 ${range} ${query.region} ${kind} 일정이에요. (${query.today} 조회)`
-    : `실시간 조회가 어려워 앱에 저장된 공개 행사 자료에서 ${range} ${query.region} 일정을 찾았어요. 최신 변경 사항은 원문을 확인해 주세요.`];
-  if (!shown.length) {
-    lines.push("이번 조회 자료에서 조건에 맞는 일정을 찾지 못했어요. 해당 기간에 행사가 전혀 없다는 뜻은 아니에요.");
-  } else {
-    for (const [index, event] of shown.entries()) {
-      const status = event.end < query.today ? "종료" : event.start > query.today ? "예정" : "진행 기간";
-      lines.push(`${index + 1}. ${event.name}\n   ${event.start} ~ ${event.end} · ${event.place}\n   ${status}${event.tentative ? " · 일정 미확정" : ""}`);
-    }
-    if (unique.length > shown.length) lines.push(`조회된 ${unique.length}건 중 ${shown.length}건만 보여드렸어요. 전체 목록은 아래 행사 달력에서 확인해 주세요.`);
-    lines.push("조회된 일부 일정이며, 표시된 기간 내 매일 운영된다는 뜻은 아니에요. 운영일·시간과 변경 여부는 아래 공식 출처를 확인해 주세요. 셀러 모집 여부는 이 행사 목록만으로 확인되지 않아요.");
+}
+
+const normalizedName = (name: string) => name.replace(/\s|20\d{2}|제?\d+회|[()（）「」『』\[\]]/g, "");
+
+/** 이름(연도·회차·공백 제외)이 서로 포함되고 기간이 겹치면 같은 행사로 본다. */
+export function isSameEvent(a: EventRecord, b: EventRecord): boolean {
+  const [x, y] = [normalizedName(a.name), normalizedName(b.name)];
+  return Boolean(x && y) && (x.includes(y) || y.includes(x)) && a.start <= b.end && b.start <= a.end;
+}
+
+export function formatEvents(events: EventRecord[], query: EventQuery, startIndex = 1): string[] {
+  return events.map((event, i) => {
+    const status = event.end < query.today ? "종료" : event.start > query.today ? "예정" : "진행 기간";
+    const extra = [status, event.tentative ? "일정 미확정" : "", event.detail ?? ""].filter(Boolean).join(" · ");
+    return `${startIndex + i}. ${event.name}\n   ${event.start} ~ ${event.end} · ${event.place}\n   ${extra}`;
+  });
+}
+
+export interface MarketfitEventRow {
+  id: string;
+  name: string;
+  venue: string | null;
+  event_type: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  event_recruitments: { recruit_end: string | null; fee: number | null; is_sample_data: boolean }[] | null;
+}
+
+/** Marketfit DB(events + event_recruitments) 행을 질문 조건으로 거르고 모집 정보를 붙인다. 링크는 앱의 행사 상세 페이지. */
+export function parseMarketfitEvents(rows: MarketfitEventRow[], query: EventQuery): EventRecord[] {
+  const events: EventRecord[] = [];
+  for (const row of rows) {
+    const start = row.start_date;
+    const end = row.end_date ?? start;
+    if (!start || !end || !validDate(start) || !validDate(end) || start > query.to || end < query.from) continue;
+    const all = row.event_recruitments ?? [];
+    const recruitments = all.filter((r) => !r.is_sample_data);
+    if (all.length && !recruitments.length) continue; // 샘플 데이터만 있는 행사는 실제 일정으로 안내하지 않는다.
+    if (query.marketOnly && !isMarket(`${row.name} ${row.event_type ?? ""}`)) continue;
+    const open = recruitments.find((r) => !r.recruit_end || r.recruit_end >= query.today);
+    if (query.recruit && !open) continue;
+    const r = open ?? recruitments[0];
+    const detail = r ? [
+      r.recruit_end ? (r.recruit_end < query.today ? `모집 마감됨(${r.recruit_end})` : `모집 마감 ${r.recruit_end}`) : "모집 마감일 미기재",
+      r.fee == null ? "" : r.fee === 0 ? "참가비 무료" : `참가비 ${Number(r.fee).toLocaleString()}원`,
+    ].filter(Boolean).join(" · ") : undefined;
+    events.push({ name: row.name, start, end, place: row.venue || "장소 미기재", url: `/events/${row.id}`, tentative: false, detail });
   }
-  return { ok: true, text: lines.join("\n\n"), sources: [
-    ...shown.map((e) => ({ title: e.name, url: e.url })),
-    ...(source ? [{ title: source[1] === SEOUL_CALENDAR ? "서울시 공식 행사 달력" : "대한민국 구석구석 축제 달력", url: source[1] }] : []),
-  ] };
+  return events;
 }

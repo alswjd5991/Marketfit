@@ -1,6 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getMyStore, getMyProducts } from "@/features/store/data";
 import type { ChatConversation, ChatMessage } from "@/types/database";
+import { participationStats } from "./stats";
+import { parseMarketfitEvents, type EventQuery, type EventRecord, type MarketfitEventRow } from "./event-search";
+
+/** AI 도우미가 행사 질문에 가장 먼저 참고하는 Marketfit 등록 행사(공개 읽기 테이블). */
+export async function getMarketfitEvents(query: EventQuery): Promise<EventRecord[]> {
+  const supabase = await createClient();
+  let request = supabase
+    .from("events")
+    .select("id, name, venue, event_type, start_date, end_date, event_recruitments(recruit_end, fee, is_sample_data)")
+    .not("start_date", "is", null)
+    .lte("start_date", query.to)
+    .order("start_date", { ascending: false })
+    .limit(300);
+  if (query.region !== "전국") request = request.eq("region", query.region);
+  const { data, error } = await request;
+  if (error) throw error;
+  return parseMarketfitEvents((data ?? []) as MarketfitEventRow[], query);
+}
 
 export interface ConversationSummary {
   id: string;
@@ -147,6 +165,10 @@ export async function buildStoreContextSummary(): Promise<string | null> {
         ].filter(Boolean);
         lines.push(`- ${parts.join(" / ")}`);
       }
+
+      // 합계·평균·순위는 모델이 계산하다 틀리지 않도록 코드에서 미리 계산해 준다.
+      lines.push(`\n## 계산된 통계 (최근 ${rows.length}건 기준, 코드가 계산한 값)`);
+      lines.push(...participationStats(rows.map((p) => ({ ...p, name: eventById.get(p.event_id)?.name ?? "(알 수 없는 행사)" }))));
 
       const { data: sales, error: salesError } = await supabase
         .from("event_product_sales")
