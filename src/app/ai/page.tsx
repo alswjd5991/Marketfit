@@ -35,7 +35,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-xl font-bold text-neutral-950">AI 도우미</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        내 참가·판매 질문은 실제 기록으로, 서울 행사 일정은 공식 공개 자료를 조회해 출처와 함께 답해요.
+        내 참가·판매 질문은 실제 기록으로, 지역별 행사 일정은 공식 공개 자료를 조회해 출처와 함께 답해요.
         그 외 질문은 구글 검색을 이용하고, 검색 연결이 어려우면 안내와 함께 일반 설명으로 답해요.
       </p>
 
