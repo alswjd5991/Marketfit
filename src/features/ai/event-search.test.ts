@@ -153,3 +153,11 @@ test("서울 외 지역은 키가 없거나 조회가 실패하고 저장 자료
   assert.equal(await getEventReply(question("이번 달 부산 축제"), now), null);
   assert.equal(fetch.mock.callCount(), 1);
 });
+test("기간 안에 새로 시작하는 행사를 이전부터 이어지는 상설 행사보다 먼저 보여준다", async () => {
+  mock.method(globalThis, "fetch", async () => Response.json([
+    { festa_code: 7, festa_name: "상설 행사", strt_date: "2026-01-01", end_date: "2026-12-31" },
+    { festa_code: 8, festa_name: "새 행사", strt_date: "2026-10-10", end_date: "2026-10-11" },
+  ]));
+  const result = await getEventReply(question("다음 달 서울 행사"), now);
+  assert.ok(result && result.text.indexOf("새 행사") < result.text.indexOf("상설 행사"));
+});

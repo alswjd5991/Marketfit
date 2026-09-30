@@ -235,9 +235,11 @@ export async function getEventReply(history: GeminiTurn[], now = new Date()): Pr
     if (!events.length && query.region !== "서울") return null;
   }
 
-  // 종료한 행사를 앞으로 갈 수 있는 행사처럼 안내하지 않는다.
+  // 종료한 행사는 뒤로, 조회 기간 안에 시작하는 행사를 몇 달째 이어지는 상설 행사보다 앞에 둔다.
   const unique = [...new Map(events.map((e) => [e.url, e])).values()].sort((a, b) =>
-    Number(a.end < query.today) - Number(b.end < query.today) || a.start.localeCompare(b.start));
+    Number(a.end < query.today) - Number(b.end < query.today)
+    || Number(a.start < query.from) - Number(b.start < query.from)
+    || a.start.localeCompare(b.start));
   const shown = unique.slice(0, 8);
   const range = query.from === query.to ? query.from : `${query.from} ~ ${query.to}`;
   const kind = query.marketOnly ? "마켓" : "행사";
