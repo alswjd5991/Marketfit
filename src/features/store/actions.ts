@@ -21,6 +21,49 @@ function toNumberOrNull(value: FormDataEntryValue | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** "" → null, "true"/"false" → boolean. 위생교육 이수 여부처럼 "선택 안 함"이 있는 tri-state select용. */
+function toBooleanOrNull(value: FormDataEntryValue | null): boolean | null {
+  const s = value === null ? "" : String(value);
+  if (s === "") return null;
+  return s === "true";
+}
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+
+/**
+ * 로고/부스 사진 업로드 공통 헬퍼. 파일이 선택 안 됐으면(빈 file input) 조용히
+ * { url: null, error: null }을 돌려줘서 "기존 이미지 유지"로 처리할 수 있게 한다.
+ * 61번 항목: 업로드 경로를 "{userId}/..."로 강제해 storage RLS(0002 마이그레이션)의
+ * 소유자 검증과 일치시킨다 — 남의 폴더에 쓰려는 시도는 RLS가 어차피 막지만
+ * 애초에 그런 경로를 만들지 않는다.
+ */
+// participations/actions.ts(부스 사진)에서도 재사용하므로 export한다.
+export async function uploadVendorImage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  folder: "store-logo" | "booth-photo",
+  fileEntry: FormDataEntryValue | null
+): Promise<{ url: string | null; error: string | null }> {
+  if (!(fileEntry instanceof File) || fileEntry.size === 0) return { url: null, error: null };
+  if (!fileEntry.type.startsWith("image/")) {
+    return { url: null, error: "이미지 파일만 업로드할 수 있어요." };
+  }
+  if (fileEntry.size > MAX_IMAGE_BYTES) {
+    return { url: null, error: "이미지 용량은 5MB 이하로 올려주세요." };
+  }
+
+  const ext = fileEntry.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${userId}/${folder}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("vendor-images").upload(path, fileEntry, {
+    contentType: fileEntry.type,
+    upsert: false,
+  });
+  if (error) return { url: null, error: error.message };
+
+  const { data } = supabase.storage.from("vendor-images").getPublicUrl(path);
+  return { url: data.publicUrl, error: null };
+}
+
 export async function createStore(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -34,6 +77,16 @@ export async function createStore(formData: FormData) {
     redirect(`/store?error=${encodeURIComponent("가게 이름과 카테고리는 필수입니다.")}`);
   }
 
+  const { url: logoUrl, error: logoError } = await uploadVendorImage(
+    supabase,
+    user.id,
+    "store-logo",
+    formData.get("logo")
+  );
+  if (logoError) {
+    redirect(`/store?error=${encodeURIComponent(logoError)}`);
+  }
+
   const { error } = await supabase.from("stores").insert({
     owner_id: user.id,
     name,
@@ -43,6 +96,13 @@ export async function createStore(formData: FormData) {
     active_region: emptyToNull(formData.get("active_region")),
     contact: emptyToNull(formData.get("contact")),
     email: emptyToNull(formData.get("email")),
+    business_registration_number: emptyToNull(formData.get("business_registration_number")),
+    sns_url: emptyToNull(formData.get("sns_url")),
+    payment_methods: formData.getAll("payment_methods").length
+      ? (formData.getAll("payment_methods") as string[])
+      : null,
+    hygiene_certified: toBooleanOrNull(formData.get("hygiene_certified")),
+    logo_url: logoUrl,
   });
 
   if (error) {
@@ -67,6 +127,19 @@ export async function updateStore(formData: FormData) {
     redirect(`/store?error=${encodeURIComponent("가게 이름과 카테고리는 필수입니다.")}`);
   }
 
+  // 새 로고를 안 골랐으면(fileEntry 없음) logoUrl이 null로 돌아오는데, 이걸 그대로
+  // update payload에 넣으면 기존 로고가 지워진다 — 그래서 업로드된 경우에만
+  // logo_url 키를 payload에 포함시킨다(아래 spread).
+  const { url: newLogoUrl, error: logoError } = await uploadVendorImage(
+    supabase,
+    user.id,
+    "store-logo",
+    formData.get("logo")
+  );
+  if (logoError) {
+    redirect(`/store?error=${encodeURIComponent(logoError)}`);
+  }
+
   const { error } = await supabase
     .from("stores")
     .update({
@@ -77,6 +150,13 @@ export async function updateStore(formData: FormData) {
       active_region: emptyToNull(formData.get("active_region")),
       contact: emptyToNull(formData.get("contact")),
       email: emptyToNull(formData.get("email")),
+      business_registration_number: emptyToNull(formData.get("business_registration_number")),
+      sns_url: emptyToNull(formData.get("sns_url")),
+      payment_methods: formData.getAll("payment_methods").length
+        ? (formData.getAll("payment_methods") as string[])
+        : null,
+      hygiene_certified: toBooleanOrNull(formData.get("hygiene_certified")),
+      ...(newLogoUrl ? { logo_url: newLogoUrl } : {}),
     })
     .eq("id", storeId)
     .eq("owner_id", user.id); // RLS로도 막히지만 서버 액션에서 한 번 더 명시적으로 소유자 검증

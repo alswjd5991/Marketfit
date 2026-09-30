@@ -43,6 +43,12 @@ export type Store = {
   active_region: string | null;
   contact: string | null;
   email: string | null;
+  // 2026-09-24 추가(다른 마켓 신청서/판매자 프로필 조사 반영 — 0002 마이그레이션)
+  business_registration_number: string | null;
+  sns_url: string | null;
+  payment_methods: string[] | null;
+  hygiene_certified: boolean | null;
+  logo_url: string | null;
   created_at: string;
 };
 
@@ -133,6 +139,15 @@ export type EventParticipation = {
   parking_convenience: number | null;
   promotion_quality: number | null;
   would_reattend: boolean | null;
+  // 2026-09-24 추가(다른 마켓 신청서 조사 반영 — 0002 마이그레이션)
+  booth_provided: "organizer" | "self" | null;
+  booth_size: string | null;
+  power_available: boolean | null;
+  vehicle_access: boolean | null;
+  booth_number: string | null;
+  booth_location_rating: number | null;
+  payment_methods_used: string[] | null;
+  booth_photo_url: string | null;
   created_at: string;
   updated_at: string;
 };

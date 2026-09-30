@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ExternalLink, Plus, Send, Sparkles, Trash2 } from "lucide-react";
+import { ExternalLink, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyConversations, getConversationDetail } from "@/features/ai/data";
 import { isGeminiConfigured } from "@/features/ai/gemini";
 import { startConversation, deleteConversation, sendMessage } from "@/features/ai/actions";
+import { NewChatIconButton, MessageInput, SendMessageButton, StartConversationButton } from "@/features/ai/ai-buttons";
 import { cn } from "@/lib/utils";
 
 export default async function AiPage(props: PageProps<"/ai">) {
@@ -34,8 +35,8 @@ export default async function AiPage(props: PageProps<"/ai">) {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-xl font-bold text-neutral-950">AI 도우미</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        내 참가·판매 데이터에 대한 질문은 실제 기록만 근거로 답하고, 그 외 질문은 구글 검색으로 찾은
-        내용을 출처와 함께 답해요. 둘 다 없는 내용은 지어내지 않아요.
+        내 참가·판매 질문은 내 기록으로 분석하고, 행사·모집 일정은 Marketfit 등록 행사부터 찾아요.
+        Marketfit 행사가 적으면 다른 웹사이트에서 찾아 출처를 함께 알려드려요.
       </p>
 
       {!geminiReady && (
@@ -83,14 +84,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
             </p>
           </div>
           <form action={startConversation}>
-            <button
-              type="submit"
-              aria-label="새 대화 시작"
-              title="새 대화 시작"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
-            >
-              <Plus className="size-5" />
-            </button>
+            <NewChatIconButton />
           </form>
         </div>
 
@@ -154,26 +148,13 @@ export default async function AiPage(props: PageProps<"/ai">) {
         {detail ? (
           <form action={sendMessage} className="flex items-center gap-2 border-t border-neutral-100 px-4 py-3">
             <input type="hidden" name="conversation_id" value={activeId!} />
-            <input
-              name="content"
-              autoComplete="off"
-              placeholder="메시지를 입력하세요"
-              className="flex-1 rounded-full border border-neutral-200 px-4 py-2.5 text-sm outline-none focus:border-brand"
-            />
-            <button
-              type="submit"
-              aria-label="보내기"
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand text-white transition-colors hover:bg-brand-dark"
-            >
-              <Send className="size-4" />
-            </button>
+            <MessageInput />
+            <SendMessageButton />
           </form>
         ) : (
           <div className="border-t border-neutral-100 px-4 py-3">
             <form action={startConversation}>
-              <Button type="submit" className="w-full">
-                새 대화 시작
-              </Button>
+              <StartConversationButton />
             </form>
           </div>
         )}
