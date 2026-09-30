@@ -72,7 +72,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
         <InfoRow label="행사기간" value={formatRange(event.startDate, event.endDate)} />
         <InfoRow label="영업시간" value={event.hours?.filter(Boolean).join(" ~ ") || null} />
         <InfoRow label="모집마감일" value={event.recruitEnd} />
-        <InfoRow label="참가비" value={event.feeKrw != null ? `${event.feeKrw.toLocaleString()}원` : "미기재"} />
+        <InfoRow label="참가비" value={event.feeKrw === 0 ? "무료" : event.feeKrw != null ? `${event.feeKrw.toLocaleString()}원` : "미기재"} />
         <InfoRow label="주최기관" value={event.organizer} />
         <InfoRow label="모집대상" value={event.eligibility} />
         <InfoRow label="판매 품목" value={event.items} />

@@ -32,7 +32,8 @@ export default async function AiPage(props: PageProps<"/ai">) {
   const geminiReady = isGeminiConfigured();
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
+    <div className="mx-auto w-full max-w-4xl px-6 py-10 lg:px-8">
       <h1 className="text-xl font-bold text-neutral-950">AI 도우미</h1>
       <p className="mt-1 text-sm text-neutral-500">
         내 참가·판매 질문은 내 기록으로 분석하고, 행사·모집 일정은 Marketfit 등록 행사부터 찾아요.
@@ -171,6 +172,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
           </button>
         </form>
       )}
+    </div>
     </div>
   );
 }

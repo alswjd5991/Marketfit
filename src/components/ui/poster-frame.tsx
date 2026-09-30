@@ -43,12 +43,14 @@ export function PosterFrame({
   return (
     <div className={cn("relative h-full w-full overflow-hidden bg-neutral-200", className)}>
       {/* eslint-disable-next-line @next/next/no-img-element -- 출처가 제각각인 외부 도메인 수십 곳을
-          핫링크하는 용도라 next/image의 remotePatterns 허용목록·서버 프록시 최적화 대상에서 일부러 뺐다. */}
+          핫링크하는 용도라 next/image의 remotePatterns 허용목록·서버 프록시 최적화 대상에서 일부러 뺐다.
+          object-top: 세로로 긴 포스터는 보통 상단에 행사명이 있어서, 가운데 기준으로 자르면 제목이
+          잘리고 본문만 남는다 — 위쪽을 기준으로 자른다. */}
       <img
         src={imageUrl}
         alt={alt}
         loading="lazy"
-        className="h-full w-full object-cover"
+        className="h-full w-full object-cover object-top"
         onError={() => setFailed(true)}
       />
       {badgeLabel && <PosterBadge label={badgeLabel} />}

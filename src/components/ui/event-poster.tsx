@@ -143,16 +143,16 @@ export function EventPoster({
 }) {
   const theme = getPosterTheme(category);
   const r1 = seededUnit(seed);
-  const r2 = seededUnit(`${seed}:2`);
 
   const viewW = size === "hero" ? 800 : 400;
   const viewH = size === "hero" ? 300 : 225;
 
+  // 블롭은 아이콘과 같은 기준점(캔버스 정중앙)에 고정한다 — 행사별로 오프셋을
+  // 주면 아이콘은 안 움직이고 블롭만 밀려서 카드마다 중심이 어긋나 보였다.
+  // 회전(rotA/rotB)만 행사별로 달리해도 카드 간 차이는 충분히 난다.
   const blobScale = (viewH * 0.92) / BLOB_H;
-  const offsetX = (r1 - 0.5) * viewW * 0.14;
-  const offsetY = (r2 - 0.5) * viewH * 0.14;
-  const blobX = viewW / 2 - BLOB_CENTER_X * blobScale + offsetX;
-  const blobY = viewH / 2 - BLOB_CENTER_Y * blobScale + offsetY;
+  const blobX = viewW / 2 - BLOB_CENTER_X * blobScale;
+  const blobY = viewH / 2 - BLOB_CENTER_Y * blobScale;
   const rotBase = -10 + r1 * 20;
   const rotA = rotBase - 3;
   const rotB = rotBase + 3;
