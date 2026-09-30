@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:ai": "tsx --test src/features/ai/gemini.test.ts src/features/ai/event-search.test.ts",
+    "check:events": "tsx scripts/check-ai-events.ts",
+    "check:ai": "tsx scripts/check-gemini.ts",
     "seed:events": "tsx scripts/seed-events.ts"
   },
   "dependencies": {

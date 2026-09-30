@@ -72,7 +72,13 @@ const CONTEXT_PRODUCT_LIMIT = 15;
  * 숫자는 모델도 만들어낼 근거가 없게 만드는 게 목적.
  */
 export async function buildStoreContextSummary(): Promise<string | null> {
-  const store = await getMyStore();
+  let store;
+  try {
+    store = await getMyStore();
+  } catch {
+    // 조회 장애와 미등록을 구분한다. 가게 조회 실패가 AI 요청 전체를 중단하지 않게 한다.
+    return "## 가게 정보\n가게 기록을 불러오지 못했습니다. 기록이 없다고 단정하거나 사용자 수치를 추정하지 말고, 잠시 후 다시 확인하도록 안내하세요.";
+  }
   if (!store) return null;
 
   const supabase = await createClient();

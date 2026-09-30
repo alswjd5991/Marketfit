@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/features/store/data";
 import { buildStoreContextSummary } from "./data";
-import { generateGeminiReply, type GeminiTurn } from "./gemini";
+import { type GeminiTurn } from "./gemini";
+import { generateChatReply } from "./reply";
 import type { ChatMessage } from "@/types/database";
 
 const SYSTEM_PROMPT_HEADER = `당신은 "마켓핏"이라는 소상공인 행사 참가 데이터 플랫폼의 AI 도우미입니다.
@@ -129,7 +130,7 @@ export async function sendMessage(formData: FormData) {
     text: m.content,
   }));
 
-  const result = await generateGeminiReply(systemInstruction, turns);
+  const result = await generateChatReply(systemInstruction, turns);
 
   if (!result.ok) {
     // 실패해도 방금 보낸 사용자 메시지는 남아있고, 에러만 배너로 보여준다
