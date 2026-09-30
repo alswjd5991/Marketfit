@@ -10,9 +10,9 @@ import { BottomNav } from "@/components/bottom-nav";
 // 권장한다(빌드 시점 네트워크 의존이 사라진다).
 
 export const metadata: Metadata = {
-  title: "마켓핏 — 어떤 마켓에 나가야 잘 팔릴까요?",
+  title: "Marketfit — 소상공인을 위한 마켓 인사이트 플랫폼",
   description:
-    "전국 행사 모집정보를 찾고, 참가 데이터를 쌓아 우리 가게에 맞는 마켓을 찾는 소상공인 데이터 플랫폼.",
+    "전국 행사 정보를 한눈에 확인하고, 데이터를 바탕으로 우리 가게에 맞는 마켓을 찾는 소상공인 마켓 인사이트 플랫폼.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

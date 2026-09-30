@@ -21,10 +21,10 @@ export function EventCard({ event }: { event: EventListItem }) {
 
   return (
     <Link href={`/events/${event.id}`} className="group block h-full">
-      <Card className="h-full overflow-hidden transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:shadow-neutral-900/10">
-        <div className="aspect-[16/9] overflow-hidden">
-          {/* 실제 포스터 사진이 있으면(event-poster-manifest.json) 그걸,
-              없으면 카테고리별 생성 그래픽 포스터를 보여준다(poster-frame.tsx 참고). */}
+      <Card className="h-full overflow-hidden rounded-[22px] border border-[#E3EDF5] bg-white shadow-[0_8px_24px_rgba(40,80,120,0.06)] transition-all duration-200 group-hover:-translate-y-1 group-hover:border-[#CFE4F5] group-hover:shadow-[0_16px_36px_rgba(40,80,120,0.12)]">
+
+        {/* 행사 포스터 */}
+        <div className="aspect-[16/9] overflow-hidden bg-[#F4F9FC]">
           <PosterFrame
             imageUrl={event.posterImage}
             alt={`${event.name} 포스터`}
@@ -33,8 +33,12 @@ export function EventCard({ event }: { event: EventListItem }) {
             size="card"
           />
         </div>
-        <CardContent className="flex flex-col gap-2 pt-4">
-          <div className="flex items-center gap-2">
+
+        {/* 행사 정보 */}
+        <CardContent className="flex flex-col gap-3 p-5">
+
+          {/* 배지 */}
+          <div className="flex flex-wrap items-center gap-2">
             {closed ? (
               <Badge variant="muted">모집 종료</Badge>
             ) : event.dday ? (
@@ -42,17 +46,28 @@ export function EventCard({ event }: { event: EventListItem }) {
             ) : (
               <Badge variant="outline">{STATUS_LABEL[event.status]}</Badge>
             )}
-            {event.category && <Badge variant="secondary">{event.category}</Badge>}
+
+            {event.category && (
+              <Badge variant="secondary">{event.category}</Badge>
+            )}
           </div>
-          <h3 className="line-clamp-2 font-medium text-neutral-900 transition-colors group-hover:text-brand">
+
+          {/* 행사명 */}
+          <h3 className="line-clamp-2 text-[16px] font-semibold leading-6 text-[#15202B] transition-colors group-hover:text-brand">
             {event.name}
           </h3>
-          <p className="text-xs text-neutral-500">
-            {[event.region, event.venue].filter(Boolean).join(" · ") || "지역 미기재"}
+
+          {/* 지역 */}
+          <p className="text-sm text-[#657687]">
+            {[event.region, event.venue].filter(Boolean).join(" · ") ||
+              "지역 미기재"}
           </p>
-          <p className="text-xs text-neutral-400">
+
+          {/* 기간 */}
+          <p className="mt-auto text-xs text-[#9AA8B5]">
             {formatRange(event.startDate, event.endDate) ?? "행사 기간 미기재"}
           </p>
+
         </CardContent>
       </Card>
     </Link>
