@@ -281,65 +281,48 @@ const dashboardStats = isLoggedIn
           shadow-[0_-24px_70px_rgba(40,80,120,0.12)]
         "
       >
-         {/* 배경 효과만 잘라주는 영역 */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-t-[56px]">
+         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-t-[56px]">
 
-        {/* 왼쪽 위 - 따뜻한 주황빛 */}
-        <div
-          className="
-            pointer-events-none
-            absolute
-            -left-40
-            top-[12%]
-            h-[520px]
-            w-[520px]
-            rounded-full
-            bg-[#FFE4B8]/45
-            blur-[110px]
-          "
-        />
+          <div
+            className="
+              absolute -left-32 top-[10%]
+              h-[480px] w-[480px]
+              rounded-full
+              bg-[#FFD7A8]/45
+              blur-[95px]
+            "
+          />
 
-        {/* 오른쪽 아래 - 하늘빛 */}
-        <div
-          className="
-            pointer-events-none
-            absolute
-            -right-44
-            top-[48%]
-            h-[600px]
-            w-[600px]
-            rounded-full
-            bg-[#CDEAFF]/55
-            blur-[120px]
-          "
-        />
-        {/* 추가 1 - 가운데 왼쪽의 연한 파랑빛 */}
-        <div
-          className="
-            absolute
-            -left-28
-            top-[38%]
-            h-[460px]
-            w-[460px]
-            rounded-full
-            bg-[#DDF2FF]/45
-            blur-[110px]
-          "
-        />
+          <div
+            className="
+              absolute -right-32 top-[34%]
+              h-[520px] w-[520px]
+              rounded-full
+              bg-[#BFDFFF]/45
+              blur-[100px]
+            "
+          />
 
-        {/* 추가 2 - 아래쪽 오른쪽의 연한 주황빛 */}
-        <div
-          className="
-            absolute
-            -right-32
-            top-[78%]
-            h-[500px]
-            w-[500px]
-            rounded-full
-            bg-[#FFE9C8]/40
-            blur-[115px]
-          "
-        />
+          <div
+            className="
+              absolute -left-24 top-[60%]
+              h-[460px] w-[460px]
+              rounded-full
+              bg-[#FFE5C7]/38
+              blur-[95px]
+            "
+          />
+
+          <div
+            className="
+              absolute -right-24 top-[82%]
+              h-[500px] w-[500px]
+              rounded-full
+              bg-[#CFE8FF]/42
+              blur-[100px]
+            "
+          />
+
         </div>
 
         <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24 pt-20 lg:px-8">
