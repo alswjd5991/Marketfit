@@ -49,6 +49,25 @@ const THEME_BY_CATEGORY: Record<string, PosterTheme> = {
   패션: { bg: "#241b2f", pop: "#e879f9", icon: "hanger" },
   액세서리: { bg: "#33261a", pop: "#f4b942", icon: "gem" },
   참고: { bg: "#33363b", pop: "#d4d4d4", icon: "tag" },
+
+  // 전국구 확충으로 새로 등장한 카테고리는 성격이 가까운 위 테마를 재사용한다
+  // (배지에 표시되는 카테고리명 자체는 각자 그대로 다르게 나온다).
+  "지역축제 장터": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
+  지역축제: { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
+  "축제 판매·체험부스": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
+  "전시·체험부스": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
+  "축제 셀러": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
+  "디자인 마켓": { bg: "#4a1942", pop: "#ff6fae", icon: "palette" },
+  "북마켓·콘텐츠 부스": { bg: "#4a1942", pop: "#ff6fae", icon: "palette" },
+  "대학축제 플리마켓": { bg: "#1f2937", pop: "#7dd3fc", icon: "cap" },
+  "크리스마스 마켓": { bg: "#3a2a5c", pop: "#c9a6ff", icon: "gift" },
+  "관광기념품 박람회": { bg: "#3a2a5c", pop: "#c9a6ff", icon: "gift" },
+  "자원순환 마켓": { bg: "#234d20", pop: "#a7d129", icon: "leaf" },
+  로컬마켓: { bg: "#234d20", pop: "#a7d129", icon: "leaf" },
+  "먹거리부스·푸드트럭": { bg: "#7a2e2e", pop: "#ffb703", icon: "bowl" },
+  브랜드마켓: { bg: "#1c3a34", pop: "#b6e34f", icon: "tote" },
+  "로컬 플리마켓": { bg: "#1c3a34", pop: "#b6e34f", icon: "tote" },
+  "가정셀러 플리마켓": { bg: "#1c3a34", pop: "#b6e34f", icon: "tote" },
 };
 
 // 목록에 없는 카테고리(향후 새 카테고리, "기타" 등)를 위한 중립 톤.
