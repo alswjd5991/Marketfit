@@ -4,23 +4,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/features/store/data";
-import { buildStoreContextSummary } from "./data";
-import { generateGeminiReply, type GeminiTurn } from "./gemini";
+import { buildStoreContextSummary, getMarketfitEvents } from "./data";
+import { type GeminiTurn } from "./gemini";
+import { generateChatReply } from "./reply";
 import type { ChatMessage } from "@/types/database";
-
-const SYSTEM_PROMPT_HEADER = `당신은 "마켓핏"이라는 소상공인 행사 참가 데이터 플랫폼의 AI 도우미입니다.
-두 종류의 질문을 구분해서 답하세요.
-
-1) 이 사용자 본인의 참가/매출/상품 관련 질문(예: "내 순이익 제일 높았던 행사는?")은
-   아래 "## 가게 정보/등록된 상품/참가 기록/상품별 판매 실적 합계"에 나온 실제 기록만
-   근거로 답하세요. 여기 없는 숫자나 행사, 상품은 절대 지어내지 마세요. 근거가 부족하면
-   "기록에 없어서 답하기 어려워요" 라고 솔직히 말하세요. 이런 질문에는 구글 검색을 쓰지 마세요.
-
-2) 그 외 일반적인 질문(예: "요즘 플리마켓 트렌드 어때?", "이번 주말 서울에 열리는 마켓 있어?")은
-   구글 검색 도구로 실제 최신 정보를 찾아서 답하세요. 검색 없이 아는 척 지어내지 말고, 검색 결과에
-   없는 내용은 답하지 마세요.
-
-두 경우 모두 답변은 한국어로, 간결하고 구체적으로 제시하세요.`;
 
 function aiPath(conversationId?: string) {
   return conversationId ? `/ai?c=${conversationId}` : "/ai";
@@ -119,17 +106,14 @@ export async function sendMessage(formData: FormData) {
     redirect(`${aiPath(conversationId)}&error=${encodeURIComponent(historyError.message)}`);
   }
 
-  const contextSummary = await buildStoreContextSummary();
-  const systemInstruction = contextSummary
-    ? `${SYSTEM_PROMPT_HEADER}\n\n${contextSummary}`
-    : `${SYSTEM_PROMPT_HEADER}\n\n(이 사용자는 아직 가게를 등록하지 않아서 참가/판매 기록이 없어요. 가게 등록부터 안내해 주세요.)`;
-
   const turns: GeminiTurn[] = ((history ?? []) as Pick<ChatMessage, "role" | "content">[]).map((m) => ({
     role: m.role === "user" ? "user" : "model",
     text: m.content,
   }));
 
-  const result = await generateGeminiReply(systemInstruction, turns);
+  // 질문 종류에 따라 개인 기록 / Marketfit 행사 → 다른 웹사이트 / 웹 검색 순서로 답한다(reply.ts).
+  // 가게 기록은 개인 질문일 때만 불러와 AI에 전달한다.
+  const result = await generateChatReply(turns, { storeContext: buildStoreContextSummary, marketfitEvents: getMarketfitEvents });
 
   if (!result.ok) {
     // 실패해도 방금 보낸 사용자 메시지는 남아있고, 에러만 배너로 보여준다

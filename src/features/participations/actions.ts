@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getMyStore } from "@/features/store/data";
+import { getCurrentUser, getMyStore } from "@/features/store/data";
+import { uploadVendorImage } from "@/features/store/actions";
 import { findEventIdBySource } from "./data";
 import { STATUS_ORDER } from "./status-labels";
 import type { ParticipationStatus } from "@/types/database";
@@ -27,6 +28,19 @@ function toNumberOrZero(value: FormDataEntryValue | null): number {
 function emptyToNull(value: FormDataEntryValue | null): string | null {
   const s = value ? String(value).trim() : "";
   return s.length ? s : null;
+}
+
+/** "" → null, "true"/"false" → boolean. 전기/차량 이용 가능 여부처럼 "잘 모름"이 있는 tri-state select용. */
+function toBooleanOrNull(value: FormDataEntryValue | null): boolean | null {
+  const s = value === null ? "" : String(value);
+  if (s === "") return null;
+  return s === "true";
+}
+
+/** select의 값이 정해진 두 값(BOOTH_PROVIDED_OPTIONS) 중 하나가 아니면 null로 — 폼 조작으로 이상한 문자열이 들어와도 DB엔 정해진 값만 저장. */
+function toBoothProvided(value: FormDataEntryValue | null): "organizer" | "self" | null {
+  const s = value === null ? "" : String(value);
+  return s === "organizer" || s === "self" ? s : null;
 }
 
 /**
@@ -122,6 +136,11 @@ export async function updateParticipationPrep(formData: FormData) {
       fee: toNumberOrNull(formData.get("fee")),
       expected_revenue: toNumberOrNull(formData.get("expected_revenue")),
       target_revenue: toNumberOrNull(formData.get("target_revenue")),
+      // 2026-09-24 추가: 부스 로지스틱스(다른 마켓 신청서 조사 반영 — 0002 마이그레이션)
+      booth_provided: toBoothProvided(formData.get("booth_provided")),
+      booth_size: emptyToNull(formData.get("booth_size")),
+      power_available: toBooleanOrNull(formData.get("power_available")),
+      vehicle_access: toBooleanOrNull(formData.get("vehicle_access")),
     })
     .eq("id", participationId)
     .eq("store_id", storeId);
@@ -163,6 +182,17 @@ export async function updateParticipationResult(formData: FormData) {
   const wouldReattendRaw = formData.get("would_reattend");
   const wouldReattend = wouldReattendRaw === "" || wouldReattendRaw === null ? null : wouldReattendRaw === "true";
 
+  // 부스 사진은 새로 고른 파일이 있을 때만 업로드하고, payload에도 그때만
+  // logo_url 키를 넣는다(store/actions.ts의 updateStore와 같은 이유 —
+  // 빈 file input을 그대로 반영하면 기존 사진이 지워진다).
+  const user = await getCurrentUser();
+  const { url: newBoothPhotoUrl, error: photoError } = user
+    ? await uploadVendorImage(supabase, user.id, "booth-photo", formData.get("booth_photo"))
+    : { url: null, error: null };
+  if (photoError) {
+    redirect(`${detailPath(participationId)}?error=${encodeURIComponent(photoError)}`);
+  }
+
   const { error } = await supabase
     .from("event_participations")
     .update({
@@ -179,6 +209,13 @@ export async function updateParticipationResult(formData: FormData) {
       perceived_crowd: emptyToNull(formData.get("perceived_crowd")),
       would_reattend: wouldReattend,
       memo: emptyToNull(formData.get("memo")),
+      // 2026-09-24 추가: 참가 후 기록되는 부스 정보(다른 마켓 신청서 조사 반영 — 0002 마이그레이션)
+      booth_number: emptyToNull(formData.get("booth_number")),
+      booth_location_rating: toNumberOrNull(formData.get("booth_location_rating")),
+      payment_methods_used: formData.getAll("payment_methods_used").length
+        ? (formData.getAll("payment_methods_used") as string[])
+        : null,
+      ...(newBoothPhotoUrl ? { booth_photo_url: newBoothPhotoUrl } : {}),
     })
     .eq("id", participationId)
     .eq("store_id", storeId);

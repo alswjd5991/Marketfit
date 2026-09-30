@@ -1,6 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getMyStore, getMyProducts } from "@/features/store/data";
 import type { ChatConversation, ChatMessage } from "@/types/database";
+import { participationStats } from "./stats";
+import { parseMarketfitEvents, type EventQuery, type EventRecord, type MarketfitEventRow } from "./event-search";
+
+/** AI 도우미가 행사 질문에 가장 먼저 참고하는 Marketfit 등록 행사(공개 읽기 테이블). */
+export async function getMarketfitEvents(query: EventQuery): Promise<EventRecord[]> {
+  const supabase = await createClient();
+  let request = supabase
+    .from("events")
+    .select("id, name, venue, event_type, start_date, end_date, event_recruitments(recruit_end, fee, is_sample_data)")
+    .not("start_date", "is", null)
+    .lte("start_date", query.to)
+    .order("start_date", { ascending: false })
+    .limit(300);
+  if (query.region !== "전국") request = request.eq("region", query.region);
+  const { data, error } = await request;
+  if (error) throw error;
+  return parseMarketfitEvents((data ?? []) as MarketfitEventRow[], query);
+}
 
 export interface ConversationSummary {
   id: string;
@@ -72,7 +90,13 @@ const CONTEXT_PRODUCT_LIMIT = 15;
  * 숫자는 모델도 만들어낼 근거가 없게 만드는 게 목적.
  */
 export async function buildStoreContextSummary(): Promise<string | null> {
-  const store = await getMyStore();
+  let store;
+  try {
+    store = await getMyStore();
+  } catch {
+    // 조회 장애와 미등록을 구분한다. 가게 조회 실패가 AI 요청 전체를 중단하지 않게 한다.
+    return "## 가게 정보\n가게 기록을 불러오지 못했습니다. 기록이 없다고 단정하거나 사용자 수치를 추정하지 말고, 잠시 후 다시 확인하도록 안내하세요.";
+  }
   if (!store) return null;
 
   const supabase = await createClient();
@@ -83,6 +107,12 @@ export async function buildStoreContextSummary(): Promise<string | null> {
   lines.push(`업종: ${store.category}`);
   if (store.flagship_product) lines.push(`대표 상품: ${store.flagship_product}`);
   if (store.active_region) lines.push(`주 활동 지역: ${store.active_region}`);
+  if (store.payment_methods && store.payment_methods.length > 0) {
+    lines.push(`지원 결제수단: ${store.payment_methods.join(", ")}`);
+  }
+  if (store.hygiene_certified != null) {
+    lines.push(`위생교육 이수 여부: ${store.hygiene_certified ? "이수함" : "아직 안 함"}`);
+  }
 
   try {
     const products = await getMyProducts(store.id);
@@ -97,7 +127,7 @@ export async function buildStoreContextSummary(): Promise<string | null> {
     const { data: participations, error: participationsError } = await supabase
       .from("event_participations")
       .select(
-        "id, status, event_id, fee, expected_revenue, target_revenue, total_revenue, net_profit, satisfaction, would_reattend, weather, indoor_outdoor, memo, created_at"
+        "id, status, event_id, fee, expected_revenue, target_revenue, total_revenue, net_profit, satisfaction, would_reattend, weather, indoor_outdoor, memo, created_at, booth_provided, booth_size, power_available, vehicle_access, booth_number, booth_location_rating, payment_methods_used"
       )
       .eq("store_id", store.id)
       .order("created_at", { ascending: false })
@@ -128,10 +158,17 @@ export async function buildStoreContextSummary(): Promise<string | null> {
           p.satisfaction != null ? `만족도:${p.satisfaction}/5` : null,
           p.would_reattend != null ? `재참가의향:${p.would_reattend ? "있음" : "없음"}` : null,
           p.weather ? `날씨:${p.weather}` : null,
+          p.booth_number ? `부스위치:${p.booth_number}` : null,
+          p.booth_location_rating != null ? `부스위치만족도:${p.booth_location_rating}/5` : null,
+          p.booth_provided ? `부스제공:${p.booth_provided === "organizer" ? "주최측 제공" : "자비 지참"}` : null,
           p.memo ? `메모:"${p.memo}"` : null,
         ].filter(Boolean);
         lines.push(`- ${parts.join(" / ")}`);
       }
+
+      // 합계·평균·순위는 모델이 계산하다 틀리지 않도록 코드에서 미리 계산해 준다.
+      lines.push(`\n## 계산된 통계 (최근 ${rows.length}건 기준, 코드가 계산한 값)`);
+      lines.push(...participationStats(rows.map((p) => ({ ...p, name: eventById.get(p.event_id)?.name ?? "(알 수 없는 행사)" }))));
 
       const { data: sales, error: salesError } = await supabase
         .from("event_product_sales")
