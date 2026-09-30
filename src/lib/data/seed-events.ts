@@ -1,9 +1,9 @@
 // 실제 공개 자료 기반 시드 데이터 — chuljeom-app(출점전) 원본 42건에 이후
-// 추가 수집한 전국구 행사를 더해 총 80건(S01~S37, A03~A54 중 결번 포함).
+// 추가 수집한 전국구 행사를 더해 총 78건(S01~S37, A03~A54 중 결번 포함).
 // 원본 출처: 삼육대·이화여대 등 대학 창업지원단, 지자체·문화재단 공식 공고 등
-// (각 레코드의 sourceUrl 참고). 원문에서 확인 불가능한 항목(인증서 만료,
-// 정확한 개최일 미공개 등)은 싣지 않는다. 자세한 수집 방법은 개발 계획 문서
-// 6번 섹션 참고.
+// (각 레코드의 sourceUrl 참고). 원문에서 확인 불가능한 항목이나 다른 레코드와
+// 완전히 중복되는 항목은 싣지 않는다. 자세한 수집 방법은 개발 계획 문서 6번
+// 섹션 참고.
 //
 // TODO(Supabase 연결 후): 이 배열을 events / event_recruitments 테이블에
 // 적재하는 시드 스크립트(scripts/seed.ts)로 옮기고, 화면은 DB 조회로 전환한다.
@@ -1030,70 +1030,8 @@ export const seedEvents: SeedEvent[] = [
     "outcomes": null,
     "ageDisclosed": null
   },
-  {
-    "sourceDataset": "pilot",
-    "id": "A11",
-    "name": "2024 알리다 페스티벌 마켓 셀러 모집",
-    "series": null,
-    "edition": null,
-    "organizer": "(주최 미표기)",
-    "orgType": "민간",
-    "region": "서울",
-    "gu": "용산구",
-    "venue": "노들섬 노들갤러리 1관",
-    "outdoor": null,
-    "category": null,
-    "startDate": "2024-09-21",
-    "endDate": "2024-09-21",
-    "hours": [
-      "11:00",
-      "19:00"
-    ],
-    "recruitEnd": "2024-09-14",
-    "capacityTeams": null,
-    "feeKrw": null,
-    "readable": true,
-    "sourceType": "플랫폼게시",
-    "sourceUrl": "https://onoffmix.com/event/307739",
-    "eligibility": null,
-    "items": null,
-    "equipment": null,
-    "selection": null,
-    "outcomes": null,
-    "ageDisclosed": null
-  },
-  {
-    "sourceDataset": "pilot",
-    "id": "A12",
-    "name": "2026 공쓰재 플리마켓 나누미(부스 참가자) 모집",
-    "series": null,
-    "edition": null,
-    "organizer": "(주)스탭서울 / 후원 아르코·대학로예술극장",
-    "orgType": "민간",
-    "region": "서울",
-    "gu": "종로구",
-    "venue": "아르코예술극장 앞마당(마로니에 공원)",
-    "outdoor": null,
-    "category": null,
-    "startDate": "2026-04-11",
-    "endDate": "2026-04-11",
-    "hours": [
-      "12:00",
-      "15:00"
-    ],
-    "recruitEnd": "2026-03-22",
-    "capacityTeams": null,
-    "feeKrw": 10000,
-    "readable": true,
-    "sourceType": "원공고",
-    "sourceUrl": "https://www.stagesoundkorea.com/?kboard_id=3&mod=document&uid=821",
-    "eligibility": "공연 후 남은 물품을 나누려는 개인·단체, 환경 보호 실천 희망자",
-    "items": "공연 물품·일상 물품·서적·재능·먹거리·대도구",
-    "equipment": "테이블, 의자, 전기 제공",
-    "selection": "필요 시 증빙자료 심사(예술인패스, 사업자등록증 등)",
-    "outcomes": null,
-    "ageDisclosed": null
-  },
+
+
   {
     "sourceDataset": "pilot",
     "id": "A13",
