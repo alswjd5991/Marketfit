@@ -9,7 +9,7 @@
 // Your Creative — 굵은 도형과 색 블록, Juliet Creative — 짙은 단색 배경 위
 // 큰 아이콘 하나 + 스티커 배지).
 //
-// 대시보드의 CATEGORY_COLOR(src/app/dashboard/page.tsx)와는 목적이 다르다
+// 대시보드의 GROUP_COLOR(src/app/dashboard/page.tsx)와는 목적이 다르다
 // — 그쪽은 여러 막대를 한 화면에서 구분하는 카테고리컬 데이터 팔레트이고,
 // 이쪽은 짙은 배경 위에 흰 아이콘이 선명히 보이도록 고른 "포스터"용
 // 톤(다크 bg + 그 위에 올릴 밝은 pop 색)이다.
@@ -34,8 +34,8 @@ export interface PosterTheme {
   icon: PosterIconKey;
 }
 
-// 시딩 데이터(src/lib/data/seed-events.ts)에 실제 등장하는 category 값 +
-// events/data.ts의 categoryFromItems() 폴백값을 모두 커버한다.
+// 시딩 데이터(src/lib/data/seed-events.ts)에 실제 등장하는 category 값을
+// 모두 커버한다.
 const THEME_BY_CATEGORY: Record<string, PosterTheme> = {
   플리마켓: { bg: "#1c3a34", pop: "#b6e34f", icon: "tote" },
   "축제 판매부스": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
