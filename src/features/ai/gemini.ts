@@ -4,9 +4,41 @@
 //
 // 모델/엔드포인트: 2026-09 기준 Gemini API 문서(ai.google.dev/api/generate-content)로
 // 확인한 현재 값. generateContent는 활성 API이고(2026-06 "Interactions API"가
-// 새로 나왔지만 generateContent도 계속 지원됨), 기본 flash 모델은 gemini-3.8-flash.
-const GEMINI_MODEL = "gemini-3.8-flash";
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+// 새로 나왔지만 generateContent도 계속 지원됨).
+//
+// 2026-09-29: 무료 등급에서 기본 모델(gemini-3.8-flash)이 429(TooManyRequests)/503
+// (ServiceUnavailable)을 내는 걸 AI Studio 사용량 대시보드로 확인 — 같은 GEMINI_API_KEY라도
+// 무료 등급 한도는 "모델별로 따로" 집계된다(대시보드에 Gemini 3.8 Flash/2.5 Flash 등이 각자
+// RPM/TPM/RPD를 갖고 있고, 하나가 막혀도 다른 모델은 남아있는 걸 실제로 확인). 그래서 새
+// API 제공사로 갈아타는 대신, 같은 계정 안에서 기본 모델이 429/503일 때만 예비 모델로
+// 자동 전환하는 방식을 택함 — 새 키 발급이나 요금제 가입 없이 바로 적용 가능.
+//
+// 2026-09-29 추가 수정: 처음엔 예비 모델로 gemini-2.5-flash를 넣었는데, 실제로 써보니
+// 404 "This model models/gemini-2.5-flash is no longer available to new users. Please
+// update your code to use models/gemini-3.8-flash..." 오류가 남 — 2.5 계열 모델은
+// "과거에 써본 적 있는 사용자"에게만 남아있고, 새 프로젝트/신규 사용자에게는 완전히
+// 막혀 있다(ai.google.dev/gemini-api/docs/deprecations 확인). 그래서 예비 모델을
+// Google이 신규 프로젝트에 공식 추천하는 gemini-3.6-flash / gemini-3.5-flash-lite로
+// 교체 — 두 모델 다 google_search 그라운딩 도구를 지원하고(ai.google.dev/gemini-api/docs/
+// generate-content/google-search 확인), AI Studio 대시보드에서 3.8-flash와는 별도로
+// RPM/RPD가 집계돼 진짜 예비 한도로 쓸 수 있다.
+//
+// 2026-09-29 추가 진단: 위 모델 폴백(3.8-flash → 3.6-flash → 3.5-flash-lite)을 반영한
+// 뒤에도 세 모델이 "전부" 즉시 429로 실패하는 게 실사용 로그로 확인됨 — 3.6-flash/
+// 3.5-flash-lite는 이 계정에서 이번이 첫 호출이라 자체 RPM/RPD가 이미 소진됐을 리는
+// 없는데도 첫 시도부터 실패한다는 건, 진짜 원인이 "모델별 한도"가 아니라 "프로젝트
+// 전체에 걸린 한도"(예: 그라운딩 도구 자체의 무료 쿼터, 또는 프로젝트 단위 일일/분당
+// 총량 제한)일 가능성이 높다는 신호. 정확한 원인(quotaId/quotaMetric)을 알아내려면
+// 구글이 돌려주는 전체 오류 본문이 필요한데, 기존 코드는 사용자에게 보여줄 rawError만
+// 만들려고 응답 본문을 200자로 잘라서 콘솔에도 그 잘린 버전만 남겼음 — 그래서 실제
+// 어떤 쿼터가 걸렸는지(quotaId 등)가 로그에서 안 보였다. 진단을 위해 실패할 때마다
+// 서버 콘솔에는 잘리지 않은 전체 응답 본문을 남기도록 바꿈(사용자에게 보여주는
+// rawError/URL 파라미터는 계속 짧게 유지 — URL이 너무 길어지지 않게).
+const MODEL_CANDIDATES = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"] as const;
+
+function endpointFor(model: string) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
 
 export interface GeminiTurn {
   role: "user" | "model";
@@ -20,7 +52,7 @@ export interface GeminiSource {
 
 export type GeminiResult =
   | { ok: true; text: string; sources: GeminiSource[] }
-  | { ok: false; error: string };
+  | { ok: false; error: string; retryable?: boolean };
 
 export function isGeminiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
@@ -44,8 +76,18 @@ interface GenerateContentResponse {
  * 근거로 답할 수 있게 한다. 근거로 쓴 웹 페이지는 sources로 함께 돌려줘서
  * 화면에 출처로 보여준다(37번 항목: 근거 없는 숫자 생성 방지 — 검색 결과도
  * 출처를 밝혀야 근거가 된다).
+ *
+ * `MODEL_CANDIDATES`를 앞에서부터 순서대로 시도한다 — 429/503(할당량·일시 과부하)이면
+ * 다음 후보 모델로 자동 전환하고, 그 외 오류(인증 문제, 404로 모델 자체가 없는 경우 등
+ * 모델을 바꿔도 똑같이 날 문제)는 즉시 실패로 반환한다. 후보를 다 써도 안 되면 그때
+ * 비로소 사용자에게 "잠시 후 재시도" 안내를 보여준다.
  * 키 미설정/네트워크 오류/빈 응답 등 실패 케이스는 전부 { ok: false }로 돌려주고
  * 절대 그럴듯한 답을 지어내 채우지 않는다(65번 원칙).
+ *
+ * 실패 시 서버 콘솔에는(사용자에게 보여주는 메시지와 별도로) 구글이 돌려준 전체 오류
+ * 본문을 그대로 남긴다 — 429 응답의 `details` 배열에 있는 quotaId/quotaMetric까지 봐야
+ * "이게 모델별 한도인지, 그라운딩 도구 자체의 한도인지, 프로젝트 전체 한도인지"를 구분할
+ * 수 있기 때문(2026-09-29에 이 값이 200자로 잘려서 콘솔에도 안 남던 문제를 고침).
  */
 export async function generateGeminiReply(
   systemInstruction: string,
@@ -59,44 +101,73 @@ export async function generateGeminiReply(
     return { ok: false, error: "빈 대화는 전송할 수 없어요." };
   }
 
+  const requestBody = JSON.stringify({
+    systemInstruction: { parts: [{ text: systemInstruction }] },
+    contents: history.map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] })),
+    tools: [{ google_search: {} }],
+    generationConfig: {
+      temperature: 0.3, // 근거 데이터 밖으로 나가는 창작을 줄이기 위해 낮게
+      maxOutputTokens: 1024,
+    },
+  });
+
+  let lastRetryableError: string | null = null;
+
   try {
-    const res = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: history.map((turn) => ({ role: turn.role, parts: [{ text: turn.text }] })),
-        tools: [{ google_search: {} }],
-        generationConfig: {
-          temperature: 0.3, // 근거 데이터 밖으로 나가는 창작을 줄이기 위해 낮게
-          maxOutputTokens: 1024,
-        },
-      }),
-    });
+    for (const model of MODEL_CANDIDATES) {
+      const res = await fetch(`${endpointFor(model)}?key=${encodeURIComponent(apiKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody,
+      });
 
-    if (!res.ok) {
-      const bodyText = await res.text().catch(() => "");
-      return { ok: false, error: `Gemini API 오류 (${res.status}): ${bodyText.slice(0, 200)}` };
+      if (!res.ok) {
+        const bodyText = await res.text().catch(() => "");
+        const rawError = `Gemini API 오류 (${res.status}): ${bodyText.slice(0, 200)}`;
+
+        // 사용자에게 보여줄 메시지는 짧게 자르지만, 서버 콘솔에는 원인 진단(quotaId 등)을
+        // 위해 항상 전체 응답 본문을 그대로 남긴다 — 429/503뿐 아니라 다른 오류도 마찬가지.
+        console.error(`[gemini] ${model} 응답 실패(${res.status}) — 전체 응답 본문:`, bodyText);
+
+        if (res.status === 429 || res.status === 503) {
+          // 이 모델의 무료 할당량이 찼거나 구글 쪽이 일시 과부하 — 다음 후보 모델로 넘어간다.
+          console.error(`[gemini] ${model} — 다음 후보 모델로 전환`);
+          lastRetryableError = rawError;
+          continue;
+        }
+
+        // 429/503이 아닌 오류(인증 문제, 모델 자체가 없어진 404 등)는 모델을 바꿔도
+        // 똑같이 날 가능성이 높아 바로 반환한다.
+        return { ok: false, error: rawError };
+      }
+
+      const data = (await res.json()) as GenerateContentResponse;
+      const candidate = data.candidates?.[0];
+      const text = candidate?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+      if (!text.trim()) {
+        return { ok: false, error: "응답이 비어 있어요." };
+      }
+
+      const chunks = candidate?.groundingMetadata?.groundingChunks ?? [];
+      const seen = new Set<string>();
+      const sources: GeminiSource[] = [];
+      for (const chunk of chunks) {
+        const uri = chunk.web?.uri;
+        if (!uri || seen.has(uri)) continue;
+        seen.add(uri);
+        sources.push({ title: chunk.web?.title ?? uri, url: uri });
+      }
+
+      return { ok: true, text: text.trim(), sources };
     }
 
-    const data = (await res.json()) as GenerateContentResponse;
-    const candidate = data.candidates?.[0];
-    const text = candidate?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-    if (!text.trim()) {
-      return { ok: false, error: "응답이 비어 있어요." };
-    }
-
-    const chunks = candidate?.groundingMetadata?.groundingChunks ?? [];
-    const seen = new Set<string>();
-    const sources: GeminiSource[] = [];
-    for (const chunk of chunks) {
-      const uri = chunk.web?.uri;
-      if (!uri || seen.has(uri)) continue;
-      seen.add(uri);
-      sources.push({ title: chunk.web?.title ?? uri, url: uri });
-    }
-
-    return { ok: true, text: text.trim(), sources };
+    // 후보 모델을 전부 시도했는데도 다 429/503 — 사용자 잘못이 아님을 명확히 안내한다.
+    console.error("[gemini] 모든 후보 모델이 429/503으로 실패", lastRetryableError);
+    return {
+      ok: false,
+      error: "지금 요청이 많이 몰려서 답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.",
+      retryable: true,
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "알 수 없는 오류가 발생했어요." };
   }
