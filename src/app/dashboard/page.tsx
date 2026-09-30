@@ -6,6 +6,7 @@ import { LineChart } from "@/components/ui/line-chart";
 import { getCurrentUser } from "@/features/store/data";
 import { getDashboardStats, POPULAR_PRODUCTS_LIMIT } from "@/features/dashboard/data";
 import { STATUS_LABEL, STATUS_ORDER } from "@/features/participations/status-labels";
+import { getCategoryGroup, type CategoryGroup } from "@/features/events/category-group";
 import type { ParticipationStatus } from "@/types/database";
 
 // 상태 진행(관심→신청예정→신청완료→참가예정)은 파란 순차(ordinal) 램프로 —
@@ -21,21 +22,17 @@ const STATUS_COLOR: Record<ParticipationStatus, string> = {
   cancelled: "#d03b3b",
 };
 
-// 카테고리는 시딩 데이터(seed-events.ts)에 실제로 등장하는 값들 — 존재하지
-// 않는 카테고리를 지어내지 않고, 등장한 값에만 고정 색을 배정한다. 어떤
-// 카테고리가 화면에 보이는지와 무관하게 항상 같은 색이 같은 이름을 가리키도록
-// (데이터가 늘어도 기존 막대 색이 안 바뀌게) 미리 고정해둔다.
-const CATEGORY_COLOR: Record<string, string> = {
+// events.category는 원문 그대로(21종+) 저장돼 있어 막대 라벨은 그 문구를
+// 그대로 쓰되, 색은 category-group.ts의 대분류 6종 기준으로 고정 배정한다 —
+// 원문 카테고리가 늘어나도 같은 대분류는 항상 같은 색으로 보이게.
+const GROUP_COLOR: Record<CategoryGroup, string> = {
   플리마켓: "#2a78d6",
-  "축제 판매부스": "#eb6834",
+  "축제 부스": "#eb6834",
   시즌마켓: "#1baf7a",
   야시장: "#eda100",
   "대학 마켓": "#e87ba4",
-  아트마켓: "#4a3aa7",
-  참고: "#e34948",
-  기타: "#898781",
+  "아트·디자인 마켓": "#4a3aa7",
 };
-const FALLBACK_CATEGORY_COLOR = "#898781";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -140,7 +137,7 @@ export default async function DashboardPage() {
                 label={category}
                 value={count}
                 max={maxCategoryCount}
-                color={CATEGORY_COLOR[category] ?? FALLBACK_CATEGORY_COLOR}
+                color={GROUP_COLOR[getCategoryGroup(category, category)]}
               />
             ))}
           </CardContent>
