@@ -1,3 +1,4 @@
+import { RESPONSE_STYLE } from "./response-style";
 import { generateGeminiReply, type GeminiResult, type GeminiSource, type GeminiTurn } from "./gemini";
 import {
   formatEvents, getOfficialEvents, isSameEvent, koreaDate, parseEventQuery, sortEvents, TOPIC,
@@ -13,8 +14,8 @@ const PERSONAL = /내\s*가게|우리\s*가게|내가|제가|나의|저의|내\s
 
 const PERSONAL_PROMPT = `당신은 "마켓핏"이라는 소상공인 행사 참가 데이터 플랫폼의 AI 도우미입니다.
 이 질문은 사용자 본인의 가게·참가·판매 기록에 관한 것입니다. 아래 기록만 근거로 분석해 한국어로 간결하고 구체적으로 답하세요.
-- 합계·평균·최고/최저·순위는 "계산된 통계"의 숫자를 그대로 쓰고 직접 다시 계산하지 마세요.
-- 기록에 없는 숫자·행사·상품은 지어내지 말고, 근거가 부족하면 "기록에 없어서 답하기 어려워요"라고 말하세요.
+- 합계·평균·최고/최저·순위는 "계산된 통계"의 숫자를 그대로 쓰고 직접 다시 계산하지 마세요. 제공되지 않은 차액·증감률·비율도 임의로 계산해 덧붙이지 마세요.
+- 기록에 없는 숫자·행사·상품은 지어내지 마세요. 근거가 부족하면 어떤 기록이 필요한지 구체적으로 안내하세요.
 - 행사 추천을 요청하면 "Marketfit 등록 예정 행사" 목록 안에서만 고르고, 사용자 기록(업종, 성과가 좋았던 행사 등)을 근거로 이유를 설명하세요.`;
 
 const GENERAL_PROMPT = `당신은 "마켓핏"이라는 소상공인 행사 참가 데이터 플랫폼의 AI 도우미입니다.
@@ -55,12 +56,12 @@ export async function generateChatReply(history: GeminiTurn[], deps: ChatDeps, n
 
   const query = parseEventQuery(history, now);
   if (query) return eventReply(query, history, deps, dateLine);
-  return generateGeminiReply(`${GENERAL_PROMPT}\n\n${dateLine}`, history);
+  return generateGeminiReply(`${GENERAL_PROMPT}\n\n${RESPONSE_STYLE}\n\n${dateLine}`, history);
 }
 
 async function personalReply(history: GeminiTurn[], deps: ChatDeps, today: string, dateLine: string, wantsEvents: boolean): Promise<ChatReply> {
   const context = await deps.storeContext();
-  const parts = [PERSONAL_PROMPT, context ?? "(이 사용자는 아직 가게를 등록하지 않아서 참가/판매 기록이 없어요. 가게 등록부터 안내해 주세요.)"];
+  const parts = [PERSONAL_PROMPT, RESPONSE_STYLE, context ?? "(이 사용자는 아직 가게를 등록하지 않아서 참가/판매 기록이 없어요. 가게 등록부터 안내해 주세요.)"];
   if (wantsEvents) {
     // "내 가게에 맞는 행사 추천"처럼 행사가 섞인 질문은 앞으로 60일간의 Marketfit 등록 행사를 함께 준다.
     const upcoming = await deps.marketfitEvents({ from: today, to: addDays(today, 60), today, marketOnly: false, recruit: false, region: "전국" }).catch(() => []);
@@ -102,21 +103,21 @@ async function eventReply(query: EventQuery, history: GeminiTurn[], deps: ChatDe
 
   const range = query.from === query.to ? query.from : `${query.from} ~ ${query.to}`;
   const kind = query.recruit ? "셀러 모집 행사" : query.marketOnly ? "마켓" : "행사";
-  const lines = [`${range} ${query.region} ${kind} 일정이에요. (${query.today} 기준)`];
+  const lines = [`**${query.region} ${kind} 조회 결과**\n${range} · ${query.today} 기준`];
   const sources: GeminiSource[] = [];
 
   const shownDb = db.slice(0, MAX_SHOWN);
-  if (dbFailed) lines.push("■ Marketfit 등록 행사\n지금 Marketfit 행사 목록을 불러오지 못했어요.");
-  else if (!db.length) lines.push("■ Marketfit 등록 행사\n조건에 맞는 행사가 아직 등록되어 있지 않아요.");
+  if (dbFailed) lines.push("### Marketfit 등록 행사\n지금 Marketfit 행사 목록을 불러오지 못했어요.");
+  else if (!db.length) lines.push("### Marketfit 등록 행사\n조건에 맞는 행사가 아직 등록되어 있지 않아요.");
   else {
-    lines.push(`■ Marketfit에 등록된 행사 (${db.length}건)`, ...formatEvents(shownDb, query));
+    lines.push(`### Marketfit에 등록된 행사 (${db.length}건)`, ...formatEvents(shownDb, query));
     if (db.length > shownDb.length) lines.push(`외 ${db.length - shownDb.length}건은 Marketfit 행사 목록에서 확인해 주세요.`);
     sources.push(...shownDb.map((e) => ({ title: e.name, url: e.url })));
   }
 
   if (official) {
     const shownExtra = extra.slice(0, Math.max(0, MAX_SHOWN - shownDb.length));
-    lines.push(`■ 다른 웹사이트에서 가져온 행사 — 출처: ${official.label}\nMarketfit에 등록된 행사가 ${ENOUGH_EVENTS}건 미만이라 다른 웹사이트에서 추가로 찾아봤어요. Marketfit에 등록되지 않은 행사예요.`);
+    lines.push(`### 공식 사이트 행사\n출처: ${official.label} · Marketfit에 등록되지 않은 행사예요.`);
     if (shownExtra.length) {
       lines.push(...formatEvents(shownExtra, query, shownDb.length + 1));
       if (extra.length > shownExtra.length) lines.push(`외 ${extra.length - shownExtra.length}건은 아래 행사 달력에서 확인해 주세요.`);
@@ -127,15 +128,15 @@ async function eventReply(query: EventQuery, history: GeminiTurn[], deps: ChatDe
   }
 
   if (webOk) {
-    lines.push(`■ 다른 웹사이트에서 찾은 정보 — 출처: 구글 웹 검색(Gemini AI 요약)\n등록된 행사가 ${ENOUGH_EVENTS}건 미만이라 웹 검색으로 추가로 찾아봤어요. 내용이 정확한지 아래 출처 링크에서 꼭 확인해 주세요.\n\n${webOk.text}`);
+    lines.push(`### 웹 검색으로 확인한 정보\n${webOk.text}`);
     sources.push(...webOk.sources.map((s) => ({ title: `[웹 검색] ${s.title}`, url: s.url })));
   } else if (web) {
-    lines.push("■ 웹 검색\n지금은 웹 검색을 연결할 수 없어 추가 행사를 찾지 못했어요. 해당 기간에 행사가 없다는 뜻은 아니에요.");
+    lines.push("지금은 웹 검색을 연결할 수 없어 추가 행사를 찾지 못했어요. 해당 기간에 행사가 없다는 뜻은 아니에요.");
   }
 
   lines.push(query.recruit
     ? "모집 마감일과 참가 조건은 바뀔 수 있으니 신청 전에 원문 공고를 확인해 주세요."
-    : "표시된 기간 내 매일 운영된다는 뜻은 아니에요. 운영일·시간과 변경 여부는 출처를 확인해 주세요. 셀러 모집 정보는 Marketfit에 모집 공고가 등록된 행사에만 표시돼요.");
+    : "방문 전 출처에서 실제 운영일·시간을 확인해 주세요. 기간 내 매일 열리지는 않을 수 있어요. 셀러 모집 여부는 별도 공고 확인이 필요해요.");
   return { ok: true, text: lines.join("\n\n"), sources };
 }
 
@@ -145,6 +146,8 @@ function webSearchPrompt(query: EventQuery, known: string[], dateLine: string): 
 각 항목에 행사명, 기간, 장소${query.recruit ? ", 모집 마감일" : ""}을 적고, 검색 결과에서 확인한 내용만 쓰세요. 기간이 맞지 않거나 날짜를 확인할 수 없는 행사는 빼세요.
 찾지 못했으면 "웹 검색에서 추가로 확인된 행사가 없어요."라고만 답하세요.
 ${known.length ? `다음 행사는 이미 안내했으니 제외하세요: ${known.join(", ")}` : ""}
+
+${RESPONSE_STYLE}
 
 ${dateLine}`;
 }

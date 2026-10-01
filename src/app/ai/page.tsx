@@ -7,6 +7,7 @@ import { isGeminiConfigured } from "@/features/ai/gemini";
 import { startConversation, deleteConversation, sendMessage } from "@/features/ai/actions";
 import { NewChatIconButton, MessageInput, SendMessageButton, StartConversationButton } from "@/features/ai/ai-buttons";
 import { cn } from "@/lib/utils";
+import { MessageContent } from "@/features/ai/message-content";
 
 export default async function AiPage(props: PageProps<"/ai">) {
   const sp = await props.searchParams;
@@ -36,14 +37,12 @@ export default async function AiPage(props: PageProps<"/ai">) {
     <div className="mx-auto w-full max-w-4xl px-6 py-10 lg:px-8">
       <h1 className="text-xl font-bold text-neutral-950">AI 도우미</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        내 참가·판매 질문은 내 기록으로 분석하고, 행사·모집 일정은 Marketfit 등록 행사부터 찾아요.
-        Marketfit 행사가 적으면 다른 웹사이트에서 찾아 출처를 함께 알려드려요.
+        내 가게 기록 분석부터 행사 찾기까지, 필요한 내용을 근거와 함께 정리해 드려요.
       </p>
 
       {!geminiReady && (
         <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          아직 GEMINI_API_KEY가 설정되지 않아서 실제 답변은 받을 수 없어요. <code>.env.local</code>에 키를 추가하면
-          바로 동작해요.
+          AI 연결을 준비하고 있어요. 답변을 받을 수 없다면 관리자에게 문의해 주세요.
         </p>
       )}
       {notice && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{notice}</p>}
@@ -81,7 +80,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
                 className={cn("inline-block size-1.5 rounded-full", geminiReady ? "bg-emerald-500" : "bg-neutral-300")}
                 aria-hidden
               />
-              {geminiReady ? "내 참가 데이터 기반으로 답해요" : "GEMINI_API_KEY 연결 필요"}
+              {geminiReady ? "가게 기록과 확인된 정보로 답해요" : "AI 연결 준비 중"}
             </p>
           </div>
           <form action={startConversation}>
@@ -89,7 +88,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
           </form>
         </div>
 
-        <div className="flex max-h-[520px] min-h-[360px] flex-col gap-4 overflow-y-auto px-5 py-5">
+        <div className="flex max-h-[65vh] min-h-[360px] flex-col gap-7 overflow-y-auto px-3 py-6 sm:px-5">
           {!detail || detail.messages.length === 0 ? (
             <div className="m-auto max-w-xs text-center text-sm text-neutral-400">
               {!detail
@@ -99,16 +98,18 @@ export default async function AiPage(props: PageProps<"/ai">) {
           ) : (
             detail.messages.map((m) =>
               m.role === "assistant" ? (
-                <div key={m.id} className="flex items-start gap-2.5">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-light text-brand">
+                <div key={m.id} className="flex min-w-0 items-start gap-2.5">
+                  <div className="hidden size-8 shrink-0 items-center justify-center rounded-full bg-brand-light text-brand sm:flex">
                     <Sparkles className="size-4" />
                   </div>
-                  <div className="flex max-w-[80%] flex-col items-start gap-1">
-                    <p className="whitespace-pre-wrap rounded-2xl rounded-tl-md bg-neutral-100 px-4 py-2.5 text-sm text-neutral-900">
-                      {m.content}
-                    </p>
+                  <div className="flex min-w-0 max-w-full flex-1 flex-col items-start gap-2 sm:max-w-[90%]">
+                    <div className="w-full min-w-0 rounded-2xl rounded-tl-md bg-neutral-50 px-4 py-4 sm:px-5">
+                      <MessageContent content={m.content} />
+                    </div>
                     {m.cited_sources && m.cited_sources.length > 0 && (
-                      <div className="flex flex-col gap-0.5 px-1">
+                      <details className="w-full min-w-0 px-1 text-xs text-neutral-600">
+                        <summary className="cursor-pointer rounded py-1 font-medium focus-visible:outline-2 focus-visible:outline-brand">참고한 출처 {m.cited_sources.length}개</summary>
+                        <div className="mt-2 flex flex-col gap-2">
                         {m.cited_sources.map((s, i) =>
                           s.url ? (
                             <a
@@ -116,18 +117,19 @@ export default async function AiPage(props: PageProps<"/ai">) {
                               href={s.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-brand"
+                              className="flex min-w-0 items-center gap-1 text-xs text-neutral-600 hover:text-brand"
                             >
                               <ExternalLink className="size-3 shrink-0" />
                               <span className="truncate">{s.title}</span>
                             </a>
                           ) : (
-                            <span key={i} className="text-[11px] text-neutral-400">
+                            <span key={i} className="text-xs text-neutral-600">
                               {s.title}
                             </span>
                           )
                         )}
-                      </div>
+                        </div>
+                      </details>
                     )}
                     <span className="px-1 text-[11px] text-neutral-400">{formatTime(m.created_at)}</span>
                   </div>
@@ -135,7 +137,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
               ) : (
                 <div key={m.id} className="flex justify-end">
                   <div className="flex max-w-[80%] flex-col items-end gap-1">
-                    <p className="whitespace-pre-wrap rounded-2xl rounded-tr-md bg-brand px-4 py-2.5 text-sm text-white">
+                    <p className="whitespace-pre-wrap break-words rounded-2xl rounded-tr-md bg-brand px-4 py-2.5 text-sm leading-7 text-white [overflow-wrap:anywhere]">
                       {m.content}
                     </p>
                     <span className="px-1 text-[11px] text-neutral-400">{formatTime(m.created_at)}</span>

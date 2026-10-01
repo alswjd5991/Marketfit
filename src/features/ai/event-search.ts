@@ -253,7 +253,7 @@ export function formatEvents(events: EventRecord[], query: EventQuery, startInde
   return events.map((event, i) => {
     const status = event.end < query.today ? "종료" : event.start > query.today ? "예정" : "진행 기간";
     const extra = [status, event.tentative ? "일정 미확정" : "", event.detail ?? ""].filter(Boolean).join(" · ");
-    return `${startIndex + i}. ${event.name}\n   ${event.start} ~ ${event.end} · ${event.place}\n   ${extra}`;
+    return `${startIndex + i}. **${event.name}**\n   ${event.start} ~ ${event.end} · ${event.place}\n   ${extra}`;
   });
 }
 
