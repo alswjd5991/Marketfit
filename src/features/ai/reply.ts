@@ -1,7 +1,7 @@
 import { RESPONSE_STYLE } from "./response-style";
 import { generateGeminiReply, type GeminiResult, type GeminiSource, type GeminiTurn } from "./gemini";
 import {
-  formatEvents, getOfficialEvents, isSameEvent, koreaDate, parseEventQuery, sortEvents, TOPIC,
+  formatEvents, getOfficialEvents, isSameEvent, koreaDate, parseEventQuery, regionOf, sortEvents, TOPIC,
   type EventQuery, type EventRecord, type OfficialEvents,
 } from "./event-search";
 
@@ -57,6 +57,23 @@ export async function generateChatReply(history: GeminiTurn[], deps: ChatDeps, n
   const query = parseEventQuery(history, now);
   if (query) return eventReply(query, history, deps, dateLine);
   return generateGeminiReply(`${GENERAL_PROMPT}\n\n${RESPONSE_STYLE}\n\n${dateLine}`, history);
+}
+
+/** "행사 찾기" 버튼: 가게에 저장된 주 활동 지역에서 오늘부터 30일간 열리는 행사. */
+export async function regionEventReply(activeRegion: string | null, history: GeminiTurn[], deps: ChatDeps, now = new Date()): Promise<ChatReply> {
+  const region = activeRegion ? regionOf(activeRegion) : undefined;
+  if (!region) {
+    return {
+      ok: true,
+      text: activeRegion
+        ? `저장된 활동 지역 "${activeRegion}"을(를) 시·도로 알아보지 못했어요. **내 가게**에서 "서울 마포구"처럼 시·도 이름으로 시작하게 고쳐 주세요.`
+        : "아직 주 활동 지역이 저장되어 있지 않아요. **내 가게**에서 주요 활동 지역을 등록하면 그 지역 행사를 찾아 드릴게요.",
+      sources: [],
+    };
+  }
+  const today = koreaDate(now);
+  const query: EventQuery = { from: today, to: addDays(today, 30), today, marketOnly: false, recruit: false, region };
+  return eventReply(query, history, deps, `현재 한국 날짜는 ${today}입니다. 상대 날짜는 이 날짜를 기준으로 해석하세요.`);
 }
 
 async function personalReply(history: GeminiTurn[], deps: ChatDeps, today: string, dateLine: string, wantsEvents: boolean): Promise<ChatReply> {

@@ -26,8 +26,8 @@
   --color-brand-dark: var(--brand-dark);
   --color-brand-light: var(--brand-light);
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI",
-    "Pretendard Variable", Pretendard, Roboto, "Noto Sans KR", sans-serif;
+  --font-sans: var(--font-suit), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Noto Sans KR", sans-serif;
 
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
