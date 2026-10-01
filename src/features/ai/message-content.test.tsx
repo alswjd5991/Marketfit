@@ -24,3 +24,10 @@ test("일반 텍스트의 줄바꿈과 정상 출처 링크를 유지한다", ()
   assert.match(html, /href="https:\/\/example.com\/notice"/);
   assert.match(html, /rel="noopener noreferrer"/);
 });
+
+test("문장부호로 끝나는 강조 뒤에 한글 조사가 붙어도 굵게 표시한다", () => {
+  const html = renderToStaticMarkup(<MessageContent content={"현재 **커피카페 (민정)**의 기록과 *예상 매출*을 봐요."} />);
+  assert.match(html, /<strong[^>]*>커피카페 \(민정\)<\/strong>의/);
+  assert.match(html, /<em>예상 매출<\/em>을/);
+  assert.doesNotMatch(html, /\*/);
+});

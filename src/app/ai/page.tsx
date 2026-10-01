@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, ExternalLink, MessageCircle, MoreVertical, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ChevronRight, ExternalLink, MoreVertical, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyConversations, getConversationDetail, type ConversationSummary } from "@/features/ai/data";
@@ -52,31 +52,30 @@ export default async function AiPage(props: PageProps<"/ai">) {
     <div className="min-h-[calc(100vh-4rem)] font-[350] tracking-[-0.025em] bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 lg:h-[calc(100vh-4rem)] lg:flex-row lg:px-8">
         {/* 대화 기록 사이드바 — 모바일에선 본문 아래로 내려간다. */}
-        <aside className="order-2 flex shrink-0 flex-col rounded-3xl border border-white bg-white/80 p-6 shadow-sm shadow-neutral-900/5 backdrop-blur lg:order-1 lg:w-64">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-normal text-neutral-950">대화 기록</h2>
+        <aside className="order-2 flex shrink-0 flex-col rounded-3xl border border-white bg-white/80 p-4 shadow-sm shadow-neutral-900/5 backdrop-blur lg:order-1 lg:w-60">
+          <div className="flex items-center justify-between px-2">
+            <h2 className="text-sm font-normal text-neutral-950">대화 기록</h2>
             <Link
               href="/ai"
               aria-label="새 대화"
               title="새 대화"
-              className="flex size-8 items-center justify-center rounded-full text-brand transition duration-200 ease-out hover:rotate-90 hover:bg-brand-light active:scale-90"
+              className="flex size-6 items-center justify-center rounded-full border border-neutral-200 text-neutral-500 transition duration-200 ease-out hover:rotate-90 hover:border-brand/40 hover:text-brand active:scale-90"
             >
-              <Plus className="size-5" strokeWidth={2.5} />
+              <Plus className="size-3.5" />
             </Link>
           </div>
-          <div className="mt-4 flex-1 overflow-y-auto">
-            {conversations.length === 0 && <p className="text-sm text-neutral-400">아직 대화가 없어요.</p>}
+          <div className="mt-4 flex flex-1 flex-col gap-6 overflow-y-auto">
+            {conversations.length === 0 && <p className="px-2 text-[13px] text-neutral-400">아직 대화가 없어요.</p>}
             {todays.length > 0 && <ConversationGroup label="오늘" items={todays} activeId={activeId} />}
-            {todays.length > 0 && older.length > 0 && <hr className="my-4 border-neutral-100" />}
             {older.length > 0 && <ConversationGroup label="이전 대화" items={older} activeId={activeId} />}
           </div>
           <Link
             href="/store"
-            className="group mt-4 flex items-center gap-2 border-t border-neutral-100 pt-4 text-sm font-normal text-brand"
+            className="group mt-4 flex items-center gap-2 rounded-full px-3 py-2 text-[13px] text-neutral-600 transition-colors duration-200 hover:bg-white hover:text-brand"
           >
-            <ExternalLink className="size-4" />
+            <ExternalLink className="size-3.5" />
             내 가게로 이동
-            <ChevronRight className="ml-auto size-4 text-neutral-500 transition-transform duration-200 ease-out group-hover:translate-x-1" />
+            <ChevronRight className="ml-auto size-3.5 text-neutral-400 transition-transform duration-200 ease-out group-hover:translate-x-1" />
           </Link>
         </aside>
 
@@ -171,38 +170,42 @@ export default async function AiPage(props: PageProps<"/ai">) {
 function ConversationGroup({ label, items, activeId }: { label: string; items: ConversationSummary[]; activeId: string | null }) {
   return (
     <div>
-      <p className="mb-2 text-xs text-neutral-400">{label}</p>
-      <ul className="flex flex-col gap-1">
+      <p className="mb-1 px-2 text-xs text-neutral-400">{label}</p>
+      <ul className="flex flex-col gap-0.5">
         {items.map((c) => (
           <li
             key={c.id}
-            className={cn("flex items-center rounded-full transition-colors duration-200 ease-out hover:bg-neutral-100/70", c.id === activeId && "bg-brand-light")}
+            className={cn(
+              "group flex items-center rounded-full transition-colors duration-200 ease-out hover:bg-white/70",
+              c.id === activeId && "bg-white shadow-sm shadow-neutral-900/5 hover:bg-white"
+            )}
           >
             <Link
               href={`/ai?c=${c.id}`}
+              className={cn("min-w-0 flex-1 truncate py-2 pl-3 text-[13px] text-neutral-600", c.id === activeId && "text-brand")}
+            >
+              {c.title ?? "새 대화"}
+            </Link>
+            {/* ⋮ 메뉴 — 지금은 삭제만. 데스크톱에선 마우스를 올리거나 선택된 대화일 때만 보인다. */}
+            <details
               className={cn(
-                "flex min-w-0 flex-1 items-center gap-3 py-2 pl-3 text-sm text-neutral-800",
-                c.id === activeId && "font-normal text-brand"
+                "relative transition-opacity duration-200 open:opacity-100 focus-within:opacity-100 lg:opacity-0 lg:group-hover:opacity-100",
+                c.id === activeId && "lg:opacity-100"
               )}
             >
-              <MessageCircle className="size-5 shrink-0" />
-              <span className="truncate">{c.title ?? "새 대화"}</span>
-            </Link>
-            {/* ⋮ 메뉴 — 지금은 삭제만. */}
-            <details className="relative">
               <summary
                 aria-label="대화 메뉴"
-                className="flex size-8 cursor-pointer list-none items-center justify-center rounded-full text-neutral-500 transition-colors duration-200 hover:text-neutral-900 [&::-webkit-details-marker]:hidden"
+                className="flex size-7 cursor-pointer list-none items-center justify-center rounded-full text-neutral-400 transition-colors duration-200 hover:text-neutral-900 [&::-webkit-details-marker]:hidden"
               >
-                <MoreVertical className="size-4" />
+                <MoreVertical className="size-3.5" />
               </summary>
               <form action={deleteConversation} className="absolute right-0 z-10 mt-1 rounded-2xl border border-neutral-100 bg-white p-1 shadow-lg motion-safe:animate-fade-up">
                 <input type="hidden" name="conversation_id" value={c.id} />
                 <button
                   type="submit"
-                  className="flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm text-red-600 transition-colors duration-200 hover:bg-red-50"
+                  className="flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-[13px] text-red-600 transition-colors duration-200 hover:bg-red-50"
                 >
-                  <Trash2 className="size-4" />삭제
+                  <Trash2 className="size-3.5" />삭제
                 </button>
               </form>
             </details>

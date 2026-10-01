@@ -1,16 +1,21 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkCjkFriendly from "remark-cjk-friendly";
 
-/** HTML은 실행하지 않고 링크는 react-markdown의 안전한 URL 변환을 거친다. */
+/**
+ * HTML은 실행하지 않고 링크는 react-markdown의 안전한 URL 변환을 거친다.
+ * remark-cjk-friendly: "**가게 (민정)**의"처럼 문장부호 뒤 닫는 **에 한글이 바로 붙어도 강조로 인식하게 한다
+ * (CommonMark 기본 규칙에선 강조가 풀려 **가 그대로 보였음).
+ */
 export function MessageContent({ content }: { content: string }) {
   return (
     <div className="min-w-0 space-y-3 break-words text-sm leading-7 text-neutral-800 [overflow-wrap:anywhere]">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={{
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkCjkFriendly]} skipHtml components={{
         h1: ({ children }) => <h3 className="pt-2 font-normal text-neutral-950">{children}</h3>,
         h2: ({ children }) => <h3 className="pt-2 font-normal text-neutral-950">{children}</h3>,
         h3: ({ children }) => <h3 className="pt-2 font-normal text-neutral-950">{children}</h3>,
         p: ({ children }) => <p className="whitespace-pre-line">{children}</p>,
-        strong: ({ children }) => <strong className="font-normal text-neutral-950">{children}</strong>,
+        strong: ({ children }) => <strong className="font-semibold text-neutral-950">{children}</strong>,
         ul: ({ children }) => <ul className="list-disc space-y-2 pl-5 marker:text-neutral-400">{children}</ul>,
         ol: ({ children, start }) => <ol start={start} className="list-decimal space-y-3 pl-5 marker:text-neutral-500">{children}</ol>,
         li: ({ children }) => <li className="pl-1 [&>p+p]:mt-1">{children}</li>,
