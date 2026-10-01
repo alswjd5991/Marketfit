@@ -17,6 +17,16 @@ cp .env.example .env.local   # 아래 "작업 파일 설정"을 참고해 키를
 npm run dev                  # http://localhost:3000
 ```
 
+### 로그인·회원가입에서 `fetch failed`가 나올 때
+
+인증 요청은 브라우저가 아니라 개발 서버에서 Supabase로 전송된다. 화면이 열리더라도
+개발 서버 실행 환경의 외부 네트워크가 차단되어 있으면 로그인과 회원가입이 모두 실패한다.
+네트워크 접근이 가능한 터미널에서 서버를 다시 실행하고 `.env.local`의 Supabase URL과
+공개 키 설정을 확인한다. 인증이나 이메일 확인을 끄는 방식으로 해결하지 않는다.
+이메일 확인이 켜진 프로젝트는 가입 확인 메일의 링크를 누른 뒤 로그인해야 한다.
+
+인증 오류 안내 테스트: `npx tsx --test src/features/auth/errors.test.ts`
+
 다른 명령어:
 
 ```bash

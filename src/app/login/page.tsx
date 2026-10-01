@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { signIn } from "@/features/auth/actions";
-import { Button } from "@/components/ui/button";
+import { AuthSubmitButton } from "@/features/auth/submit-button";
 
 export default async function LoginPage(props: PageProps<"/login">) {
   const sp = await props.searchParams;
@@ -20,12 +20,14 @@ export default async function LoginPage(props: PageProps<"/login">) {
         </p>
       )}
       {error && (
-        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
       )}
 
       <form action={signIn} className="mt-6 flex flex-col gap-3">
         <input
           name="email"
+          aria-label="이메일"
+          autoComplete="email"
           type="email"
           required
           placeholder="이메일"
@@ -33,12 +35,14 @@ export default async function LoginPage(props: PageProps<"/login">) {
         />
         <input
           name="password"
+          aria-label="비밀번호"
+          autoComplete="current-password"
           type="password"
           required
           placeholder="비밀번호"
           className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
         />
-        <Button type="submit">로그인</Button>
+        <AuthSubmitButton mode="login" />
       </form>
 
       <p className="mt-4 text-center text-sm text-neutral-500">
