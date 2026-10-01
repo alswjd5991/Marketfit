@@ -34,7 +34,7 @@ export function MessageInput() {
   );
 }
 
-/** 입력창 오른쪽 아래 사각 전송 버튼. */
+/** 입력창 오른쪽 아래 원형 전송 버튼. */
 export function SendMessageButton() {
   const { pending } = useFormStatus();
   return (
@@ -42,7 +42,7 @@ export function SendMessageButton() {
       type="submit"
       aria-label="보내기"
       disabled={pending}
-      className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand text-white shadow-md shadow-brand/30 transition-colors hover:bg-brand-dark disabled:pointer-events-none disabled:opacity-50"
+      className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand text-white shadow-md shadow-brand/30 transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-brand-dark active:scale-90 disabled:pointer-events-none disabled:opacity-50"
     >
       {pending ? <Loader2 className="size-5 animate-spin" /> : <ArrowUp className="size-5" strokeWidth={2.5} />}
     </button>
@@ -70,7 +70,7 @@ export function SuggestionChips() {
           name="preset"
           value={preset}
           disabled={pending}
-          className="flex items-center gap-1.5 rounded-full border border-white bg-white/80 px-3.5 py-2 text-[13px] font-medium text-neutral-800 shadow-sm shadow-neutral-900/5 backdrop-blur transition-colors hover:border-brand/30 hover:text-brand disabled:pointer-events-none disabled:opacity-50"
+          className="flex items-center gap-2 rounded-full border border-white bg-white/80 px-4 py-2 text-[13px] font-normal text-neutral-800 shadow-sm shadow-neutral-900/5 backdrop-blur transition duration-200 ease-out hover:-translate-y-0.5 hover:border-brand/30 hover:text-brand hover:shadow-md active:scale-95 disabled:pointer-events-none disabled:opacity-50"
         >
           <Icon className="size-4 text-brand" />
           {label}
