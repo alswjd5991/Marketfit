@@ -10,7 +10,8 @@
     "test:ai": "tsx --test src/features/ai/gemini.test.ts src/features/ai/event-search.test.ts src/features/ai/message-content.test.tsx",
     "check:events": "tsx scripts/check-ai-events.ts",
     "check:ai": "tsx scripts/check-gemini.ts",
-    "seed:events": "tsx scripts/seed-events.ts"
+    "seed:events": "tsx scripts/seed-events.ts",
+    "seed:synthetic": "tsx scripts/seed-synthetic-users.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.3.3",
