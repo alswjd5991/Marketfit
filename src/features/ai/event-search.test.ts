@@ -145,7 +145,7 @@ test("Marketfit 등록 행사가 3건 이상이면 다른 웹사이트를 조회
   const d = deps([record("가"), record("나"), record("다")]);
   const result = await generateChatReply(question("이번 달 서울 행사"), d, now);
   assert.ok(result.ok);
-  assert.ok(result.text.includes("■ Marketfit에 등록된 행사 (3건)"));
+  assert.ok(result.text.includes("### Marketfit에 등록된 행사 (3건)"));
   assert.equal(result.text.includes("다른 웹사이트"), false);
   assert.deepEqual(result.sources.map((s) => s.url), ["/events/가", "/events/나", "/events/다"]);
   assert.equal(fetch.mock.callCount(), 0);
@@ -159,9 +159,9 @@ test("3건 미만이면 서울시 공식 목록으로 보충하고, 가져온 �
   });
   const result = await generateChatReply(question("이번 달 서울 행사"), deps([record("2026 진행 행사", "2026-09-28", "2026-10-02")]), now);
   assert.ok(result.ok);
-  assert.ok(result.text.indexOf("■ Marketfit에 등록된 행사 (1건)") < result.text.indexOf("■ 다른 웹사이트에서 가져온 행사 — 출처: 서울시 공식 축제 찾기"));
+  assert.ok(result.text.indexOf("### Marketfit에 등록된 행사 (1건)") < result.text.indexOf("### 공식 사이트 행사"));
   assert.ok(result.text.includes("Marketfit에 등록되지 않은 행사예요"));
-  assert.ok(result.text.includes("2. 종료 행사"));
+  assert.ok(result.text.includes("2. **종료 행사**"));
   assert.equal(result.text.match(/진행 행사/g)?.length, 1); // DB와 같은 행사는 한 번만
   assert.ok(result.sources.some((s) => s.title === "[서울시] 종료 행사"));
   // DB 1건 + 새 공식 행사 1건 = 2건 < 3 → 웹 검색까지 보충
@@ -180,7 +180,7 @@ test("공식 목록까지 합쳐도 3건 미만이면 웹 검색으로 보충하
   assert.ok(result.ok);
   assert.ok(result.text.includes("조건에 맞는 행사가 아직 등록되어 있지 않아요"));
   assert.ok(result.text.includes("출처: 한국관광공사 전국 축제 정보"));
-  assert.ok(result.text.includes("■ 다른 웹사이트에서 찾은 정보 — 출처: 구글 웹 검색"));
+  assert.ok(result.text.includes("### 웹 검색으로 확인한 정보"));
   assert.ok(result.text.includes("부산 불꽃축제"));
   assert.ok(result.sources.some((s) => s.title === "[웹 검색] 검색 출처"));
   assert.equal(bodies.length, 1);
@@ -198,7 +198,7 @@ test("모집 질문은 행사 목록(모집 정보 없음)을 건너뛰고 웹 �
 test("웹 검색이 막히면 보충 실패를 알리고, 모든 출처가 실패하면 오류를 돌려준다", async () => {
   mock.method(globalThis, "fetch", async () => Response.json({ error: {} }, { status: 429 }));
   const partial = await generateChatReply(question("이번 달 부산 축제"), deps([record("가")]), now);
-  assert.ok(partial.ok && partial.text.includes("웹 검색을 연결할 수 없어") && partial.text.includes("1. 가"));
+  assert.ok(partial.ok && partial.text.includes("웹 검색을 연결할 수 없어") && partial.text.includes("1. **가**"));
   process.env.GEMINI_API_KEY = `test-key-${++keySeq}`;
   const failed = await generateChatReply(question("이번 달 부산 축제"), deps(new Error("db down")), now);
   assert.equal(failed.ok, false);

@@ -75,7 +75,7 @@ function iso(year: number, month: number, day: number): string {
 }
 
 /** 질문에 지역이 정확히 하나(또는 "전국")면 그 이름, 없으면 undefined, 여러 개면 null. */
-function regionOf(text: string): string | null | undefined {
+export function regionOf(text: string): string | null | undefined {
   const found = REGIONS.filter(([, pattern]) => pattern.test(text)).map(([name]) => name);
   if (/전국/.test(text)) found.push("전국");
   return found.length > 1 ? null : found[0];
@@ -253,7 +253,7 @@ export function formatEvents(events: EventRecord[], query: EventQuery, startInde
   return events.map((event, i) => {
     const status = event.end < query.today ? "종료" : event.start > query.today ? "예정" : "진행 기간";
     const extra = [status, event.tentative ? "일정 미확정" : "", event.detail ?? ""].filter(Boolean).join(" · ");
-    return `${startIndex + i}. ${event.name}\n   ${event.start} ~ ${event.end} · ${event.place}\n   ${extra}`;
+    return `${startIndex + i}. **${event.name}**\n   ${event.start} ~ ${event.end} · ${event.place}\n   ${extra}`;
   });
 }
 
