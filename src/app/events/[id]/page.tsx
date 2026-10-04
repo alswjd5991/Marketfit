@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PosterFrame } from "@/components/ui/poster-frame";
 import { getPosterImage } from "@/features/events/data";
+import { getCategoryGroup } from "@/features/events/category-group";
 
 export default async function EventDetailPage(props: PageProps<"/events/[id]">) {
   const { id } = await props.params;
@@ -24,6 +25,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
     eventEndDate: event.endDate,
   });
   const closed = status === "closed";
+  const group = getCategoryGroup(event.category, event.name);
   const dday = !closed ? formatDday(event.recruitEnd, event.endDate) : null;
   const participationStatus = await getMyParticipationStatus(event.sourceDataset, event.id);
 
@@ -39,10 +41,10 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
         <PosterFrame
           imageUrl={getPosterImage(event.id)}
           alt={`${event.name} 포스터`}
-          category={event.category}
+          category={group}
           seed={event.id}
           size="hero"
-          badgeLabel={event.category}
+          badgeLabel={group}
         />
       </div>
 
@@ -59,7 +61,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
         ) : dday ? (
           <Badge variant="warning">{dday}</Badge>
         ) : null}
-        {event.category && <Badge variant="secondary">{event.category}</Badge>}
+        <Badge variant="secondary">{group}</Badge>
         {event.orgType && <Badge variant="outline">{event.orgType}</Badge>}
       </div>
 

@@ -39,6 +39,11 @@ export interface PosterTheme {
 const THEME_BY_CATEGORY: Record<string, PosterTheme> = {
   플리마켓: { bg: "#1c3a34", pop: "#b6e34f", icon: "tote" },
   "축제 판매부스": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
+  // category-group.ts의 8종 분류 이름(카드·상세는 이 이름으로 테마를 찾는다).
+  "축제 부스": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
+  "먹거리 부스": { bg: "#7a2e2e", pop: "#ffb703", icon: "bowl" },
+  "박람회·전시": { bg: "#1e3a5f", pop: "#7cc4ff", icon: "stall" },
+  "아트·디자인 마켓": { bg: "#4a1942", pop: "#ff6fae", icon: "palette" },
   시즌마켓: { bg: "#3a2a5c", pop: "#c9a6ff", icon: "gift" },
   야시장: { bg: "#14213d", pop: "#ffd166", icon: "moon" },
   "대학 마켓": { bg: "#1f2937", pop: "#7dd3fc", icon: "cap" },

@@ -45,9 +45,7 @@ const dashboardStats = isLoggedIn
   // 현재 모집 중인 행사에서 카테고리 최대 3개 추출
   const topCategories = Array.from(
     new Set(
-      openEvents
-        .map((event) => event.category)
-        .filter((category): category is string => Boolean(category))
+      openEvents.map((event) => event.category)
     )
   ).slice(0, 3);
 
