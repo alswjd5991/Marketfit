@@ -1,4 +1,5 @@
 import { getCategories, getEvents, getRegions } from "@/features/events/data";
+import { PageHeader } from "@/components/page-header";
 import type { EventPeriod, EventSort } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
 import { EventFiltersBar } from "@/features/events/filters-bar";
@@ -24,11 +25,7 @@ export default async function EventsPage(props: PageProps<"/events">) {
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
     <div className="mx-auto w-full max-w-6xl px-6 py-10 lg:px-8">
-      <h1 className="mb-1 text-2xl font-bold text-neutral-950">행사 찾기</h1>
-      <p className="mb-6 text-sm text-neutral-500">
-        전국 소상공인·셀러 모집 공고 {events.length}건 (마감된 공고도 계속
-        검색할 수 있습니다)
-      </p>
+      <PageHeader title="행사 찾기" sub={`셀러 모집 공고 ${events.length}건`} />
 
       <EventFiltersBar regions={regions} categories={categories} />
 

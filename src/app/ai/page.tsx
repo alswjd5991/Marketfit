@@ -1,7 +1,7 @@
 import Link from "next/link";
+import { CenteredNotice } from "@/components/page-header";
 import { ChevronRight, ExternalLink, MoreVertical, Plus, Trash2 } from "lucide-react";
 import { BotIcon } from "@/components/bot-icon";
-import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyConversations, getConversationDetail, type ConversationSummary } from "@/features/ai/data";
 import { isGeminiConfigured } from "@/features/ai/gemini";
@@ -18,13 +18,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
   const user = await getCurrentUser();
   if (!user) {
     return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center font-[350]">
-        <h1 className="text-xl font-normal tracking-[-0.025em] text-neutral-900">AI 도우미</h1>
-        <p className="mt-3 text-sm text-neutral-500">로그인 후 이용할 수 있어요.</p>
-        <Button asChild className="mt-6">
-          <Link href="/login">로그인하러 가기</Link>
-        </Button>
-      </div>
+      <CenteredNotice title="AI 도우미" text="로그인 후 이용할 수 있어요." href="/login" cta="로그인" />
     );
   }
 

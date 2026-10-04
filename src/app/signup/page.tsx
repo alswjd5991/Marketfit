@@ -8,10 +8,7 @@ export default async function SignupPage(props: PageProps<"/signup">) {
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-4 py-10">
-      <h1 className="text-xl font-bold text-neutral-950">회원가입</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        가게 정보와 행사 참가 기록을 저장할 계정을 만드세요.
-      </p>
+      <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-neutral-950">회원가입</h1>
 
       {error && (
         <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>

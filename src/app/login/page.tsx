@@ -9,10 +9,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-4 py-10">
-      <h1 className="text-xl font-bold text-neutral-950">로그인</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        내 가게를 등록하고 참가 기록을 관리하려면 로그인하세요.
-      </p>
+      <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-neutral-950">로그인</h1>
 
       {notice && (
         <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">

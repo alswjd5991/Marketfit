@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CenteredNotice } from "@/components/page-header";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,13 +31,7 @@ export default async function ParticipationDetailPage(
   const user = await getCurrentUser();
   if (!user) {
     return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="text-xl font-semibold text-neutral-900">내 행사 관리</h1>
-        <p className="mt-3 text-sm text-neutral-500">로그인 후 이용할 수 있어요.</p>
-        <Button asChild className="mt-6">
-          <Link href="/login">로그인하러 가기</Link>
-        </Button>
-      </div>
+      <CenteredNotice title="내 행사" text="로그인 후 이용할 수 있어요." href="/login" cta="로그인" />
     );
   }
 

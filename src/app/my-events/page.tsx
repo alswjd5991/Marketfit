@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CenteredNotice, PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,15 +12,7 @@ export default async function MyEventsPage() {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="text-xl font-semibold text-neutral-900">내 행사</h1>
-        <p className="mt-3 text-sm text-neutral-500">
-          참가할 행사를 관리하려면 먼저 로그인해 주세요.
-        </p>
-        <Button asChild className="mt-6">
-          <Link href="/login">로그인하러 가기</Link>
-        </Button>
-      </div>
+      <CenteredNotice title="내 행사" text="로그인 후 이용할 수 있어요." href="/login" cta="로그인" />
     );
   }
 
@@ -28,21 +21,7 @@ export default async function MyEventsPage() {
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#FFE8C2_0%,#F3F9FF_32%,#D6EEFF_68%,#EEF8FD_100%)]">
       <div className="mx-auto w-full max-w-4xl px-6 py-10 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-950">
-            내 행사
-          </h1>
-
-          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-neutral-500">
-              내 행사에 추가한 행사를 관리해보세요.
-            </p>
-
-            <span className="text-sm text-neutral-400">
-              총 {participations.length}개
-            </span>
-          </div>
-        </div>
+        <PageHeader title="내 행사" sub={`${participations.length}개`} />
 
         {participations.length === 0 ? (
           <div className="rounded-2xl border border-white/70 bg-white/80 px-6 py-14 text-center shadow-sm backdrop-blur-sm">

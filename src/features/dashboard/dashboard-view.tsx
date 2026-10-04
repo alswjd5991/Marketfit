@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PageHeader } from "@/components/page-header";
 import { Lightbulb } from "lucide-react";
 import { ColumnChart } from "@/components/ui/column-chart";
 import { ProductQuantityDonutChart } from "@/components/ui/product-quantity-donut-chart";
@@ -27,10 +28,10 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
   return (
     <div className="min-h-screen bg-[#f5f7fb]">
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:py-10">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-950 sm:text-[28px]">대시보드</h1>
+        <PageHeader title="대시보드" />
 
         {stats.insights.length > 0 && (
-          <section className="mt-6 rounded-3xl bg-[linear-gradient(135deg,#17407a_0%,#1f5fae_60%,#2a78d6_100%)] p-6 text-white shadow-lg shadow-blue-900/15 sm:p-7">
+          <section className="rounded-3xl bg-[linear-gradient(135deg,#17407a_0%,#1f5fae_60%,#2a78d6_100%)] p-6 text-white shadow-lg shadow-blue-900/15 sm:p-7">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-blue-100">
               <Lightbulb className="size-4" /> 종합 인사이트
             </h2>

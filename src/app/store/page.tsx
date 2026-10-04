@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { CenteredNotice, PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser, getMyProducts, getMyStore } from "@/features/store/data";
@@ -14,15 +14,7 @@ export default async function StorePage(props: PageProps<"/store">) {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="text-xl font-semibold text-neutral-900">내 가게</h1>
-        <p className="mt-3 text-sm text-neutral-500">
-          가게 정보와 상품을 등록하려면 먼저 로그인해 주세요.
-        </p>
-        <Button asChild className="mt-6">
-          <Link href="/login">로그인하러 가기</Link>
-        </Button>
-      </div>
+      <CenteredNotice title="내 가게" text="로그인 후 이용할 수 있어요." href="/login" cta="로그인" />
     );
   }
 
@@ -32,11 +24,7 @@ export default async function StorePage(props: PageProps<"/store">) {
     <div className="min-h-screen bg-[linear-gradient(135deg,#FFF3DC_0%,#F6FAFD_30%,#E3F2FC_68%,#F8FBFD_100%)]">
       <div className="mx-auto w-full max-w-6xl px-6 py-10 lg:px-8">
         <div className="mx-auto max-w-3xl">
-          <h1 className="text-xl font-bold text-neutral-950">내 가게</h1>
-
-          <p className="mt-1 text-sm text-neutral-500">
-            행사 참가 추천과 데이터 기록에 쓰일 가게·상품 정보입니다.
-          </p>
+          <PageHeader title="내 가게" />
 
           {error && (
             <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
