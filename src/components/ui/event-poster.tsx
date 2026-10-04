@@ -150,18 +150,41 @@ export function EventPoster({
   const viewW = size === "hero" ? 800 : 400;
   const viewH = size === "hero" ? 300 : 225;
 
-  const variant = seededUnit(seed);
-  const decorationOnRight = variant > 0.5;
+  // 행사(seed)마다 값을 따로 뽑아, 같은 카테고리여도 티켓 각도·도장·테이프 위치가 다르게 나온다.
+  const rand = (key: string) => seededUnit(`${seed}:${key}`);
+  const uid = `ep${Math.floor(seededUnit(seed) * 1e6)}`;
 
-  const iconX = viewW * 0.5;
-  const iconY = viewH * 0.5;
+  // 입장권(티켓) — 크림색 종이를 살짝 기울여 올려둔 느낌
+  const tw = viewH * 1.15;
+  const th = viewH * 0.58;
+  const tx = viewW * 0.5 + (rand("x") - 0.5) * viewW * 0.12;
+  const ty = viewH * 0.52 + (rand("y") - 0.5) * viewH * 0.08;
+  const tilt = (rand("tilt") - 0.5) * 14; // -7° ~ 7°
+  const stubX = tw * 0.72; // 절취선 위치(오른쪽이 떼어내는 부분)
 
-  const badgeRadius = size === "hero" ? 72 : 54;
-  const iconScale = size === "hero" ? 3.4 : 2.6;
+  // 잉크 도장 — 티켓 가장자리에 걸치게 찍는다
+  const stampSpots = [
+    { x: tw * 0.6, y: th * 0.12 },
+    { x: tw * 0.16, y: th * 0.86 },
+    { x: tw * 0.6, y: th * 0.9 },
+  ];
+  const stamp = stampSpots[Math.floor(rand("stamp") * stampSpots.length)];
+  const stampR = th * 0.34;
+  const stampTilt = (rand("stampTilt") - 0.5) * 40;
+  const iconScale = (stampR * 1.1) / 24;
 
-  const decorationX = decorationOnRight
-    ? viewW * 0.86
-    : viewW * 0.14;
+  // 마스킹테이프 — 티켓 위쪽 모서리 중 한 곳
+  const tapeOnLeft = rand("tape") > 0.5;
+  const tapeW = th * 0.62;
+  const tapeH = th * 0.2;
+
+  // 인쇄된 줄·바코드처럼 보이는 잔무늬
+  const lineWidths = [0.52, 0.4, 0.46].map((w, i) => tw * (w - rand(`line${i}`) * 0.12));
+  const barWidths = Array.from({ length: 11 }, (_, i) => (1 + Math.floor(rand(`bar${i}`) * 3)) * 1.4);
+  const barcode = barWidths.map((w, i) => ({
+    x: stubX + tw * 0.06 + barWidths.slice(0, i).reduce((sum, prev) => sum + prev + 2.2, 0),
+    w,
+  }));
 
   return (
     <div
@@ -179,55 +202,94 @@ export function EventPoster({
         aria-label={category ? `${category} 행사 그래픽` : "행사 그래픽"}
         className="block"
       >
+        <defs>
+          {/* 종이 결 — 아주 옅은 노이즈 */}
+          <filter id={`${uid}-grain`} x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed={Math.floor(rand("g") * 100)} />
+            <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.09 0" />
+          </filter>
+          {/* 도장 잉크 번짐 — 가장자리를 살짝 흐트러뜨린다 */}
+          <filter id={`${uid}-ink`} x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" seed={Math.floor(rand("i") * 100)} result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale={size === "hero" ? 4 : 3} />
+          </filter>
+        </defs>
+
         <rect width={viewW} height={viewH} fill={theme.pop} />
+        <rect width={viewW} height={viewH} filter={`url(#${uid}-grain)`} />
 
-        <circle
-          cx={decorationX}
-          cy={viewH * 0.5}
-          r={viewH * 0.72}
-          fill={theme.bg}
-          opacity={0.18}
-        />
+        <g transform={`translate(${tx} ${ty}) rotate(${tilt}) translate(${-tw / 2} ${-th / 2})`}>
+          {/* 바닥에 깔린 그림자 */}
+          <rect x={4} y={6} width={tw} height={th} rx={10} fill={theme.bg} opacity={0.18} />
 
-        <circle
-          cx={iconX}
-          cy={iconY}
-          r={badgeRadius + 11}
-          fill="none"
-          stroke={theme.bg}
-          strokeWidth={2}
-          opacity={0.18}
-        />
+          {/* 티켓 본체 */}
+          <rect width={tw} height={th} rx={10} fill={POSTER_CREAM} />
 
-        <circle
-          cx={iconX}
-          cy={iconY}
-          r={badgeRadius}
-          fill={POSTER_CREAM}
-        />
+          {/* 절취선 + 양옆 반달 홈 */}
+          <line
+            x1={stubX}
+            x2={stubX}
+            y1={12}
+            y2={th - 12}
+            stroke={theme.bg}
+            strokeWidth={1.5}
+            strokeDasharray="3 5"
+            opacity={0.5}
+          />
+          <circle cx={stubX} cy={0} r={th * 0.075} fill={theme.pop} />
+          <circle cx={stubX} cy={th} r={th * 0.075} fill={theme.pop} />
 
-        <g
-          transform={`
-            translate(${iconX} ${iconY})
-            scale(${iconScale})
-            translate(-12 -12)
-          `}
-          stroke={theme.bg}
-          strokeWidth={1.8}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        >
-          {ICON_PATHS[theme.icon]}
+          {/* 인쇄된 줄무늬 */}
+          {lineWidths.map((w, i) => (
+            <rect
+              key={i}
+              x={tw * 0.08}
+              y={th * (0.3 + i * 0.17)}
+              width={w}
+              height={i === 0 ? th * 0.06 : th * 0.035}
+              rx={1.5}
+              fill={theme.bg}
+              opacity={i === 0 ? 0.55 : 0.25}
+            />
+          ))}
+
+          {/* 떼어내는 쪽의 바코드 */}
+          {barcode.map((bar, i) => (
+            <rect key={i} x={bar.x} y={th * 0.28} width={bar.w} height={th * 0.44} fill={theme.bg} opacity={0.7} />
+          ))}
+
+          {/* 잉크 도장(카테고리 아이콘) */}
+          <g
+            transform={`translate(${stamp.x} ${stamp.y}) rotate(${stampTilt})`}
+            filter={`url(#${uid}-ink)`}
+            opacity={0.85}
+            style={{ mixBlendMode: "multiply" }}
+          >
+            <circle r={stampR} fill="none" stroke={theme.bg} strokeWidth={size === "hero" ? 4 : 3} />
+            <circle r={stampR * 0.82} fill="none" stroke={theme.bg} strokeWidth={1.2} />
+            <g
+              transform={`scale(${iconScale}) translate(-12 -12)`}
+              stroke={theme.bg}
+              strokeWidth={1.9}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            >
+              {ICON_PATHS[theme.icon]}
+            </g>
+          </g>
+
+          {/* 마스킹테이프 */}
+          <rect
+            x={-tapeW / 2}
+            y={-tapeH / 2}
+            width={tapeW}
+            height={tapeH}
+            fill="#FFFFFF"
+            opacity={0.6}
+            transform={`translate(${tapeOnLeft ? tw * 0.06 : tw * 0.94} ${th * 0.02}) rotate(${tapeOnLeft ? -32 : 32})`}
+          />
         </g>
-
-        <circle
-          cx={decorationOnRight ? viewW * 0.82 : viewW * 0.18}
-          cy={viewH * 0.78}
-          r={viewH * 0.035}
-          fill={theme.bg}
-          opacity={0.7}
-        />
       </svg>
 
       {badgeLabel && (

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarRow, BAR_ROWS_HOVER_CLASS } from "@/components/ui/bar-row";
 import { InteractiveLineChart } from "@/components/ui/interactive-line-chart";
 import { getCurrentUser } from "@/features/store/data";
-import { getDashboardStats, POPULAR_PRODUCTS_LIMIT } from "@/features/dashboard/data";
+import { getDashboardStats } from "@/features/dashboard/data";
 import { STATUS_LABEL } from "@/features/participations/status-labels";
 import type { CategoryGroup } from "@/features/events/category-group";
 import { formatDday } from "@/features/events/status";
@@ -40,12 +40,14 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) {
     return (
+      <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
       <div className="mx-auto max-w-md px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-neutral-950">대시보드</h1>
         <p className="mt-3 text-sm text-neutral-500">로그인 후 이용 가능</p>
         <Button asChild className="mt-6">
           <Link href="/login">로그인하러 가기</Link>
         </Button>
+      </div>
       </div>
     );
   }
@@ -54,6 +56,7 @@ export default async function DashboardPage() {
 
   if (!stats) {
     return (
+      <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
       <div className="mx-auto max-w-md px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-neutral-950">대시보드</h1>
         <p className="mt-3 text-sm text-neutral-500">가게 등록 후 이용 가능</p>
@@ -61,11 +64,13 @@ export default async function DashboardPage() {
           <Link href="/store">가게 등록하러 가기</Link>
         </Button>
       </div>
+      </div>
     );
   }
 
   if (stats.totalParticipations === 0) {
     return (
+      <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
       <div className="mx-auto max-w-md px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-neutral-950">대시보드</h1>
         <p className="mt-3 text-sm text-neutral-500">
@@ -74,6 +79,7 @@ export default async function DashboardPage() {
         <Button asChild className="mt-6">
           <Link href="/events">행사 찾으러 가기</Link>
         </Button>
+      </div>
       </div>
     );
   }
@@ -94,7 +100,6 @@ export default async function DashboardPage() {
   ];
   const attendRate = stats.totalParticipations > 0 ? (c.attended / stats.totalParticipations) * 100 : 0;
   const maxCategoryProfit = Math.max(...stats.categoryProfit.map((c) => c.averageNetProfit), 1);
-  const maxProductRevenue = Math.max(...stats.popularProducts.map((p) => p.totalRevenue), 1);
 
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
@@ -322,7 +327,7 @@ export default async function DashboardPage() {
               <CardHeader>
                 <CardTitle>품목별 판매 수량 추이</CardTitle>
                 <p className="text-sm text-neutral-500">
-                  판매 수량 상위 5개 품목의 행사별 판매 수량
+                  판매 수량 상위 품목의 행사별 판매 수량
                 </p>
               </CardHeader>
               <CardContent>
@@ -337,8 +342,8 @@ export default async function DashboardPage() {
       </div>
 
       <p className="mt-6 text-xs text-neutral-400">
-        매출·순이익·만족도는 내 행사 상세에서 직접 입력한 기록만 집계 · 입력하지 않은 값은 0원이 아닌
-        &ldquo;아직 기록 없음&rdquo;으로 표시
+        매출·순이익·만족도는 내 행사 상세에서 직접 입력한 기록만 집계됩니다. 입력하지 않은 값은
+        &lsquo;아직 기록 없음&rsquo;으로 표시됩니다.
       </p>
     </div>
     </div>

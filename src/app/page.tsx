@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { CalendarCheck, ChevronRight, Sparkles, TrendingUp } from "lucide-react";
 import { getEvents } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,11 @@ export default async function HomePage() {
   ? await getMyParticipations()
   : [];
 
+  // '내 참가 예정 행사'에는 이미 끝났거나(참가 완료) 취소한 행사는 빼고 보여준다
+  const upcomingParticipations = participations.filter(
+    (p) => p.status !== "attended" && p.status !== "cancelled"
+  );
+
 const dashboardStats = isLoggedIn
   ? await getDashboardStats()
   : null;
@@ -40,8 +45,8 @@ const dashboardStats = isLoggedIn
   // 현재 모집 중인 행사
   const openEvents = events.filter((e) => e.status === "open");
 
-  // 오른쪽 랜딩 카드에 표시할 대표 행사
-  const featuredEvent = openEvents[0];
+  // 오른쪽 랜딩 카드에 표시할 대표 행사 — 모집 중인 행사 중 새로고침마다 무작위
+  const featuredEvent = pickRandom(openEvents);
 
   // 현재 모집 중인 행사 수
   const openEventCount = openEvents.length;
@@ -65,7 +70,7 @@ const dashboardStats = isLoggedIn
             <div className="pointer-events-none absolute bottom-0 right-0 h-14 w-14 border-b-[8px] border-r-[8px] border-[#465563]" />
 
             <span className="inline-block rounded-full bg-white/65 px-4 py-2 text-xs font-semibold text-brand shadow-sm backdrop-blur-sm">
-              소상공인을 위한 마켓 인사이트 플랫폼
+              셀러를 위한 행사 지도
             </span>
 
             <h1 className="mt-7 tracking-tight">
@@ -78,15 +83,10 @@ const dashboardStats = isLoggedIn
               </span>
             </h1>
 
-            <p className="mt-3 max-w-2xl text-base leading-7 text-[#6B6E74] sm:text-lg">
-              전국 행사 정보를 한눈에 확인하고, 데이터를 바탕으로 더 나은 마켓 선택을
-              시작해보세요.
-            </p>
-
             <Button
               asChild
               size="lg"
-              className="mt-8 rounded-xl bg-brand px-7 text-white shadow-sm transition-all hover:bg-brand-dark hover:shadow-md"
+              className="mt-6 rounded-xl bg-brand px-7 text-white shadow-sm transition-all hover:bg-brand-dark hover:shadow-md"
             >
               <Link href="/events">행사 찾아보기</Link>
             </Button>
@@ -226,7 +226,7 @@ const dashboardStats = isLoggedIn
                 "
               >
                 <p className="text-sm font-medium text-[#6B6E74]">
-                  궁금한 건 바로 물어보세요
+                  궁금한 건 바로 질문
                 </p>
 
                 <p className="mt-2 flex items-center gap-1.5 text-xl font-bold text-[#1F2023]">
@@ -305,13 +305,13 @@ const dashboardStats = isLoggedIn
               >
                 {isLoggedIn ? (
                   <MyEventsPreview
-                    participations={participations.slice(0, 4)}
+                    participations={upcomingParticipations.slice(0, 4)}
                   />
                 ) : (
                   <EmptyState
-                    label="MY EVENTS"
-                    title="참가할 행사를 한곳에서 관리하세요"
-                    description="로그인하면 저장하거나 참가 예정으로 등록한 행사를 빠르게 확인할 수 있어요."
+                    label="내 행사"
+                    title="참가할 행사를 한곳에서 관리"
+                    description="로그인하면 저장하거나 참가 예정으로 등록한 행사를 바로 확인"
                     buttonText="로그인하고 확인하기"
                     href="/login"
                     accent="blue"
@@ -333,9 +333,9 @@ const dashboardStats = isLoggedIn
                   <DashboardPreview stats={dashboardStats} />
                 ) : (
                   <EmptyState
-                    label="PERFORMANCE"
-                    title="참가 결과를 기록해보세요"
-                    description="로그인하면 행사 참가 후 매출과 순이익을 기록하고 성과를 확인할 수 있어요."
+                    label="참가 성과"
+                    title="참가 결과 기록"
+                    description="로그인하면 행사별 매출·순이익 기록과 성과 확인 가능"
                     buttonText="로그인하고 확인하기"
                     href="/login"
                     accent="green"
@@ -351,6 +351,12 @@ const dashboardStats = isLoggedIn
 
     </main>
   );
+}
+
+
+/** 배열에서 하나를 무작위로 고른다(비어 있으면 undefined). 요청마다 다시 렌더링되는 페이지라 새로고침마다 달라진다. */
+function pickRandom<T>(items: T[]): T | undefined {
+  return items[Math.floor(Math.random() * items.length)];
 }
 
 
@@ -374,9 +380,10 @@ function HomeSection({
 
         <Link
           href={href}
-          className="text-sm text-neutral-500 transition-colors hover:text-brand"
+          className="flex items-center gap-0.5 text-sm text-neutral-500 transition-colors hover:text-brand"
         >
-          더보기 →
+          더보기
+          <ChevronRight className="size-4" />
         </Link>
 
       </div>
@@ -418,11 +425,11 @@ function EmptyState({
           <div
             className={
               isBlue
-                ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-light text-sm font-bold text-brand"
-                : "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#E8F7EF] text-sm font-bold text-[#279566]"
+                ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-light text-brand"
+                : "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#E0EFE8] text-[#3F7A64]"
             }
           >
-            {isBlue ? "MY" : "%"}
+            {isBlue ? <CalendarCheck className="size-5" /> : <TrendingUp className="size-5" />}
           </div>
 
           <div>
@@ -430,7 +437,7 @@ function EmptyState({
               className={
                 isBlue
                   ? "text-xs font-semibold tracking-wide text-brand"
-                  : "text-xs font-semibold tracking-wide text-[#279566]"
+                  : "text-xs font-semibold tracking-wide text-[#3F7A64]"
               }
             >
               {label}
@@ -453,10 +460,10 @@ function EmptyState({
           className={
             isBlue
               ? "shrink-0 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-dark hover:shadow-md"
-              : "shrink-0 rounded-xl bg-[#279566] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#23825A] hover:shadow-md"
+              : "shrink-0 rounded-xl bg-[#3F7A64] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#356452] hover:shadow-md"
           }
         >
-          {buttonText} →
+          {buttonText}
         </Link>
 
       </div>
@@ -479,14 +486,14 @@ function MyEventsPreview({
     return (
       <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
         <p className="text-sm font-medium text-[#6B6E74]">
-          아직 추가한 행사가 없어요.
+          참가 예정인 행사 없음
         </p>
 
         <Link
           href="/events"
           className="mt-3 inline-block text-sm font-semibold text-brand hover:underline"
         >
-          참가할 행사 찾아보기 →
+          참가할 행사 찾아보기
         </Link>
       </div>
     );
@@ -547,14 +554,14 @@ function DashboardPreview({
     return (
       <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
         <p className="text-sm font-medium text-[#6B6E74]">
-          가게를 등록하면 참가 성과를 확인할 수 있어요.
+          가게 등록 후 참가 성과 확인 가능
         </p>
 
         <Link
           href="/store"
-          className="mt-3 inline-block text-sm font-semibold text-[#279566] hover:underline"
+          className="mt-3 inline-block text-sm font-semibold text-[#3F7A64] hover:underline"
         >
-          가게 등록하기 →
+          가게 등록하기
         </Link>
       </div>
     );
@@ -564,11 +571,11 @@ function DashboardPreview({
     return (
       <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
         <p className="text-sm font-medium text-[#6B6E74]">
-          아직 참가 기록이 없어요.
+          참가 기록 없음
         </p>
 
         <p className="mt-1 text-xs text-[#8A8D93]">
-          참가 기록을 추가하면 이곳에서 성과를 바로 확인할 수 있어요.
+          참가 기록을 추가하면 성과 표시
         </p>
       </div>
     );
@@ -622,7 +629,7 @@ function DashboardPreview({
 
         <ChartPanel title="행사별 매출 추이">
           {stats.eventRevenueTrend.length === 0 ? (
-            <ChartEmpty text="매출을 입력한 참가 기록이 아직 없어요." />
+            <ChartEmpty text="매출 기록 없음" />
           ) : (
             <InteractiveLineChart
               color="#F2542D"
@@ -647,7 +654,7 @@ function DashboardPreview({
 
         <ChartPanel title="품목별 매출 비교">
           {stats.popularProducts.length === 0 ? (
-            <ChartEmpty text="상품별 판매 실적이 아직 없어요." />
+            <ChartEmpty text="상품별 판매 실적 없음" />
           ) : (
             <ProductRevenueAreaChart
               height={200}

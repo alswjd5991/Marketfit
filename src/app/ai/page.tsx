@@ -17,12 +17,14 @@ export default async function AiPage(props: PageProps<"/ai">) {
   const user = await getCurrentUser();
   if (!user) {
     return (
+      <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
       <div className="mx-auto max-w-md px-4 py-20 text-center font-[350]">
         <h1 className="text-xl font-normal tracking-[-0.025em] text-neutral-900">AI 도우미</h1>
         <p className="mt-3 text-sm text-neutral-500">로그인 후 이용할 수 있어요.</p>
         <Button asChild className="mt-6">
           <Link href="/login">로그인하러 가기</Link>
         </Button>
+      </div>
       </div>
     );
   }
@@ -40,11 +42,11 @@ export default async function AiPage(props: PageProps<"/ai">) {
   const banners = (
     <>
       {!geminiReady && (
-        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <p className="rounded-2xl bg-[#FFEEDD] px-4 py-3 text-sm text-[#B4530A]">
           AI 연결을 준비하고 있어요. 답변을 받을 수 없다면 관리자에게 문의해 주세요.
         </p>
       )}
-      {notice && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{notice}</p>}
+      {notice && <p className="rounded-2xl bg-[#FFE4DE] px-4 py-3 text-sm text-[#BE3A2A]">{notice}</p>}
     </>
   );
 
@@ -203,7 +205,7 @@ function ConversationGroup({ label, items, activeId }: { label: string; items: C
                 <input type="hidden" name="conversation_id" value={c.id} />
                 <button
                   type="submit"
-                  className="flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-[13px] text-red-600 transition-colors duration-200 hover:bg-red-50"
+                  className="flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-[13px] text-[#BE3A2A] transition-colors duration-200 hover:bg-[#FFE4DE]"
                 >
                   <Trash2 className="size-3.5" />삭제
                 </button>

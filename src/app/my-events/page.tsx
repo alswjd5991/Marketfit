@@ -11,6 +11,7 @@ export default async function MyEventsPage() {
 
   if (!user) {
     return (
+      <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
       <div className="mx-auto max-w-md px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-neutral-950">내 행사</h1>
         <p className="mt-3 text-sm text-neutral-500">
@@ -19,6 +20,7 @@ export default async function MyEventsPage() {
         <Button asChild className="mt-6">
           <Link href="/login">로그인하러 가기</Link>
         </Button>
+      </div>
       </div>
     );
   }
@@ -49,7 +51,7 @@ export default async function MyEventsPage() {
               href="/events"
               className="mt-3 inline-block text-sm font-medium text-brand transition-colors hover:text-brand-dark"
             >
-              행사 찾아보기 →
+              행사 찾아보기
             </Link>
           </div>
         ) : (
@@ -109,7 +111,7 @@ export default async function MyEventsPage() {
                         className="bg-brand-light px-4 text-brand-dark shadow-none hover:bg-[#CDEAF6] hover:shadow-none"
                       >
                         <Link href={`/my-events/${p.participationId}`}>
-                          관리하기 →
+                          관리하기
                         </Link>
                       </Button>
                     </div>
@@ -130,7 +132,7 @@ export default async function MyEventsPage() {
               href="/events"
               className="mt-2 inline-block text-sm font-medium text-brand transition-colors hover:text-brand-dark"
             >
-              행사 찾아보기 →
+              행사 찾아보기
             </Link>
           </div>
         )}

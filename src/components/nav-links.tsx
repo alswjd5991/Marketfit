@@ -22,45 +22,31 @@ export function NavLinks() {
     width: 0,
   });
 
+  const activeIndex = NAV_ITEMS.findIndex((item) =>
+    pathname.startsWith(item.href)
+  );
+
   useLayoutEffect(() => {
-    const activeIndex = NAV_ITEMS.findIndex((item) =>
-      pathname.startsWith(item.href)
-    );
+    // 메인 페이지처럼 활성 메뉴가 없으면 잴 필요가 없다(밑줄은 아래에서 숨긴다)
+    const activeLink = activeIndex === -1 ? null : linkRefs.current[activeIndex];
+    if (!activeLink) return;
 
-    // 메인 페이지처럼 활성 메뉴가 없으면 밑줄 숨기기
-    if (activeIndex === -1) {
-      setIndicator({
-        x: 0,
-        width: 0,
-      });
-      return;
-    }
-
-    const activeLink = linkRefs.current[activeIndex];
-
-    if (!activeLink) {
-      setIndicator({
-        x: 0,
-        width: 0,
-      });
-      return;
-    }
-
-    const updateIndicator = () => {
+    // 위치·폭은 ResizeObserver 알림 안에서 잰다 — 처음 관찰을 시작할 때 한 번,
+    // 이후 메뉴 영역 크기가 바뀔 때마다(창 크기 변경 포함) 다시 알려준다.
+    const observer = new ResizeObserver(() => {
       setIndicator({
         x: activeLink.offsetLeft,
         width: activeLink.offsetWidth,
       });
-    };
+    });
 
-    updateIndicator();
+    observer.observe(activeLink);
+    if (activeLink.parentElement) observer.observe(activeLink.parentElement);
 
-    window.addEventListener("resize", updateIndicator);
+    return () => observer.disconnect();
+  }, [activeIndex]);
 
-    return () => {
-      window.removeEventListener("resize", updateIndicator);
-    };
-  }, [pathname]);
+  const indicatorWidth = activeIndex === -1 ? 0 : indicator.width;
 
   return (
     <div className="relative flex items-center gap-9">
@@ -97,9 +83,9 @@ export function NavLinks() {
           ease-[cubic-bezier(0.22,1,0.36,1)]
         "
         style={{
-          width: `${indicator.width}px`,
+          width: `${indicatorWidth}px`,
           transform: `translateX(${indicator.x}px)`,
-          opacity: indicator.width > 0 ? 1 : 0,
+          opacity: indicatorWidth > 0 ? 1 : 0,
         }}
       />
     </div>

@@ -28,6 +28,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
   const participationStatus = await getMyParticipationStatus(event.sourceDataset, event.id);
 
   return (
+    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
     <div className="mx-auto max-w-3xl px-4 py-8">
       <Link href="/events" className="text-sm text-neutral-500 hover:text-neutral-900">
         ← 행사 찾기로 돌아가기
@@ -114,16 +115,17 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
       </Card>
 
       {notice && (
-        <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{notice}</p>
+        <p className="mt-4 rounded-lg bg-[#E0EFE8] px-3 py-2 text-sm text-[#2F5F4B]">{notice}</p>
       )}
       {error && (
-        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="mt-4 rounded-lg bg-[#FFE4DE] px-3 py-2 text-sm text-[#BE3A2A]">{error}</p>
       )}
 
       <p className="mt-6 text-xs text-neutral-400">
         이 정보는 공개된 모집공고를 1차 코딩한 실제 자료입니다. 발표·의사결정
         전에는 원문 대조를 권장합니다.
       </p>
+    </div>
     </div>
   );
 }

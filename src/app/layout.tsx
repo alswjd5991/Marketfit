@@ -23,9 +23,9 @@ const rubik = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Marketfit — 소상공인을 위한 마켓 인사이트 플랫폼",
+  title: "Marketfit — 셀러를 위한 행사 지도",
   description:
-    "전국 행사 정보를 한눈에 확인하고, 데이터를 바탕으로 우리 가게에 맞는 마켓을 찾는 소상공인 마켓 인사이트 플랫폼.",
+    "전국 셀러 모집 공고와 내 판매 기록으로 다음에 나갈 마켓을 고르는 행사 지도.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

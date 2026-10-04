@@ -4,7 +4,49 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser, getMyProducts, getMyStore } from "@/features/store/data";
 import { addProduct, createStore, deleteProduct, updateStore } from "@/features/store/actions";
 import { STORE_CATEGORIES, PAYMENT_METHODS } from "@/features/store/constants";
-import type { Store } from "@/types/database";
+import { seededUnit } from "@/features/events/poster-theme";
+
+// 상품 가격표 그림의 색 조합(바탕, 잉크) — 사이트 팔레트(민트·레몬·자몽·시안·햇살)
+const TAG_PALETTES = [
+  { bg: "#E0EFE8", ink: "#3F7A64" },
+  { bg: "#FFF6BF", ink: "#A88B00" },
+  { bg: "#FFE4DE", ink: "#BE3A2A" },
+  { bg: "#E3F3FA", ink: "#0A78AE" },
+  { bg: "#FFEEDD", ink: "#B4530A" },
+];
+
+/**
+ * 상품 사진 대신 쓰는 손그림 느낌의 가격표. 끈 달린 크림색 태그를 상품마다 다른 색·각도로
+ * 놓아서, 모든 상품이 같은 그림으로 보이지 않게 한다(글자는 넣지 않는다).
+ */
+function ProductTagArt({ seed }: { seed: string }) {
+  const rand = (key: string) => seededUnit(`${seed}:${key}`);
+  const palette = TAG_PALETTES[Math.floor(rand("color") * TAG_PALETTES.length)];
+  const tilt = (rand("tilt") - 0.5) * 28; // -14° ~ 14°
+  const flip = rand("flip") > 0.5;
+
+  return (
+    <div className="aspect-[4/3] overflow-hidden" style={{ backgroundColor: palette.bg }}>
+      <svg viewBox="0 0 160 120" width="100%" height="100%" role="img" aria-label="상품 그림" className="block">
+        <g transform={`translate(84 62) rotate(${tilt}) scale(${flip ? -1 : 1} 1) translate(-48 -28)`}>
+          {/* 그림자 */}
+          <path d="M0 28 L18 0 H90 a6 6 0 0 1 6 6 V50 a6 6 0 0 1 -6 6 H18 Z" transform="translate(3 4)" fill={palette.ink} opacity={0.15} />
+          {/* 태그 본체 */}
+          <path d="M0 28 L18 0 H90 a6 6 0 0 1 6 6 V50 a6 6 0 0 1 -6 6 H18 Z" fill="#FFFDF8" />
+          {/* 구멍 + 끈 */}
+          <circle cx={20} cy={28} r={4.5} fill={palette.bg} stroke={palette.ink} strokeWidth={1.2} />
+          <path d="M20 28 C 4 12, -14 40, -34 18" fill="none" stroke={palette.ink} strokeWidth={1.6} strokeLinecap="round" />
+          {/* 인쇄된 줄 */}
+          <rect x={36} y={17} width={44} height={4} rx={2} fill={palette.ink} opacity={0.6} />
+          <rect x={36} y={27} width={30 + rand("l1") * 14} height={2.5} rx={1.25} fill={palette.ink} opacity={0.3} />
+          <rect x={36} y={35} width={18 + rand("l2") * 16} height={2.5} rx={1.25} fill={palette.ink} opacity={0.3} />
+          {/* 테두리 점선 */}
+          <path d="M6 28 L21 5 H88 a3 3 0 0 1 3 3 V48 a3 3 0 0 1 -3 3 H21 Z" fill="none" stroke={palette.ink} strokeWidth={0.8} strokeDasharray="2 3" opacity={0.45} />
+        </g>
+      </svg>
+    </div>
+  );
+}
 
 export default async function StorePage(props: PageProps<"/store">) {
   const sp = await props.searchParams;
@@ -14,6 +56,7 @@ export default async function StorePage(props: PageProps<"/store">) {
 
   if (!user) {
     return (
+      <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
       <div className="mx-auto max-w-md px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-neutral-950">내 가게</h1>
         <p className="mt-3 text-sm text-neutral-500">
@@ -22,6 +65,7 @@ export default async function StorePage(props: PageProps<"/store">) {
         <Button asChild className="mt-6">
           <Link href="/login">로그인하러 가기</Link>
         </Button>
+      </div>
       </div>
     );
   }
@@ -38,7 +82,7 @@ export default async function StorePage(props: PageProps<"/store">) {
           </div>
 
           {error && (
-            <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="mt-4 rounded-lg bg-[#FFE4DE] px-3 py-2 text-sm text-[#BE3A2A]">
               {error}
             </p>
           )}
@@ -83,41 +127,6 @@ function CreateStoreForm() {
           <ImageField name="logo" label="대표 사진/로고 (선택)" />
           <Button type="submit" className="mt-2">
             등록하기
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  );
-}
-
-function StoreCard({ store }: { store: Store }) {
-  return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle>가게 정보</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={updateStore} encType="multipart/form-data" className="flex flex-col gap-3">
-          <input type="hidden" name="store_id" value={store.id} />
-          <Field name="name" label="가게 이름 *" required defaultValue={store.name} />
-          <CategorySelect defaultValue={store.category} />
-          <Field name="nickname" label="닉네임" defaultValue={store.nickname ?? ""} />
-          <Field name="flagship_product" label="대표 상품" defaultValue={store.flagship_product ?? ""} />
-          <Field name="active_region" label="주요 활동 지역" defaultValue={store.active_region ?? ""} />
-          <Field name="contact" label="연락처" defaultValue={store.contact ?? ""} />
-          <Field name="email" label="이메일" type="email" defaultValue={store.email ?? ""} />
-          <Field
-            name="business_registration_number"
-            label="사업자등록번호"
-            defaultValue={store.business_registration_number ?? ""}
-            placeholder="없으면 비워두기"
-          />
-          <Field name="sns_url" label="SNS/인스타그램 링크" defaultValue={store.sns_url ?? ""} />
-          <PaymentMethodsField defaultValue={store.payment_methods ?? []} />
-          <HygieneCertifiedField defaultValue={store.hygiene_certified} />
-          <ImageField name="logo" label="대표 사진/로고" currentUrl={store.logo_url} />
-          <Button type="submit" variant="secondary" className="mt-2">
-            정보 저장
           </Button>
         </form>
       </CardContent>
@@ -277,7 +286,7 @@ function ProductsSection({
                     type="submit"
                     variant="ghost"
                     size="sm"
-                    className="text-neutral-400 hover:text-red-500"
+                    className="text-neutral-400 hover:text-[#BE3A2A]"
                   >
                     삭제
                   </Button>
@@ -533,10 +542,8 @@ function StoreProfile({
                   key={product.id}
                   className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  {/* 상품 이미지 임시 */}
-                  <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(135deg,#F3F9FF,#E5F3FF)]">
-                    <span className="text-3xl">🛍️</span>
-                  </div>
+                  {/* 상품 사진이 없어서 가격표 그림으로 대신한다 */}
+                  <ProductTagArt seed={product.id} />
 
                   <div className="p-4">
                     {product.category && (
