@@ -31,7 +31,7 @@ export default async function EventsPage(props: PageProps<"/events">) {
 
       {events.length === 0 ? (
         <p className="py-16 text-center text-sm text-neutral-400">
-          조건에 맞는 행사가 없습니다. 필터를 조정해 보세요.
+          조건에 맞는 행사가 없어요.
         </p>
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">

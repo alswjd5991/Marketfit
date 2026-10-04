@@ -57,16 +57,11 @@ export function EventCard({ event }: { event: EventListItem }) {
             {event.name}
           </h3>
 
-          {/* 지역 */}
-          <p className="text-sm text-[#657687]">
-            {[event.region, event.venue].filter(Boolean).join(" · ") ||
-              "지역 미기재"}
-          </p>
-
-          {/* 기간 */}
-          <p className="mt-auto text-xs text-[#9AA8B5]">
-            {formatRange(event.startDate, event.endDate) ?? "행사 기간 미기재"}
-          </p>
+          {/* 지역 · 기간 (없는 값은 숨김) */}
+          {[event.region, event.venue].some(Boolean) && (
+            <p className="text-sm text-[#657687]">{[event.region, event.venue].filter(Boolean).join(" · ")}</p>
+          )}
+          {event.startDate && <p className="mt-auto text-xs text-[#9AA8B5]">{formatRange(event.startDate, event.endDate)}</p>}
 
         </CardContent>
       </Card>

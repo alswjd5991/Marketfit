@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { CenteredNotice, PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/features/store/data";
@@ -34,13 +34,14 @@ export default async function MyEventsPage() {
               href="/events"
               className="mt-3 inline-block text-sm font-medium text-brand transition-colors hover:text-brand-dark"
             >
-              행사 찾아보기 →
+              행사 찾기
             </Link>
           </div>
         ) : (
           <ul className="flex flex-col gap-3">
             {participations.map((p) => (
               <li key={p.participationId}>
+                <Link href={`/my-events/${p.participationId}`} className="block">
                 <Card className="group overflow-hidden border-white/70 bg-white/90 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
                   <CardContent className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
 
@@ -70,56 +71,19 @@ export default async function MyEventsPage() {
                       </p>
 
                       <p className="mt-1 text-sm text-neutral-500">
-                        {[p.region, p.venue].filter(Boolean).join(" · ") ||
-                          "지역 미기재"}
-
-                        {p.startDate &&
-                          ` · ${formatRange(p.startDate, p.endDate)}`}
+                        {[p.region, p.venue, p.startDate && formatRange(p.startDate, p.endDate)].filter(Boolean).join(" · ")}
                       </p>
                     </div>
 
-                    {/* 버튼 */}
-                    <div className="flex shrink-0 items-center gap-2 sm:ml-6">
-                      {p.detailSeedId && (
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="bg-white"
-                        >
-                          <Link href={`/events/${p.detailSeedId}`}>
-                            행사 보기
-                          </Link>
-                        </Button>
-                      )}
-
-                      <Button asChild size="sm" className="px-4">
-                        <Link href={`/my-events/${p.participationId}`}>
-                          관리하기 →
-                        </Link>
-                      </Button>
-                    </div>
+                    <ChevronRight className="hidden size-5 shrink-0 text-neutral-300 transition-colors group-hover:text-brand sm:block" />
                   </CardContent>
                 </Card>
+                </Link>
               </li>
             ))}
           </ul>
         )}
 
-        {participations.length > 0 && (
-          <div className="mt-8 text-center">
-            <p className="text-sm text-neutral-400">
-              다른 마켓도 둘러보시겠어요?
-            </p>
-
-            <Link
-              href="/events"
-              className="mt-2 inline-block text-sm font-medium text-brand transition-colors hover:text-brand-dark"
-            >
-              행사 찾아보기 →
-            </Link>
-          </div>
-        )}
       </div>
     </div>
   );

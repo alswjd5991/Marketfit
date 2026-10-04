@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { getEvents } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
 import { Button } from "@/components/ui/button";
@@ -152,7 +153,7 @@ const dashboardStats = isLoggedIn
                   <p className="mt-1 text-sm text-[#728090]">
                     {[featuredEvent.region, featuredEvent.venue]
                       .filter(Boolean)
-                      .join(" · ") || "지역 미기재"}
+                      .join(" · ")}
                   </p>
 
                   {featuredEvent.category && (
@@ -377,8 +378,7 @@ const dashboardStats = isLoggedIn
                   <EmptyState
                     label="MY EVENTS"
                     title="참가할 행사를 한곳에서 관리하세요"
-                    description="로그인하면 저장하거나 참가 예정으로 등록한 행사를 빠르게 확인할 수 있어요."
-                    buttonText="로그인하고 확인하기"
+                    buttonText="로그인"
                     href="/login"
                     accent="blue"
                   />
@@ -400,9 +400,8 @@ const dashboardStats = isLoggedIn
                 ) : (
                   <EmptyState
                     label="PERFORMANCE"
-                    title="참가 결과를 기록해보세요"
-                    description="로그인하면 행사 참가 후 매출과 순이익을 기록하고 성과를 확인할 수 있어요."
-                    buttonText="로그인하고 확인하기"
+                    title="참가 결과를 기록하세요"
+                    buttonText="로그인"
                     href="/login"
                     accent="green"
                   />
@@ -440,9 +439,10 @@ function HomeSection({
 
         <Link
           href={href}
-          className="text-sm text-neutral-500 transition-colors hover:text-brand"
+          className="flex items-center gap-0.5 text-sm text-neutral-500 transition-colors hover:text-brand"
         >
-          더보기 →
+          더보기
+          <ChevronRight className="size-4" />
         </Link>
 
       </div>
@@ -459,14 +459,12 @@ function HomeSection({
 function EmptyState({
   label,
   title,
-  description,
   buttonText,
   href,
   accent,
 }: {
   label: string;
   title: string;
-  description: string;
   buttonText: string;
   href: string;
   accent: "blue" | "green";
@@ -505,10 +503,6 @@ function EmptyState({
             <h3 className="mt-2 text-lg font-bold text-[#15202B]">
               {title}
             </h3>
-
-            <p className="mt-2 max-w-xl text-sm leading-6 text-[#728090]">
-              {description}
-            </p>
           </div>
 
         </div>
@@ -522,7 +516,7 @@ function EmptyState({
               : "shrink-0 rounded-xl bg-[#279566] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#23825A] hover:shadow-md"
           }
         >
-          {buttonText} →
+          {buttonText}
         </Link>
 
       </div>
@@ -552,7 +546,7 @@ function MyEventsPreview({
           href="/events"
           className="mt-3 inline-block text-sm font-semibold text-brand hover:underline"
         >
-          참가할 행사 찾아보기 →
+          행사 찾기
         </Link>
       </div>
     );
@@ -588,8 +582,7 @@ function MyEventsPreview({
           </h3>
 
           <p className="mt-2 text-sm text-[#728090]">
-            {[p.region, p.venue].filter(Boolean).join(" · ") ||
-              "지역 미기재"}
+            {[p.region, p.venue].filter(Boolean).join(" · ")}
           </p>
 
           {p.startDate && (
@@ -613,14 +606,14 @@ function DashboardPreview({
     return (
       <div className="col-span-full rounded-[24px] border border-[#E3EDF5] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
         <p className="text-sm font-medium text-[#607080]">
-          가게를 등록하면 참가 성과를 확인할 수 있어요.
+          아직 가게가 없어요.
         </p>
 
         <Link
           href="/store"
           className="mt-3 inline-block text-sm font-semibold text-[#279566] hover:underline"
         >
-          가게 등록하기 →
+          가게 등록
         </Link>
       </div>
     );
@@ -633,9 +626,6 @@ function DashboardPreview({
           아직 참가 기록이 없어요.
         </p>
 
-        <p className="mt-1 text-xs text-[#9AA7B4]">
-          참가 기록을 추가하면 이곳에서 성과를 바로 확인할 수 있어요.
-        </p>
       </div>
     );
   }

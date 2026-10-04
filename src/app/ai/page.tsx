@@ -36,7 +36,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
     <>
       {!geminiReady && (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          AI 연결을 준비하고 있어요. 답변을 받을 수 없다면 관리자에게 문의해 주세요.
+          지금은 AI 답변을 받을 수 없어요.
         </p>
       )}
       {notice && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{notice}</p>}
@@ -80,7 +80,6 @@ export default async function AiPage(props: PageProps<"/ai">) {
               <BotIcon className="size-20 text-brand" />
               <div>
                 <h1 className="text-3xl font-normal leading-[1.21] text-neutral-950 sm:text-4xl">어떤 도움이 필요하세요?</h1>
-                <p className="mt-3 text-sm text-neutral-400">가게 기록부터 다음 행사까지, 함께 살펴봐요.</p>
               </div>
               <div className="flex w-full flex-col gap-2 text-left">{banners}</div>
               <form action={sendMessage} className="flex w-full flex-col gap-6">

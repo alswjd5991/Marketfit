@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CenteredNotice } from "@/components/page-header";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -44,8 +45,12 @@ export default async function ParticipationDetailPage(
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <Link href="/my-events" className="text-sm text-neutral-500 hover:text-neutral-900">
-        ← 내 행사로 돌아가기
+      <Link
+        href="/my-events"
+        aria-label="내 행사"
+        className="inline-flex size-10 items-center justify-center rounded-full bg-white text-neutral-800 shadow-sm ring-1 ring-neutral-200 transition hover:bg-neutral-50"
+      >
+        <ChevronLeft className="size-6" strokeWidth={2.25} />
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -53,18 +58,22 @@ export default async function ParticipationDetailPage(
       </div>
       <h1 className="mt-2 text-2xl font-bold text-neutral-950">{detail.eventName}</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        {[detail.region, detail.venue].filter(Boolean).join(" · ") || "지역 미기재"}
-        {detail.startDate &&
-          ` · ${detail.startDate}${
-            detail.endDate && detail.endDate !== detail.startDate ? ` ~ ${detail.endDate}` : ""
-          }`}
+        {[
+          detail.region,
+          detail.venue,
+          detail.startDate &&
+            `${detail.startDate}${detail.endDate && detail.endDate !== detail.startDate ? ` ~ ${detail.endDate}` : ""}`,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       </p>
       {detail.detailSeedId && (
         <Link
           href={`/events/${detail.detailSeedId}`}
-          className="mt-1 inline-block text-sm underline underline-offset-2"
+          className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand hover:text-brand-dark"
         >
-          원본 행사 정보 보기
+          행사 정보
+          <ChevronRight className="size-4" />
         </Link>
       )}
 
@@ -246,7 +255,7 @@ export default async function ParticipationDetailPage(
             </div>
             {p.net_profit != null && (
               <p className="text-sm text-neutral-600">
-                순이익(자동 계산): <span className="font-semibold">{p.net_profit.toLocaleString()}원</span>
+                순이익 <span className="font-semibold">{p.net_profit.toLocaleString()}원</span>
               </p>
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
