@@ -26,10 +26,13 @@
   --color-brand-dark: var(--brand-dark);
   --color-brand-light: var(--brand-light);
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI",
-    "Pretendard Variable", Pretendard, Roboto, "Noto Sans KR", sans-serif;
+  --font-sans: var(--font-suit), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Noto Sans KR", sans-serif;
 
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* AI 도우미 화면 등장 모션 — 살짝 떠오르며 나타난다. */
+  --animate-fade-up: fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 body {
@@ -39,6 +42,13 @@ body {
 
 /* 행사 포스터(EventPoster)의 블롭 도형용 아주 느린 흔들림 애니메이션.
    컴포넌트마다 --poster-rot-a/--poster-rot-b로 회전 각도만 바꿔 쓴다. */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
 
 @keyframes poster-blob-float {
   from {

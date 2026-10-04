@@ -24,7 +24,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
     eventEndDate: event.endDate,
   });
   const closed = status === "closed";
-  const dday = !closed ? formatDday(event.recruitEnd) : null;
+  const dday = !closed ? formatDday(event.recruitEnd, event.endDate) : null;
   const participationStatus = await getMyParticipationStatus(event.sourceDataset, event.id);
 
   return (

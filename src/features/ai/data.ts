@@ -79,6 +79,47 @@ export async function getConversationDetail(conversationId: string): Promise<Con
   }
 }
 
+/** "참가 준비" 버튼: 참가 예정 행사별 준비 체크리스트와 상품 준비 수량을 그대로 정리한다(AI 호출 없음). */
+export async function buildPrepSummary(): Promise<string> {
+  const store = await getMyStore();
+  if (!store) return "아직 가게가 등록되어 있지 않아요. **내 가게**에서 가게를 먼저 등록해 주세요.";
+
+  const supabase = await createClient();
+  const { data: rows, error } = await supabase
+    .from("event_participations")
+    .select("id, event_id")
+    .eq("store_id", store.id)
+    .eq("status", "planning_to_attend");
+  if (error) throw error;
+  if (!rows?.length) return "참가 예정으로 등록된 행사가 없어요. **내 행사**에서 상태를 \"참가 예정\"으로 바꾸면 준비 사항을 정리해 드릴게요.";
+
+  const ids = rows.map((r) => r.id);
+  const [events, checklist, sales] = await Promise.all([
+    supabase.from("events").select("id, name, venue, start_date, end_date").in("id", rows.map((r) => r.event_id)),
+    supabase.from("event_checklists").select("participation_id, label, checked, sort_order").in("participation_id", ids).order("sort_order", { ascending: true }),
+    supabase.from("event_product_sales").select("participation_id, product_name, prepared").in("participation_id", ids),
+  ]);
+  if (events.error || checklist.error || sales.error) throw events.error ?? checklist.error ?? sales.error;
+  const eventById = new Map((events.data ?? []).map((e) => [e.id, e]));
+
+  const sections = rows
+    .map((r) => ({ r, e: eventById.get(r.event_id) }))
+    .sort((a, b) => (a.e?.start_date ?? "9999").localeCompare(b.e?.start_date ?? "9999"))
+    .map(({ r, e }) => {
+      const date = e?.start_date ? `${e.start_date}${e.end_date && e.end_date !== e.start_date ? `~${e.end_date}` : ""}` : "날짜 미정";
+      const items = (checklist.data ?? []).filter((c) => c.participation_id === r.id);
+      const products = (sales.data ?? []).filter((s) => s.participation_id === r.id && s.prepared > 0);
+      const lines = [`### ${e?.name ?? "(알 수 없는 행사)"}`, `${date}${e?.venue ? ` · ${e.venue}` : ""}`];
+      lines.push(items.length
+        ? `**준비 체크리스트** (${items.filter((c) => c.checked).length}/${items.length} 완료)\n${items.map((c) => `- ${c.checked ? "✅" : "⬜"} ${c.label}`).join("\n")}`
+        : "**준비 체크리스트**\n- 아직 등록한 항목이 없어요.");
+      if (products.length) lines.push(`**준비할 상품**\n${products.map((p) => `- ${p.product_name}: ${p.prepared}개`).join("\n")}`);
+      return lines.join("\n\n");
+    });
+
+  return `**참가 예정 행사 ${rows.length}건의 준비 사항**\n\n${sections.join("\n\n")}\n\n항목은 **내 행사**의 각 행사 화면에서 체크하거나 추가할 수 있어요.`;
+}
+
 const CONTEXT_PARTICIPATION_LIMIT = 30;
 const CONTEXT_PRODUCT_LIMIT = 15;
 

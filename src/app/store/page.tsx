@@ -292,6 +292,7 @@ function ProductsSection({
         {/* 상품 추가 */}
         <form
           action={addProduct}
+          noValidate
           className="mt-5 flex flex-col gap-3 border-t border-neutral-100 pt-5"
         >
           <input
@@ -313,14 +314,20 @@ function ProductsSection({
           <div className="grid grid-cols-2 gap-3">
             <Field
               name="price"
-              label="판매가 (원)"
+              label="판매가 (원) *"
+              required
               type="number"
+              step={100}
+              min={0}
             />
 
             <Field
               name="cost"
-              label="원가 (원)"
+              label="원가 (원) *"
+              required
               type="number"
+              step={100}
+              min={0}
             />
           </div>
 
@@ -355,6 +362,8 @@ function Field({
   required,
   defaultValue,
   placeholder,
+  step,
+  min,
 }: {
   name: string;
   label: string;
@@ -362,6 +371,8 @@ function Field({
   required?: boolean;
   defaultValue?: string;
   placeholder?: string;
+  step?: number;
+  min?: number;
 }) {
   return (
     <label className="flex flex-col gap-1 text-sm">
@@ -372,6 +383,8 @@ function Field({
         required={required}
         defaultValue={defaultValue}
         placeholder={placeholder}
+        step={step}
+        min={min}
         className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
       />
     </label>
