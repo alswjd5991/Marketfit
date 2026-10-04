@@ -1,5 +1,5 @@
 // 실제 공개 자료 기반 시드 데이터 — chuljeom-app(출점전) 원본 42건에 이후
-// 추가 수집한 전국구 행사를 더해 총 71건(S01~S37, A03~A54 중 결번 포함).
+// 추가 수집한 전국구 행사를 더해 총 73건(S01~S37, A03~A54 중 결번 포함).
 // 원본 출처: 삼육대·이화여대 등 대학 창업지원단, 지자체·문화재단 공식 공고 등
 // (각 레코드의 sourceUrl 참고). 원문에서 확인 불가능한 항목이나 다른 레코드와
 // 완전히 중복되는 항목은 싣지 않는다. 자세한 수집 방법은 개발 계획 문서 6번
@@ -569,8 +569,8 @@ export const seedEvents: SeedEvent[] = [
     "capacityTeams": 141,
     "feeKrw": null,
     "readable": true,
-    "sourceType": "언론기사",
-    "sourceUrl": "https://edaily.co.kr/News/Read?mediaCodeNo=257&newsId=01672806639023072",
+    "sourceType": "원공고",
+    "sourceUrl": "https://culture.seoul.go.kr/culture/bbs/B0000000/view.do?nttId=13289&menuNo=200050",
     "eligibility": null,
     "items": "성탄·새해 수공예품, 공산품, 먹거리",
     "equipment": null,
@@ -944,8 +944,8 @@ export const seedEvents: SeedEvent[] = [
     "organizer": "인천청년포털(청년공간)",
     "orgType": "지자체",
     "region": "인천",
-    "gu": "중구",
-    "venue": "인천 중구 청년내일기지",
+    "gu": "영종구",
+    "venue": "인천 영종구 청년내일기지",
     "outdoor": null,
     "category": null,
     "startDate": "2024-05-28",
@@ -2318,6 +2318,70 @@ export const seedEvents: SeedEvent[] = [
     "items": "통영 수산물·수산식품",
     "equipment": "기본 부스, 전기·수도료, 전시기기 무상 제공(기사 기준)",
     "selection": null,
+    "outcomes": null,
+    "ageDisclosed": null
+  },
+  {
+    "sourceDataset": "pilot",
+    "id": "A60",
+    "name": "2024 안양춤축제 \"춤\"플리마켓",
+    "series": "안양춤축제",
+    "edition": "2024",
+    "organizer": "안양문화예술재단",
+    "orgType": "문화재단",
+    "region": "경기",
+    "gu": "안양시",
+    "venue": "평촌중앙공원 차 없는 거리",
+    "outdoor": true,
+    "category": "플리마켓",
+    "startDate": "2024-09-28",
+    "endDate": "2024-09-29",
+    "hours": [
+      "11:00",
+      "18:00"
+    ],
+    "recruitEnd": "2024-07-19",
+    "capacityTeams": 30,
+    "feeKrw": 0,
+    "readable": true,
+    "sourceType": "원공고",
+    "sourceUrl": "https://ayac.or.kr/base/board/read?boardManagementNo=1&boardNo=5006&menuLevel=2&menuNo=19",
+    "eligibility": "\"춤\"플리마켓 운영 가능한 기관 및 단체(안양시 및 인근 지역 단체 우대)",
+    "items": null,
+    "equipment": null,
+    "selection": "축제추진위원회 심사 후 선정(결과 8월 중 공지)",
+    "outcomes": null,
+    "ageDisclosed": null
+  },
+  {
+    "sourceDataset": "pilot",
+    "id": "A61",
+    "name": "2024년 청년의날 기념행사 플리마켓 셀러",
+    "series": null,
+    "edition": "2024",
+    "organizer": "유유기지 제물포구(구 동구청년21, 인천광역시 청년공간)",
+    "orgType": "지자체",
+    "region": "인천",
+    "gu": "제물포구",
+    "venue": "유유기지 제물포구(구 동구청년21) 4층 작은공연장",
+    "outdoor": false,
+    "category": "플리마켓",
+    "startDate": "2024-09-21",
+    "endDate": "2024-09-21",
+    "hours": [
+      "13:00",
+      "21:00"
+    ],
+    "recruitEnd": "2024-09-10",
+    "capacityTeams": 6,
+    "feeKrw": 0,
+    "readable": true,
+    "sourceType": "원공고",
+    "sourceUrl": "https://youth.incheon.go.kr/program/programInfoDetail.do?prgm_seq=997&cate2=communication&prgmdiv=donggu&pgno=4",
+    "eligibility": "16세~39세 청소년·청년(청년 기업 우선)",
+    "items": null,
+    "equipment": null,
+    "selection": "선착순(구글폼 신청)",
     "outcomes": null,
     "ageDisclosed": null
   }
