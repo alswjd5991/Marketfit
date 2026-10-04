@@ -265,18 +265,6 @@ export default async function ParticipationDetailPage(
                   ))}
                 </select>
               </label>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="text-neutral-600">다음에도 참가하고 싶나요?</span>
-                <select
-                  name="would_reattend"
-                  defaultValue={p.would_reattend == null ? "" : String(p.would_reattend)}
-                  className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">선택 안 함</option>
-                  <option value="true">예</option>
-                  <option value="false">아니오</option>
-                </select>
-              </label>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Field name="weather" label="날씨" defaultValue={p.weather ?? ""} placeholder="예: 맑음" />

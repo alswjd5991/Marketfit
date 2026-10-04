@@ -178,8 +178,6 @@ export async function updateParticipationResult(formData: FormData) {
   const netProfit =
     totalRevenue == null ? null : totalRevenue - fee - transportCost - parkingCost - lodgingCost - otherCost;
 
-  const wouldReattendRaw = formData.get("would_reattend");
-  const wouldReattend = wouldReattendRaw === "" || wouldReattendRaw === null ? null : wouldReattendRaw === "true";
 
   // 부스 사진은 새로 고른 파일이 있을 때만 업로드하고, payload에도 그때만
   // logo_url 키를 넣는다(store/actions.ts의 updateStore와 같은 이유 —
@@ -206,7 +204,6 @@ export async function updateParticipationResult(formData: FormData) {
       weather: emptyToNull(formData.get("weather")),
       indoor_outdoor: emptyToNull(formData.get("indoor_outdoor")),
       perceived_crowd: emptyToNull(formData.get("perceived_crowd")),
-      would_reattend: wouldReattend,
       memo: emptyToNull(formData.get("memo")),
       // 2026-09-24 추가: 참가 후 기록되는 부스 정보(다른 마켓 신청서 조사 반영 — 0002 마이그레이션)
       booth_number: emptyToNull(formData.get("booth_number")),
