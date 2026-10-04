@@ -53,7 +53,7 @@ export function EventCard({ event }: { event: EventListItem }) {
           </div>
 
           {/* 행사명 */}
-          <h3 className="line-clamp-2 text-[16px] font-semibold leading-6 text-[#15202B] transition-colors group-hover:text-brand">
+          <h3 className="line-clamp-2 break-keep text-[19px] font-bold leading-7 tracking-[-0.02em] text-[#15202B] transition-colors group-hover:text-brand">
             {event.name}
           </h3>
 
