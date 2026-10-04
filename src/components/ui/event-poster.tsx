@@ -1,36 +1,32 @@
+import type { ReactNode } from "react";
+
 import { cn } from "@/lib/utils";
-import { getPosterTheme, seededUnit, type PosterIconKey } from "@/features/events/poster-theme";
+import {
+  getPosterTheme,
+  seededUnit,
+  type PosterIconKey,
+} from "@/features/events/poster-theme";
 
-// 카테고리별 "포스터" 배너. 실제 행사 사진이 없는 채로 생성한 그래픽
-// 아이콘/도형이며, 실제 포스터 사진을 흉내 내지 않는다(위 poster-theme.ts
-// 주석 참고). 서버 컴포넌트 — 순수 SVG라 JS 번들 비용 없이 렌더된다.
-//
-// 구성(레퍼런스 반영): 짙은 단색 배경 + 그 위에 얹은 굵은 유기적 블롭 한
-// 덩어리(Your Creative 스타일 도형감) + 블롭 중심에 크림색 모노라인
-// 아이콘 하나(Juliet Creative의 "짙은 배경 + 큰 아이콘 하나" 구도) + 반대
-// 코너의 은은한 점 텍스처. 블롭에는 아주 느린 회전 애니메이션을 줘서
-// 정적인 카드에 미세한 생동감(모션)을 더한다 — prefers-reduced-motion이면
-// globals.css에서 꺼진다.
+export const POSTER_CREAM = "#FFFDF8";
 
-export const POSTER_CREAM = "#fbf9f2";
-const CREAM = POSTER_CREAM;
-
-const ICON_PATHS: Record<PosterIconKey, React.ReactNode> = {
-  // 플리마켓 — 토트백
+const ICON_PATHS: Record<PosterIconKey, ReactNode> = {
+  // 플리마켓
   tote: (
     <>
       <path d="M7 9V7a5 5 0 0 1 10 0v2" />
       <path d="M5 9h14l-1.2 10.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 9Z" />
     </>
   ),
-  // 축제 판매부스 — 깃발
+
+  // 축제 판매부스
   flag: (
     <>
       <path d="M6 21V4" />
       <path d="M6 5c3-2 6 2 9 0v9c-3 2-6-2-9 0V5Z" />
     </>
   ),
-  // 시즌마켓 — 선물상자
+
+  // 시즌마켓
   gift: (
     <>
       <rect x="4" y="10" width="16" height="10" rx="1.5" />
@@ -40,9 +36,13 @@ const ICON_PATHS: Record<PosterIconKey, React.ReactNode> = {
       <path d="M12 10c1.8 0 4-1 4-3.2A2.3 2.3 0 0 0 13.7 4C12.2 4 12 6.5 12 10Z" />
     </>
   ),
-  // 야시장 — 초승달
-  moon: <path d="M17.5 13.5A7 7 0 0 1 10.5 6.5a7 7 0 1 0 7 7Z" />,
-  // 대학 마켓 — 학사모
+
+  // 야시장
+  moon: (
+    <path d="M17.5 13.5A7 7 0 0 1 10.5 6.5a7 7 0 1 0 7 7Z" />
+  ),
+
+  // 대학 마켓
   cap: (
     <>
       <path d="M12 5 2 9.5 12 14l10-4.5L12 5Z" />
@@ -50,7 +50,8 @@ const ICON_PATHS: Record<PosterIconKey, React.ReactNode> = {
       <path d="M21 9.5v5.5" />
     </>
   ),
-  // 아트마켓 — 팔레트
+
+  // 아트마켓
   palette: (
     <>
       <path d="M12 3a9 8 0 1 0 0 16c1.4 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-6-9-6Z" />
@@ -59,7 +60,8 @@ const ICON_PATHS: Record<PosterIconKey, React.ReactNode> = {
       <circle cx="14" cy="7" r="1" fill="currentColor" stroke="none" />
     </>
   ),
-  // 음식 — 그릇
+
+  // 음식
   bowl: (
     <>
       <path d="M4 11h16a8 6 0 0 1-16 0Z" />
@@ -68,14 +70,16 @@ const ICON_PATHS: Record<PosterIconKey, React.ReactNode> = {
       <path d="M16 17.5l1 2.5" />
     </>
   ),
-  // 농산물 — 잎
+
+  // 농산물 / 자원순환
   leaf: (
     <>
       <path d="M5 21c9-1 13-6 13-15C9 6 5 12 5 21Z" />
       <path d="M5 21c0-4 2.5-8 6-10" />
     </>
   ),
-  // 수공예 — 가위
+
+  // 수공예
   scissors: (
     <>
       <circle cx="6" cy="6" r="2.2" />
@@ -84,7 +88,8 @@ const ICON_PATHS: Record<PosterIconKey, React.ReactNode> = {
       <path d="M7.8 16.6 19 6" />
     </>
   ),
-  // 패션 — 옷걸이
+
+  // 패션
   hanger: (
     <>
       <path d="M12 4a2 2 0 1 1 2 2c-.4.3-.8.6-.8 1.1V8" />
@@ -92,7 +97,8 @@ const ICON_PATHS: Record<PosterIconKey, React.ReactNode> = {
       <path d="M6 19h12" />
     </>
   ),
-  // 액세서리 — 보석
+
+  // 액세서리
   gem: (
     <>
       <path d="M6 9 9 4h6l3 5-8 11L6 9Z" />
@@ -100,14 +106,22 @@ const ICON_PATHS: Record<PosterIconKey, React.ReactNode> = {
       <path d="M9 4l3 5 3-5" />
     </>
   ),
-  // 참고 — 태그
+
+  // 참고
   tag: (
     <>
       <path d="M3 11.5V5a2 2 0 0 1 2-2h6.5L20 11.5 12.5 19 3 11.5Z" />
-      <circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle
+        cx="7.5"
+        cy="7.5"
+        r="1.2"
+        fill="currentColor"
+        stroke="none"
+      />
     </>
   ),
-  // 기타/기본값 — 판매 부스
+
+  // 기타
   stall: (
     <>
       <path d="M4 9 6 4h12l2 5" />
@@ -118,14 +132,6 @@ const ICON_PATHS: Record<PosterIconKey, React.ReactNode> = {
   ),
 };
 
-// 유기적 블롭 하나(200x205 기준 좌표계). 모든 포스터가 같은 도형을 공유해서
-// "브랜드"로 읽히게 하고, 색·회전·위치만 카테고리/행사별로 바꾼다.
-const BLOB_PATH =
-  "M120,20 C160,10 190,50 185,90 C180,135 210,150 195,185 C180,215 130,210 95,200 C55,190 15,175 15,130 C15,85 45,50 75,35 C90,27 100,25 120,20 Z";
-const BLOB_H = 205;
-const BLOB_CENTER_X = 108;
-const BLOB_CENTER_Y = 110;
-
 export function EventPoster({
   category,
   seed,
@@ -134,36 +140,35 @@ export function EventPoster({
   className,
 }: {
   category?: string | null;
-  /** 블롭 회전/위치를 고정하는 시드(보통 행사 id) — 같은 행사는 항상 같은 모양. */
   seed: string;
   size?: "card" | "hero";
-  /** 코너에 스티커처럼 얹을 짧은 라벨(보통 카테고리명). 생략하면 표시 안 함. */
   badgeLabel?: string | null;
   className?: string;
 }) {
   const theme = getPosterTheme(category);
-  const r1 = seededUnit(seed);
 
   const viewW = size === "hero" ? 800 : 400;
   const viewH = size === "hero" ? 300 : 225;
 
-  // 블롭은 아이콘과 같은 기준점(캔버스 정중앙)에 고정한다 — 행사별로 오프셋을
-  // 주면 아이콘은 안 움직이고 블롭만 밀려서 카드마다 중심이 어긋나 보였다.
-  // 회전(rotA/rotB)만 행사별로 달리해도 카드 간 차이는 충분히 난다.
-  const blobScale = (viewH * 0.92) / BLOB_H;
-  const blobX = viewW / 2 - BLOB_CENTER_X * blobScale;
-  const blobY = viewH / 2 - BLOB_CENTER_Y * blobScale;
-  const rotBase = -10 + r1 * 20;
-  const rotA = rotBase - 3;
-  const rotB = rotBase + 3;
+  const variant = seededUnit(seed);
+  const decorationOnRight = variant > 0.5;
 
-  const iconScale = viewH / 92;
-  const patternId = `poster-dots-${seed.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const iconX = viewW * 0.5;
+  const iconY = viewH * 0.5;
+
+  const badgeRadius = size === "hero" ? 72 : 54;
+  const iconScale = size === "hero" ? 3.4 : 2.6;
+
+  const decorationX = decorationOnRight
+    ? viewW * 0.86
+    : viewW * 0.14;
 
   return (
     <div
       className={cn("relative h-full w-full overflow-hidden", className)}
-      style={{ backgroundColor: theme.bg }}
+      style={{
+        backgroundColor: theme.pop,
+      }}
     >
       <svg
         viewBox={`0 0 ${viewW} ${viewH}`}
@@ -171,62 +176,84 @@ export function EventPoster({
         height="100%"
         preserveAspectRatio="xMidYMid slice"
         role="img"
-        aria-label={category ? `${category} 행사 포스터` : "행사 포스터"}
+        aria-label={category ? `${category} 행사 그래픽` : "행사 그래픽"}
         className="block"
       >
-        <defs>
-          <pattern id={patternId} width="14" height="14" patternUnits="userSpaceOnUse">
-            <circle cx="2" cy="2" r="1.4" fill={theme.pop} />
-          </pattern>
-        </defs>
+        <rect width={viewW} height={viewH} fill={theme.pop} />
 
-        <rect width={viewW} height={viewH} fill={theme.bg} />
-        <rect
-          x={0}
-          y={viewH * 0.55}
-          width={viewW * 0.4}
-          height={viewH * 0.45}
-          fill={`url(#${patternId})`}
-          opacity={0.14}
+        <circle
+          cx={decorationX}
+          cy={viewH * 0.5}
+          r={viewH * 0.72}
+          fill={theme.bg}
+          opacity={0.18}
         />
 
-        <g transform={`translate(${blobX} ${blobY}) scale(${blobScale})`}>
-          <g
-            className="poster-blob"
-            style={{
-              transformOrigin: `${BLOB_CENTER_X}px ${BLOB_CENTER_Y}px`,
-              ["--poster-rot-a" as string]: `${rotA}deg`,
-              ["--poster-rot-b" as string]: `${rotB}deg`,
-            }}
-          >
-            <path d={BLOB_PATH} fill={theme.pop} opacity={0.94} />
-          </g>
-        </g>
+        <circle
+          cx={iconX}
+          cy={iconY}
+          r={badgeRadius + 11}
+          fill="none"
+          stroke={theme.bg}
+          strokeWidth={2}
+          opacity={0.18}
+        />
+
+        <circle
+          cx={iconX}
+          cy={iconY}
+          r={badgeRadius}
+          fill={POSTER_CREAM}
+        />
 
         <g
-          transform={`translate(${viewW / 2} ${viewH / 2}) scale(${iconScale}) translate(-12 -12)`}
-          stroke={CREAM}
-          strokeWidth={1.7}
+          transform={`
+            translate(${iconX} ${iconY})
+            scale(${iconScale})
+            translate(-12 -12)
+          `}
+          stroke={theme.bg}
+          strokeWidth={1.8}
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
-          opacity={0.97}
         >
           {ICON_PATHS[theme.icon]}
         </g>
+
+        <circle
+          cx={decorationOnRight ? viewW * 0.82 : viewW * 0.18}
+          cy={viewH * 0.78}
+          r={viewH * 0.035}
+          fill={theme.bg}
+          opacity={0.7}
+        />
       </svg>
 
-      {badgeLabel && <PosterBadge label={badgeLabel} textColor={theme.bg} />}
+      {badgeLabel && (
+        <PosterBadge
+          label={badgeLabel}
+          textColor={theme.bg}
+        />
+      )}
     </div>
   );
 }
 
-/** 포스터 코너의 회전된 스티커 배지. 실사진 포스터(poster-frame.tsx)에서도 같은 스타일을 쓴다. */
-export function PosterBadge({ label, textColor = "#1f2937" }: { label: string; textColor?: string }) {
+export function PosterBadge({
+  label,
+  textColor = "#1f2937",
+}: {
+  label: string;
+  textColor?: string;
+}) {
   return (
     <span
-      className="absolute left-3 top-3 -rotate-3 rounded-full px-3 py-1 text-[11px] font-bold tracking-tight shadow-sm"
-      style={{ backgroundColor: CREAM, color: textColor }}
+      className="absolute left-3 top-3 rounded-full px-3 py-1 text-[11px] font-semibold tracking-tight shadow-sm"
+      style={{
+        backgroundColor: POSTER_CREAM,
+        color: textColor,
+      }}
     >
       {label}
     </span>
