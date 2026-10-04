@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ChevronRight, ExternalLink, MoreVertical, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ChevronRight, ExternalLink, MoreVertical, Plus, Trash2 } from "lucide-react";
+import { BotIcon } from "@/components/bot-icon";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyConversations, getConversationDetail, type ConversationSummary } from "@/features/ai/data";
@@ -82,7 +83,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
         <main className="order-1 flex min-h-[70vh] min-w-0 flex-1 flex-col lg:order-2 lg:min-h-0">
           {!detail || detail.messages.length === 0 ? (
             <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 py-12 text-center motion-safe:animate-fade-up">
-              <Sparkles className="size-14 text-brand" fill="currentColor" strokeWidth={1} />
+              <BotIcon className="size-20 text-brand" />
               <div>
                 <h1 className="text-3xl font-normal leading-[1.21] text-neutral-950 sm:text-4xl">어떤 도움이 필요하세요?</h1>
                 <p className="mt-3 text-sm text-neutral-400">가게 기록부터 다음 행사까지, 함께 살펴봐요.</p>
@@ -103,9 +104,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
                 {detail.messages.map((m) =>
                   m.role === "assistant" ? (
                     <div key={m.id} className="flex min-w-0 items-start gap-3 motion-safe:animate-fade-up">
-                      <div className="hidden size-8 shrink-0 items-center justify-center rounded-full bg-white text-brand shadow-sm sm:flex">
-                        <Sparkles className="size-4" />
-                      </div>
+                      <BotIcon className="hidden size-9 text-brand sm:inline-block" />
                       <div className="flex min-w-0 max-w-full flex-1 flex-col items-start gap-2 sm:max-w-[90%]">
                         <div className="w-full min-w-0 rounded-3xl bg-white p-4 shadow-sm shadow-neutral-900/5 sm:px-6 sm:py-5">
                           <MessageContent content={m.content} />
