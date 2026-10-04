@@ -89,9 +89,8 @@ export async function addParticipation(formData: FormData) {
     redirect(`${backTo}?error=${encodeURIComponent(error.message)}`);
   }
 
-  // "내 행사" 목록 화면은 아직 Phase 3~4에서 구현 예정이라(ComingSoon),
-  // 방금 한 행동에 대한 확인은 지금 있던 페이지에서 바로 보여준다.
-  redirect(`${backTo}?notice=${encodeURIComponent("내 행사에 추가했어요.")}`);
+  // 별도 알림 없이 원래 페이지로 — 버튼이 "내 행사에서 보기"로 바뀌는 것으로 충분하다.
+  redirect(backTo);
 }
 
 /** 61번 항목: store_id 조건을 매 쿼리에 직접 걸어 RLS와 이중으로 소유자 검증. */
