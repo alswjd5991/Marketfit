@@ -240,8 +240,8 @@ async function seedPersona(db: Db, p: Persona, events: EventRow[], password: str
 
   for (const [i, e] of chosen.entries()) {
     const status: ParticipationStatus = past(e)
-      ? rand() < (regular ? 0.95 : 0.9) ? "attended" : "cancelled"
-      : (weighted({ planning_to_attend: 50, applied: 25, interested: 25 }) as ParticipationStatus);
+      ? rand() < (regular ? 0.95 : 0.9) ? "attended" : "interested" // 관심만 두고 안 간 행사
+      : (weighted({ planning_to_attend: 60, interested: 40 }) as ParticipationStatus); // 화면은 관심/참가 예정/참가 완료 3단계
     const fee = (e.event_recruitments[0]?.fee ?? won(...C.EVENT_RESULT.feeWhenUnknown)) * (p.edge === "always_loss" ? 3 : 1);
     // 기록 시점: 행사 10~40일 전(오늘 이후면 지금). AI가 created_at 최신순으로 기록을 읽기 때문.
     const recordedAt = new Date(e.start_date!);

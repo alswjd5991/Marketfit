@@ -89,7 +89,7 @@ export async function buildPrepSummary(): Promise<string> {
     .from("event_participations")
     .select("id, event_id")
     .eq("store_id", store.id)
-    .eq("status", "planning_to_attend");
+    .in("status", ["planning_to_attend", "applied", "planning_to_apply"]); // 예전 상태도 "참가 예정"으로 본다
   if (error) throw error;
   if (!rows?.length) return "참가 예정으로 등록된 행사가 없어요. **내 행사**에서 상태를 \"참가 예정\"으로 바꾸면 준비 사항을 정리해 드릴게요.";
 

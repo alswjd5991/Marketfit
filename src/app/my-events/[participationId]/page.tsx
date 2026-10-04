@@ -17,7 +17,7 @@ import {
   updateParticipationStatus,
   updateProductSale,
 } from "@/features/participations/actions";
-import { STATUS_LABEL, STATUS_ORDER } from "@/features/participations/status-labels";
+import { STATUS_LABEL, STATUS_ORDER, toDisplayStatus } from "@/features/participations/status-labels";
 import { BOOTH_PROVIDED_OPTIONS, PAYMENT_METHODS } from "@/features/store/constants";
 
 export default async function ParticipationDetailPage(
@@ -81,7 +81,7 @@ export default async function ParticipationDetailPage(
             <input type="hidden" name="participation_id" value={p.id} />
             <select
               name="status"
-              defaultValue={p.status}
+              defaultValue={toDisplayStatus(p.status)}
               className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
             >
               {STATUS_ORDER.map((s) => (

@@ -1,4 +1,5 @@
 import type { ParticipationStatus } from "@/types/database";
+import { STATUS_LABEL } from "@/features/participations/status-labels";
 
 export interface ParticipationForStats {
   name: string;
@@ -20,14 +21,6 @@ export interface ParticipationForStats {
   other_cost?: number | null;
 }
 
-const STATUS_LABEL: Record<ParticipationStatus, string> = {
-  interested: "관심",
-  planning_to_apply: "신청 예정",
-  applied: "신청 완료",
-  planning_to_attend: "참가 예정",
-  attended: "참가 완료",
-  cancelled: "취소",
-};
 
 const won = (n: number) => `${Math.round(n).toLocaleString("ko-KR")}원`;
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -65,7 +58,7 @@ function groupLine(
 /** AI에게 넘기는 개인 통계. 모델이 직접 더하고 나누다 틀리지 않도록 숫자는 모두 여기서 계산한다. */
 export function participationStats(rows: ParticipationForStats[]): string[] {
   const counts = new Map<string, number>();
-  for (const r of rows) counts.set(STATUS_LABEL[r.status] ?? r.status, (counts.get(STATUS_LABEL[r.status] ?? r.status) ?? 0) + 1);
+  for (const r of rows) counts.set(STATUS_LABEL[r.status], (counts.get(STATUS_LABEL[r.status]) ?? 0) + 1);
   const lines = [`- 기록 ${rows.length}건 (${[...counts].map(([label, n]) => `${label} ${n}건`).join(", ")})`];
 
   const revenue = rows.filter((r) => r.total_revenue != null);

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ParticipationStatus } from "@/types/database";
 import { getMyStore } from "@/features/store/data";
+import { toDisplayStatus } from "@/features/participations/status-labels";
 import { getCategoryGroup, type CategoryGroup } from "@/features/events/category-group";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -107,7 +108,7 @@ export async function computeDashboardStats(supabase: Supabase, storeId: string)
   const participations = (rows ?? []).map((p) => ({ ...p, event: eventById.get(p.event_id) ?? null }));
 
   const statusCounts = { ...EMPTY_STATUS_COUNTS };
-  for (const p of participations) statusCounts[p.status]++;
+  for (const p of participations) statusCounts[toDisplayStatus(p.status)]++;
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
   const avg = (xs: number[]) => (xs.length ? sum(xs) / xs.length : null);
 
@@ -254,7 +255,7 @@ function buildInsights(
   }
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date());
   const next = participations
-    .filter((p) => p.status === "planning_to_attend" && p.event?.start_date && p.event.start_date >= today)
+    .filter((p) => toDisplayStatus(p.status) === "planning_to_attend" && p.event?.start_date && p.event.start_date >= today)
     .sort((a, b) => a.event!.start_date!.localeCompare(b.event!.start_date!))[0];
   if (next) {
     const [, m, d] = next.event!.start_date!.split("-").map(Number);

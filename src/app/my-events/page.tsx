@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyParticipations } from "@/features/participations/data";
-import { STATUS_LABEL } from "@/features/participations/status-labels";
+import { STATUS_LABEL, toDisplayStatus } from "@/features/participations/status-labels";
+import type { ParticipationStatus } from "@/types/database";
 
 export default async function MyEventsPage() {
   const user = await getCurrentUser();
@@ -129,27 +130,13 @@ function formatRange(start: string, end: string | null) {
   return `${start} ~ ${end}`;
 }
 
-function getStatusClass(status: string) {
-  switch (status) {
-    case "interested":
-      return "bg-blue-50 text-blue-700";
-
-    case "planning_to_apply":
-      return "bg-amber-50 text-amber-700";
-
-    case "applied":
-      return "bg-indigo-50 text-indigo-700";
-
-    case "planning_to_attend":
-      return "bg-violet-50 text-violet-700";
-
+function getStatusClass(status: ParticipationStatus) {
+  switch (toDisplayStatus(status)) {
     case "attended":
       return "bg-emerald-50 text-emerald-700";
-
-    case "cancelled":
-      return "bg-neutral-100 text-neutral-500";
-
+    case "planning_to_attend":
+      return "bg-violet-50 text-violet-700";
     default:
-      return "bg-neutral-100 text-neutral-600";
+      return "bg-blue-50 text-blue-700";
   }
 }

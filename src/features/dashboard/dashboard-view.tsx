@@ -8,14 +8,11 @@ import type { DashboardStats } from "@/features/dashboard/data";
 import { STATUS_LABEL, STATUS_ORDER } from "@/features/participations/status-labels";
 import type { ParticipationStatus } from "@/types/database";
 
-// 상태 진행(관심→참가 예정)은 파란 순서 램프, 참가 완료/취소는 결과가 갈리는 상태라 status 색.
-const STATUS_COLOR: Record<ParticipationStatus, string> = {
+// 관심→참가 예정은 파란 순서 램프, 참가 완료는 good 상태 색. 예전 상태는 toDisplayStatus로 합쳐져 여기 오지 않는다.
+const STATUS_COLOR: Partial<Record<ParticipationStatus, string>> = {
   interested: "#86b6ef",
-  planning_to_apply: "#5598e7",
-  applied: "#2a78d6",
-  planning_to_attend: "#1c5cab",
+  planning_to_attend: "#2a78d6",
   attended: STATUS_COLORS.good,
-  cancelled: STATUS_COLORS.critical,
 };
 
 const won = (n: number) => `${Math.round(n).toLocaleString()}원`;
