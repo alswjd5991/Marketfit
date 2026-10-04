@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { ChevronDown, Search } from "lucide-react";
 
 const STATUS_OPTIONS = [
   { value: "", label: "전체 상태" },
@@ -19,18 +20,16 @@ const PERIOD_OPTIONS = [
 ];
 
 const SORT_OPTIONS = [
-  { value: "deadline", label: "마감 임박순" },
+  { value: "", label: "마감 임박순" }, // 기본값(deadline)
   { value: "recent", label: "최신 등록순" },
   { value: "start_date", label: "행사 시작일순" },
 ];
 
-export function EventFiltersBar({
-  regions,
-  categories,
-}: {
-  regions: string[];
-  categories: string[];
-}) {
+const BASE = "h-11 rounded-xl border text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/15";
+const FIELD = `${BASE} border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300`;
+const FIELD_ACTIVE = `${BASE} border-brand/40 bg-brand-light font-semibold text-brand-dark`;
+
+export function EventFiltersBar({ regions, categories }: { regions: string[]; categories: string[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -45,98 +44,68 @@ export function EventFiltersBar({
   const period = searchParams.get("period") ?? "";
 
   return (
-    <div className="flex flex-col gap-2">
-    <div className="flex flex-wrap gap-2">
-      <select
-        className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-        defaultValue={searchParams.get("region") ?? ""}
-        onChange={(e) => setParam("region", e.target.value)}
-      >
-        <option value="">전체 지역</option>
-        {regions.map((r) => (
-          <option key={r} value={r}>
-            {r}
-          </option>
-        ))}
-      </select>
+    <div className="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/70 p-3 shadow-[0_4px_20px_rgba(40,80,120,0.06)] backdrop-blur-sm sm:p-4">
+      <label className="relative block">
+        <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-neutral-400" />
+        <input
+          type="search"
+          aria-label="행사명·장소 검색"
+          placeholder="행사명·장소 검색"
+          className={`${FIELD} w-full pl-11 pr-4`}
+          defaultValue={searchParams.get("q") ?? ""}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") setParam("q", e.currentTarget.value);
+          }}
+        />
+      </label>
 
-      <select
-        className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-        defaultValue={searchParams.get("category") ?? ""}
-        onChange={(e) => setParam("category", e.target.value)}
-      >
-        <option value="">전체 카테고리</option>
-        {categories.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
-
-      <select
-        className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-        defaultValue={searchParams.get("status") ?? ""}
-        onChange={(e) => setParam("status", e.target.value)}
-      >
-        {STATUS_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-
-      <select
-        className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-        defaultValue={period}
-        onChange={(e) => setParam("period", e.target.value)}
-      >
-        {PERIOD_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-
-      <select
-        className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-        defaultValue={searchParams.get("sort") ?? "deadline"}
-        onChange={(e) => setParam("sort", e.target.value)}
-      >
-        {SORT_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-
-      <input
-        type="search"
-        placeholder="행사명·장소 검색"
-        className="min-w-[200px] flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-        defaultValue={searchParams.get("q") ?? ""}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") setParam("q", e.currentTarget.value);
-        }}
-      />
-    </div>
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <Select label="지역" value={searchParams.get("region") ?? ""} onChange={(v) => setParam("region", v)} options={[{ value: "", label: "전체 지역" }, ...regions.map((r) => ({ value: r, label: r }))]} />
+        <Select label="카테고리" value={searchParams.get("category") ?? ""} onChange={(v) => setParam("category", v)} options={[{ value: "", label: "전체 카테고리" }, ...categories.map((c) => ({ value: c, label: c }))]} />
+        <Select label="모집 상태" value={searchParams.get("status") ?? ""} onChange={(v) => setParam("status", v)} options={STATUS_OPTIONS} />
+        <Select label="기간" value={period} onChange={(v) => setParam("period", v)} options={PERIOD_OPTIONS} />
+        <div className="col-span-2 sm:col-span-1 sm:ml-auto">
+          <Select label="정렬" value={searchParams.get("sort") ?? ""} onChange={(v) => setParam("sort", v)} options={SORT_OPTIONS} />
+        </div>
+      </div>
 
       {period === "custom" && (
         <div className="flex items-center gap-2 text-sm">
-          <input
-            type="date"
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2"
-            defaultValue={searchParams.get("from") ?? ""}
-            onChange={(e) => setParam("from", e.target.value)}
-          />
+          <input type="date" aria-label="시작일" className={`${FIELD} px-3`} defaultValue={searchParams.get("from") ?? ""} onChange={(e) => setParam("from", e.target.value)} />
           <span className="text-neutral-400">~</span>
-          <input
-            type="date"
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2"
-            defaultValue={searchParams.get("to") ?? ""}
-            onChange={(e) => setParam("to", e.target.value)}
-          />
+          <input type="date" aria-label="종료일" className={`${FIELD} px-3`} defaultValue={searchParams.get("to") ?? ""} onChange={(e) => setParam("to", e.target.value)} />
         </div>
       )}
+    </div>
+  );
+}
+
+function Select({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="relative">
+      <select
+        aria-label={label}
+        defaultValue={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`${value ? FIELD_ACTIVE : FIELD} w-full appearance-none pl-4 pr-10 sm:w-auto`}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
     </div>
   );
 }
