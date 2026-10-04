@@ -18,6 +18,7 @@ import {
   updateProductSale,
 } from "@/features/participations/actions";
 import { STATUS_LABEL, STATUS_ORDER, toDisplayStatus } from "@/features/participations/status-labels";
+import { ChecklistCheckbox } from "@/features/participations/checklist-checkbox";
 import { BOOTH_PROVIDED_OPTIONS, PAYMENT_METHODS } from "@/features/store/constants";
 
 export default async function ParticipationDetailPage(
@@ -182,15 +183,7 @@ export default async function ParticipationDetailPage(
                   <form action={toggleChecklistItem} className="flex-1">
                     <input type="hidden" name="participation_id" value={p.id} />
                     <input type="hidden" name="checklist_id" value={item.id} />
-                    <input type="hidden" name="next_checked" value={String(!item.checked)} />
-                    <button
-                      type="submit"
-                      className={`text-left text-sm ${
-                        item.checked ? "text-neutral-400 line-through" : "text-neutral-900"
-                      }`}
-                    >
-                      {item.checked ? "☑" : "☐"} {item.label}
-                    </button>
+                    <ChecklistCheckbox label={item.label} checked={item.checked} />
                   </form>
                   <form action={deleteChecklistItem}>
                     <input type="hidden" name="participation_id" value={p.id} />
