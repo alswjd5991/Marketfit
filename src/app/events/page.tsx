@@ -34,7 +34,7 @@ export default async function EventsPage(props: PageProps<"/events">) {
           조건에 맞는 행사가 없습니다. 필터를 조정해 보세요.
         </p>
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
           {events.map((e) => (
             <EventCard key={e.id} event={e} />
           ))}
