@@ -138,7 +138,7 @@ function printValidation(personas: Persona[]) {
 
   console.log("\n■ 30명 목록");
   for (const p of personas) {
-    console.log(`${String(p.no).padStart(2)} ${p.name} ${p.gender} ${p.age.padEnd(6)} ${p.category.padEnd(5)} ${p.region.padEnd(3)} ${p.edge ?? ""}`);
+    console.log(`${String(p.no).padStart(2)} ${p.name} ${p.gender} ${p.age.padEnd(6)} ${p.category.padEnd(5)} ${p.region.padEnd(3)} ${p.edge ?? (C.REGULARS.includes(p.no) ? "단골" : "")}`);
   }
 }
 
@@ -181,12 +181,14 @@ async function seedPersona(db: Db, p: Persona, events: EventRow[], password: str
   await db.from("profiles").update({ name: p.name }).eq("id", userId);
   if (p.edge === "no_store") return;
 
+  const regular = C.REGULARS.includes(p.no);
   const catalog = C.PRODUCTS[p.category];
   const isFood = ["음식", "디저트", "농산물"].includes(p.category);
-  const products = shuffle([...catalog.names]).slice(0, int(3, 5)).map((name) => {
+  const products = shuffle([...catalog.names]).slice(0, regular ? catalog.names.length : int(3, 5)).map((name) => {
     const price = won(...catalog.price);
     return { name, price, cost: Math.round((price * int(30, 50)) / 100 / 100) * 100 };
   });
+  const paymentMethods = rand() < 0.5 ? ["카드", "현금", "계좌이체"] : ["카드", "현금"];
 
   const { data: store, error: storeError } = await db
     .from("stores")
@@ -196,7 +198,7 @@ async function seedPersona(db: Db, p: Persona, events: EventRow[], password: str
       category: p.category,
       flagship_product: products[0].name,
       active_region: p.edge === "no_region" ? null : p.region,
-      payment_methods: rand() < 0.5 ? ["카드", "현금", "계좌이체"] : ["카드", "현금"],
+      payment_methods: paymentMethods,
       hygiene_certified: isFood ? true : null,
     })
     .select("id")
@@ -210,45 +212,76 @@ async function seedPersona(db: Db, p: Persona, events: EventRow[], password: str
   if (productError || !productRows) throw productError;
 
   // 참가할 행사 고르기: [가정] 70%는 내 활동 지역 행사.
-  const count = { no_participation: 0, single_attended: 1, heavy: int(15, 18) }[p.edge as string] ?? int(2, 8);
   const past = (e: EventRow) => (e.end_date ?? e.start_date)! < today;
   const pool = shuffle(events.filter((e) => e.start_date));
-  const local = pool.filter((e) => e.region === p.region);
-  const other = pool.filter((e) => e.region !== p.region);
-  const chosen: EventRow[] = [];
-  while (chosen.length < count && (local.length || other.length)) {
-    const e = ((rand() < 0.7 && local.length) || !other.length ? local : other).shift()!;
-    if (p.edge === "single_attended" && !past(e)) continue;
-    chosen.push(e);
-  }
+  const pickEvents = (list: EventRow[], n: number) => {
+    const local = list.filter((e) => e.region === p.region);
+    const other = list.filter((e) => e.region !== p.region);
+    const out: EventRow[] = [];
+    while (out.length < n && (local.length || other.length)) out.push(((rand() < 0.7 && local.length) || !other.length ? local : other).shift()!);
+    return out;
+  };
+  const chosen = regular
+    ? [
+        ...pickEvents(pool.filter((e) => past(e) && e.start_date! >= C.REGULAR.since), int(...C.REGULAR.past)),
+        ...pickEvents(pool.filter((e) => !past(e)), int(...C.REGULAR.future)),
+      ]
+    : pickEvents(
+        p.edge === "single_attended" ? pool.filter(past) : pool,
+        { no_participation: 0, single_attended: 1, heavy: int(15, 18) }[p.edge as string] ?? int(2, 8)
+      );
   if (p.edge === "empty_checklist" && !chosen.some((e) => !past(e))) {
     const future = pool.find((e) => !past(e) && !chosen.includes(e));
     if (future) chosen.push(future);
   }
+  chosen.sort((a, b) => a.start_date!.localeCompare(b.start_date!)); // 오래된 행사부터(단골의 판매율 성장 곡선용)
+  const pastCount = chosen.filter(past).length;
+  const revenues: number[] = [];
 
-  for (const e of chosen) {
+  for (const [i, e] of chosen.entries()) {
     const status: ParticipationStatus = past(e)
-      ? rand() < 0.9 ? "attended" : "cancelled"
+      ? rand() < (regular ? 0.95 : 0.9) ? "attended" : "cancelled"
       : (weighted({ planning_to_attend: 50, applied: 25, interested: 25 }) as ParticipationStatus);
     const fee = (e.event_recruitments[0]?.fee ?? won(...C.EVENT_RESULT.feeWhenUnknown)) * (p.edge === "always_loss" ? 3 : 1);
-    const row: Database["public"]["Tables"]["event_participations"]["Insert"] = { store_id: store.id, event_id: e.id, status, fee };
+    // 기록 시점: 행사 10~40일 전(오늘 이후면 지금). AI가 created_at 최신순으로 기록을 읽기 때문.
+    const recordedAt = new Date(e.start_date!);
+    recordedAt.setDate(recordedAt.getDate() - int(10, 40));
+    const row: Database["public"]["Tables"]["event_participations"]["Insert"] = {
+      store_id: store.id,
+      event_id: e.id,
+      status,
+      fee,
+      created_at: (recordedAt.toISOString().slice(0, 10) < today ? recordedAt : new Date()).toISOString(),
+    };
+    const booth = () => ({
+      booth_provided: pick(["organizer", "self"]),
+      booth_size: pick(C.REGULAR.boothSize),
+      power_available: rand() < 0.6,
+      vehicle_access: rand() < 0.5,
+    });
 
     const sales: { product_id: string; product_name: string; prepared: number; sold: number; price: number }[] = [];
     if (status === "attended" && p.edge !== "unrecorded_result") {
       const weather = weighted(C.EVENT_RESULT.weather);
+      const [g0, g1] = C.REGULAR.learning;
+      const growth = regular ? g0 + ((g1 - g0) * i) / Math.max(1, pastCount - 1) : 1;
       for (const prod of shuffle([...productRows]).slice(0, int(2, productRows.length))) {
-        const prepared = int(...C.EVENT_RESULT.prepared);
+        const prepared = int(...(regular ? C.REGULAR.prepared : C.EVENT_RESULT.prepared));
         const [lo, hi] = C.EVENT_RESULT.sellThrough;
-        const rate = (p.edge === "always_loss" ? lo * 0.5 : lo + rand() * (hi - lo)) * C.EVENT_RESULT.weatherFactor[weather];
-        sales.push({ product_id: prod.id, product_name: prod.name, prepared, sold: Math.floor(prepared * rate), price: Number(prod.price) });
+        const rate = (p.edge === "always_loss" ? lo * 0.5 : lo + rand() * (hi - lo)) * C.EVENT_RESULT.weatherFactor[weather] * growth;
+        sales.push({ product_id: prod.id, product_name: prod.name, prepared, sold: Math.floor(prepared * Math.min(1, rate)), price: Number(prod.price) });
       }
       const total = sales.reduce((a, s) => a + s.sold * s.price, 0);
+      revenues.push(total);
       const transport = won(...C.EVENT_RESULT.transport);
       const parking = won(...C.EVENT_RESULT.parking);
-      const net = total - fee - transport - parking;
+      const lodging = regular && e.region !== p.region && rand() < 0.5 ? won(...C.REGULAR.lodging) : 0;
+      const other = regular ? won(...C.REGULAR.other) : 0;
+      const net = total - fee - transport - parking - lodging - other;
       const margin = total > 0 ? net / total : -1;
       const satisfaction = margin < 0 ? int(1, 2) : margin < 0.3 ? 3 : margin < 0.5 ? 4 : 5;
       const best = [...sales].sort((a, b) => b.sold / b.prepared - a.sold / a.prepared)[0];
+      const memo = weather === "비" ? "비가 와서 손님이 적었음" : best.sold / best.prepared > 0.85 ? `${best.product_name} 거의 다 팔림` : null;
       Object.assign(row, {
         total_revenue: total,
         transport_cost: transport,
@@ -258,11 +291,35 @@ async function seedPersona(db: Db, p: Persona, events: EventRow[], password: str
         would_reattend: satisfaction >= 4,
         weather,
         indoor_outdoor: pick(["실내", "실외"]),
-        memo: weather === "비" ? "비가 와서 손님이 적었음" : best.sold / best.prepared > 0.85 ? `${best.product_name} 거의 다 팔림` : null,
+        memo,
       });
+      if (regular) {
+        Object.assign(row, {
+          ...booth(),
+          lodging_cost: lodging,
+          other_cost: other,
+          operating_hours: pick(C.REGULAR.hours),
+          perceived_crowd: weather === "비" ? "적음" : pick(["보통", "많음", "매우 많음"]),
+          operation_satisfaction: int(2, 5),
+          parking_convenience: int(1, 5),
+          promotion_quality: int(2, 5),
+          booth_number: `${pick(["A", "B", "C"])}-${int(1, 30)}`,
+          booth_location_rating: int(2, 5),
+          payment_methods_used: paymentMethods.filter(() => rand() < 0.8),
+          memo: memo ?? (rand() < 0.7 ? pick(C.REGULAR.memos) : null),
+        });
+      }
     } else if (status === "planning_to_attend") {
-      const expected = won(150000, 600000);
+      // 단골은 지난 매출 평균 근처로 예상 매출을 잡는다.
+      const avg = revenues.length ? revenues.reduce((a, b) => a + b, 0) / revenues.length : 0;
+      const expected = regular && avg ? Math.round((avg * (0.9 + rand() * 0.2)) / 1000) * 1000 : won(150000, 600000);
       Object.assign(row, { expected_revenue: expected, target_revenue: Math.round((expected * 1.2) / 1000) * 1000 });
+      if (regular) {
+        Object.assign(row, booth());
+        for (const prod of productRows) {
+          sales.push({ product_id: prod.id, product_name: prod.name, prepared: int(...C.REGULAR.prepared), sold: 0, price: Number(prod.price) });
+        }
+      }
     }
 
     const { data: part, error: partError } = await db.from("event_participations").insert(row).select("id").single();
@@ -273,11 +330,21 @@ async function seedPersona(db: Db, p: Persona, events: EventRow[], password: str
     }
     if (status === "planning_to_attend" && p.edge !== "empty_checklist") {
       const labels = [...C.CHECKLIST, ...(isFood ? C.FOOD_CHECKLIST : [])];
-      const { error: checkError } = await db
-        .from("event_checklists")
-        .insert(labels.map((label, i) => ({ participation_id: part.id, label, checked: rand() < 0.4, sort_order: i })));
+      const custom = regular ? C.REGULAR.customChecklist : [];
+      const { error: checkError } = await db.from("event_checklists").insert([
+        ...labels.map((label, k) => ({ participation_id: part.id, label, checked: rand() < 0.4, is_custom: false, sort_order: k })),
+        ...custom.map((label, k) => ({ participation_id: part.id, label, checked: rand() < 0.4, is_custom: true, sort_order: labels.length + k })),
+      ]);
       if (checkError) throw checkError;
     }
+  }
+
+  // 단골은 첫 참가 한 달 전에 가입·가게 등록한 것으로 날짜를 맞춘다.
+  if (regular && chosen.length) {
+    const joined = new Date(chosen[0].start_date!);
+    joined.setDate(joined.getDate() - 30);
+    await db.from("profiles").update({ created_at: joined.toISOString() }).eq("id", userId);
+    await db.from("stores").update({ created_at: joined.toISOString() }).eq("id", store.id);
   }
   return chosen.length;
 }
@@ -305,7 +372,7 @@ async function main() {
   console.log("");
   for (const p of personas) {
     const n = await seedPersona(db, p, events as EventRow[], password, today);
-    console.log(`✓ ${p.email} ${p.name} · ${p.category} · 참가 ${n ?? 0}건${p.edge ? ` · ${p.edge}` : ""}`);
+    console.log(`✓ ${p.email} ${p.name} · ${p.category} · 참가 ${n ?? 0}건${p.edge ? ` · ${p.edge}` : ""}${C.REGULARS.includes(p.no) ? " · 단골" : ""}`);
   }
 }
 

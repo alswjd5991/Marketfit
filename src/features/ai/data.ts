@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, getMyStore, getMyProducts } from "@/features/store/data";
 import type { ChatConversation, ChatMessage } from "@/types/database";
-import { participationStats } from "./stats";
+import { participationStats, productStats } from "./stats";
 import { parseMarketfitEvents, type EventQuery, type EventRecord, type MarketfitEventRow } from "./event-search";
 
 /** AI 도우미가 행사 질문에 가장 먼저 참고하는 Marketfit 등록 행사(공개 읽기 테이블). */
@@ -168,16 +168,17 @@ export async function buildStoreContextSummary(): Promise<string | null> {
     const { data: participations, error: participationsError } = await supabase
       .from("event_participations")
       .select(
-        "id, status, event_id, fee, expected_revenue, target_revenue, total_revenue, net_profit, satisfaction, would_reattend, weather, indoor_outdoor, memo, created_at, booth_provided, booth_size, power_available, vehicle_access, booth_number, booth_location_rating, payment_methods_used"
+        "id, status, event_id, fee, expected_revenue, target_revenue, total_revenue, net_profit, satisfaction, would_reattend, weather, indoor_outdoor, memo, created_at, booth_provided, booth_size, power_available, vehicle_access, booth_number, booth_location_rating, payment_methods_used, transport_cost, parking_cost, lodging_cost, other_cost"
       )
       .eq("store_id", store.id)
-      .order("created_at", { ascending: false })
-      .limit(CONTEXT_PARTICIPATION_LIMIT);
+      .order("created_at", { ascending: false });
     if (participationsError) throw participationsError;
 
-    const rows = participations ?? [];
+    // 통계는 전체 기록으로 계산하고, 프롬프트가 길어지지 않게 행사별 상세는 최근 N건만 나열한다.
+    const all = participations ?? [];
+    const rows = all.slice(0, CONTEXT_PARTICIPATION_LIMIT);
     if (rows.length > 0) {
-      const eventIds = rows.map((p) => p.event_id);
+      const eventIds = all.map((p) => p.event_id);
       const { data: events, error: eventsError } = await supabase
         .from("events")
         .select("id, name, category, region, start_date, end_date")
@@ -185,7 +186,7 @@ export async function buildStoreContextSummary(): Promise<string | null> {
       if (eventsError) throw eventsError;
       const eventById = new Map((events ?? []).map((e) => [e.id, e]));
 
-      lines.push(`\n## 참가 기록 (최근 ${rows.length}건)`);
+      lines.push(`\n## 참가 기록 (최근 ${rows.length}건${all.length > rows.length ? ` / 전체 ${all.length}건` : ""})`);
       for (const p of rows) {
         const e = eventById.get(p.event_id);
         const parts = [
@@ -208,33 +209,30 @@ export async function buildStoreContextSummary(): Promise<string | null> {
       }
 
       // 합계·평균·순위는 모델이 계산하다 틀리지 않도록 코드에서 미리 계산해 준다.
-      lines.push(`\n## 계산된 통계 (최근 ${rows.length}건 기준, 코드가 계산한 값)`);
-      lines.push(...participationStats(rows.map((p) => ({ ...p, name: eventById.get(p.event_id)?.name ?? "(알 수 없는 행사)" }))));
+      lines.push(`\n## 계산된 통계 (전체 ${all.length}건 기준, 코드가 계산한 값)`);
+      lines.push(
+        ...participationStats(
+          all.map((p) => {
+            const e = eventById.get(p.event_id);
+            return { ...p, name: e?.name ?? "(알 수 없는 행사)", start_date: e?.start_date, category: e?.category, region: e?.region };
+          })
+        )
+      );
 
       const { data: sales, error: salesError } = await supabase
         .from("event_product_sales")
-        .select("product_name, sold, revenue")
+        .select("product_name, prepared, sold, revenue")
         .in(
           "participation_id",
-          rows.map((p) => p.id)
+          // 참가 예정 행사의 준비 수량(판매 0)이 판매율을 끌어내리지 않게 참가 완료 건만.
+          all.filter((p) => p.status === "attended").map((p) => p.id)
         );
       if (salesError) throw salesError;
 
-      const byProduct = new Map<string, { sold: number; revenue: number }>();
-      for (const s of sales ?? []) {
-        const cur = byProduct.get(s.product_name) ?? { sold: 0, revenue: 0 };
-        cur.sold += s.sold;
-        cur.revenue += s.revenue;
-        byProduct.set(s.product_name, cur);
-      }
-      const topProducts = Array.from(byProduct.entries())
-        .sort((a, b) => b[1].revenue - a[1].revenue)
-        .slice(0, CONTEXT_PRODUCT_LIMIT);
+      const topProducts = productStats(sales ?? [], CONTEXT_PRODUCT_LIMIT);
       if (topProducts.length > 0) {
-        lines.push(`\n## 상품별 판매 실적 합계 (매출 높은 순)`);
-        for (const [name, agg] of topProducts) {
-          lines.push(`- ${name}: 판매 ${agg.sold}개 / 매출 ${agg.revenue.toLocaleString()}원`);
-        }
+        lines.push(`\n## 상품별 판매 실적 합계 (참가 완료 행사, 매출 높은 순, 판매율 = 판매/준비)`);
+        lines.push(...topProducts);
       }
     } else {
       lines.push(`\n## 참가 기록\n아직 참가 기록이 없음.`);
