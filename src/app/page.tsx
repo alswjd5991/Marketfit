@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
 import { getEvents } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
 import { Button } from "@/components/ui/button";
@@ -41,15 +42,6 @@ const dashboardStats = isLoggedIn
 
   // 현재 모집 중인 행사 수
   const openEventCount = openEvents.length;
-
-  // 현재 모집 중인 행사에서 카테고리 최대 3개 추출
-  const topCategories = Array.from(
-    new Set(
-      openEvents
-        .map((event) => event.category)
-        .filter((category): category is string => Boolean(category))
-    )
-  ).slice(0, 3);
 
   return (
     <main className="fixed inset-x-0 bottom-16 top-16 isolate overflow-y-auto overscroll-contain snap-y snap-mandatory scroll-smooth bg-[#F4F8FB] sm:bottom-0">
@@ -211,11 +203,11 @@ const dashboardStats = isLoggedIn
             </div>
 
 
-            {/* 카테고리 탐색 카드 */}
+            {/* AI 도우미 바로가기 카드 */}
             <div className="group absolute bottom-0 left-10 z-30 h-[145px] w-[230px] hover:z-50">
 
               <Link
-                href="/events"
+                href="/ai"
                 className="
                   absolute inset-0 block
                   -rotate-2
@@ -231,35 +223,13 @@ const dashboardStats = isLoggedIn
                 "
               >
                 <p className="text-xs font-medium text-[#728090]">
-                  다양한 마켓을 한눈에
+                  궁금한 건 바로 물어보세요
                 </p>
 
-                <p className="mt-2 text-lg font-bold text-[#15202B]">
-                  지역 · 카테고리별 탐색
+                <p className="mt-2 flex items-center gap-1.5 text-lg font-bold text-[#15202B]">
+                  <Sparkles className="size-4 text-brand" />
+                  AI 도우미 바로가기
                 </p>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {topCategories.length > 0 ? (
-                    topCategories.map((category, index) => (
-                      <span
-                        key={category}
-                        className={
-                          index === 0
-                            ? "rounded-full bg-brand-light px-2.5 py-1 text-xs font-medium text-brand"
-                            : index === 1
-                            ? "rounded-full bg-[#E8F7EF] px-2.5 py-1 text-xs font-medium text-[#279566]"
-                            : "rounded-full bg-[#FFF3DF] px-2.5 py-1 text-xs font-medium text-[#C47A16]"
-                        }
-                      >
-                        {category}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="rounded-full bg-brand-light px-2.5 py-1 text-xs font-medium text-brand">
-                      행사 찾아보기
-                    </span>
-                  )}
-                </div>
               </Link>
 
             </div>
