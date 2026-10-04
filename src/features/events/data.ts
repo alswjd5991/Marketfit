@@ -61,7 +61,7 @@ function toListItem(e: SeedEvent): EventListItem {
     recruitEnd: e.recruitEnd,
     fee: typeof e.feeKrw === "number" ? e.feeKrw : null,
     status,
-    dday: status === "open" || status === "upcoming" ? formatDday(e.recruitEnd) : null,
+    dday: status === "open" || status === "upcoming" ? formatDday(e.recruitEnd, e.endDate) : null,
     sourceName: e.organizer,
     sourceUrl: e.sourceUrl,
     isSampleData: false, // 전부 실제 공개 자료 — 6번 섹션 참고
