@@ -107,20 +107,24 @@ export default async function ParticipationDetailPage(
           <CardTitle>참가 전 정보</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={updateParticipationPrep} className="flex flex-col gap-3">
+          <form action={updateParticipationPrep} noValidate className="flex flex-col gap-3">
             <input type="hidden" name="participation_id" value={p.id} />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <Field name="fee" label="참가비(원)" type="number" defaultValue={p.fee ?? ""} />
+              <Field name="fee" label="참가비(원)" type="number" step={100} min={0} defaultValue={p.fee ?? ""} />
               <Field
                 name="expected_revenue"
                 label="예상 매출(원)"
                 type="number"
+                step={100}
+                min={0}
                 defaultValue={p.expected_revenue ?? ""}
               />
               <Field
                 name="target_revenue"
                 label="목표 매출(원)"
                 type="number"
+                step={100}
+                min={0}
                 defaultValue={p.target_revenue ?? ""}
               />
             </div>
@@ -225,6 +229,7 @@ export default async function ParticipationDetailPage(
         <CardContent>
           <form
             action={updateParticipationResult}
+            noValidate
             encType="multipart/form-data"
             className="flex flex-col gap-3"
           >
@@ -234,6 +239,8 @@ export default async function ParticipationDetailPage(
                 name="total_revenue"
                 label="총 매출(원)"
                 type="number"
+                step={100}
+                min={0}
                 defaultValue={p.total_revenue ?? ""}
               />
               <Field
@@ -244,10 +251,10 @@ export default async function ParticipationDetailPage(
               />
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Field name="transport_cost" label="교통비" type="number" defaultValue={p.transport_cost} />
-              <Field name="parking_cost" label="주차비" type="number" defaultValue={p.parking_cost} />
-              <Field name="lodging_cost" label="숙박비" type="number" defaultValue={p.lodging_cost} />
-              <Field name="other_cost" label="기타 비용" type="number" defaultValue={p.other_cost} />
+              <Field name="transport_cost" label="교통비" type="number" step={100} min={0} defaultValue={p.transport_cost} />
+              <Field name="parking_cost" label="주차비" type="number" step={100} min={0} defaultValue={p.parking_cost} />
+              <Field name="lodging_cost" label="숙박비" type="number" step={100} min={0} defaultValue={p.lodging_cost} />
+              <Field name="other_cost" label="기타 비용" type="number" step={100} min={0} defaultValue={p.other_cost} />
             </div>
             {p.net_profit != null && (
               <p className="text-sm text-neutral-600">
@@ -385,7 +392,7 @@ export default async function ParticipationDetailPage(
             <ul className="flex flex-col gap-2">
               {detail.productSales.map((sale) => (
                 <li key={sale.id} className="rounded-lg border border-neutral-100 px-3 py-2">
-                  <form action={updateProductSale} className="flex flex-col gap-2">
+                  <form action={updateProductSale} noValidate className="flex flex-col gap-2">
                     <input type="hidden" name="participation_id" value={p.id} />
                     <input type="hidden" name="sale_id" value={sale.id} />
                     <div className="flex items-center justify-between gap-2">
@@ -398,7 +405,7 @@ export default async function ParticipationDetailPage(
                     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                       <Field name="prepared" label="준비" type="number" defaultValue={sale.prepared} />
                       <Field name="sold" label="판매" type="number" defaultValue={sale.sold} />
-                      <Field name="price" label="단가(원)" type="number" defaultValue={sale.price} />
+                      <Field name="price" label="단가(원)" type="number" step={100} min={0} defaultValue={sale.price} />
                       <div className="flex items-end gap-1">
                         <Button type="submit" variant="secondary" size="sm" className="flex-1">
                           저장
@@ -418,7 +425,7 @@ export default async function ParticipationDetailPage(
             </ul>
           )}
 
-          <form action={addProductSale} className="flex flex-col gap-2 rounded-lg border border-dashed border-neutral-200 p-3">
+          <form action={addProductSale} noValidate className="flex flex-col gap-2 rounded-lg border border-dashed border-neutral-200 p-3">
             <input type="hidden" name="participation_id" value={p.id} />
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-sm">
@@ -441,7 +448,7 @@ export default async function ParticipationDetailPage(
             <div className="grid grid-cols-3 gap-2">
               <Field name="prepared" label="준비 수량" type="number" placeholder="0" />
               <Field name="sold" label="판매 수량" type="number" placeholder="0" />
-              <Field name="price" label="단가(원)" type="number" placeholder="선택 상품 단가 자동 적용" />
+              <Field name="price" label="단가(원)" type="number" step={100} min={0} placeholder="선택 상품 단가 자동 적용" />
             </div>
             <Button type="submit" variant="outline" size="sm" className="self-start">
               판매 실적 추가
@@ -459,12 +466,16 @@ function Field({
   type = "text",
   defaultValue,
   placeholder,
+  step,
+  min,
 }: {
   name: string;
   label: string;
   type?: string;
   defaultValue?: string | number;
   placeholder?: string;
+  step?: number;
+  min?: number;
 }) {
   return (
     <label className="flex flex-col gap-1 text-sm">
@@ -474,6 +485,8 @@ function Field({
         type={type}
         defaultValue={defaultValue}
         placeholder={placeholder}
+        step={step}
+        min={min}
         className="rounded-lg border border-neutral-200 px-3 py-2 text-sm"
       />
     </label>

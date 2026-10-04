@@ -182,12 +182,21 @@ export async function addProduct(formData: FormData) {
     redirect(`/store?error=${encodeURIComponent("상품명을 입력해 주세요.")}`);
   }
 
+  const price = toNumberOrNull(formData.get("price"));
+  if (price === null) {
+    redirect(`/store?error=${encodeURIComponent("판매가를 입력해 주세요.")}`);
+  }
+  const cost = toNumberOrNull(formData.get("cost"));
+  if (cost === null) {
+    redirect(`/store?error=${encodeURIComponent("원가를 입력해 주세요.")}`);
+  }
+
   const { error } = await supabase.from("products").insert({
     store_id: storeId,
     name,
     category: emptyToNull(formData.get("category")),
-    price: toNumberOrNull(formData.get("price")),
-    cost: toNumberOrNull(formData.get("cost")),
+    price,
+    cost,
     description: emptyToNull(formData.get("description")),
   });
 
