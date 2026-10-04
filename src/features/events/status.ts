@@ -30,17 +30,23 @@ export function computeRecruitmentStatus(params: {
   if (eventEnd) return today > eventEnd ? "closed" : "open";
 
   // 날짜 정보가 전혀 없으면 안전하게 "모집 중"으로 두지 않고 종료 취급하지도
-  // 않는다 — 표시할 근거가 없다는 뜻이므로 open으로 두되, 화면에서 D-Day 대신
+  // 않는다 — 표시할 근거가 없다는 뜻이므로 open으로 두되, 화면에서 D-DAY 대신
   // "미기재"를 보여주도록 한다(호출부 책임).
   return "open";
 }
 
-export function formatDday(recruitEnd?: string | null, now = new Date()): string | null {
-  if (!recruitEnd) return null;
+// 모집마감일이 없으면 computeRecruitmentStatus와 같은 기준(행사 종료일)으로 센다.
+export function formatDday(
+  recruitEnd?: string | null,
+  eventEndDate?: string | null,
+  now = new Date(),
+): string | null {
+  const target = recruitEnd ?? eventEndDate;
+  if (!target) return null;
   const today = new Date(now.toISOString().slice(0, 10));
-  const end = new Date(recruitEnd);
+  const end = new Date(target);
   const diffDays = Math.round((end.getTime() - today.getTime()) / 86_400_000);
-  if (diffDays < 0) return null; // 마감 후엔 D-Day 대신 "마감" 배지를 쓴다
-  if (diffDays === 0) return "D-Day";
+  if (diffDays < 0) return null; // 마감 후엔 D-DAY 대신 "마감" 배지를 쓴다
+  if (diffDays === 0) return "D-DAY";
   return `D-${diffDays}`;
 }
