@@ -124,7 +124,7 @@ export async function updateStore(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim();
   if (!storeId || !name || !category) {
-    redirect(`/store?error=${encodeURIComponent("가게 이름과 카테고리는 필수입니다.")}`);
+    redirect(`/store?edit=store&error=${encodeURIComponent("가게 이름과 카테고리는 필수입니다.")}`);
   }
 
   // 새 로고를 안 골랐으면(fileEntry 없음) logoUrl이 null로 돌아오는데, 이걸 그대로
@@ -137,7 +137,7 @@ export async function updateStore(formData: FormData) {
     formData.get("logo")
   );
   if (logoError) {
-    redirect(`/store?error=${encodeURIComponent(logoError)}`);
+    redirect(`/store?edit=store&error=${encodeURIComponent(logoError)}`);
   }
 
   const { error } = await supabase
@@ -162,7 +162,7 @@ export async function updateStore(formData: FormData) {
     .eq("owner_id", user.id); // RLS로도 막히지만 서버 액션에서 한 번 더 명시적으로 소유자 검증
 
   if (error) {
-    redirect(`/store?error=${encodeURIComponent(error.message)}`);
+    redirect(`/store?edit=store&error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/store");
@@ -179,16 +179,16 @@ export async function addProduct(formData: FormData) {
   const storeId = String(formData.get("store_id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   if (!storeId || !name) {
-    redirect(`/store?error=${encodeURIComponent("상품명을 입력해 주세요.")}`);
+    redirect(`/store?edit=products&error=${encodeURIComponent("상품명을 입력해 주세요.")}`);
   }
 
   const price = toNumberOrNull(formData.get("price"));
   if (price === null) {
-    redirect(`/store?error=${encodeURIComponent("판매가를 입력해 주세요.")}`);
+    redirect(`/store?edit=products&error=${encodeURIComponent("판매가를 입력해 주세요.")}`);
   }
   const cost = toNumberOrNull(formData.get("cost"));
   if (cost === null) {
-    redirect(`/store?error=${encodeURIComponent("원가를 입력해 주세요.")}`);
+    redirect(`/store?edit=products&error=${encodeURIComponent("원가를 입력해 주세요.")}`);
   }
 
   const { error } = await supabase.from("products").insert({
@@ -201,11 +201,11 @@ export async function addProduct(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/store?error=${encodeURIComponent(error.message)}`);
+    redirect(`/store?edit=products&error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/store");
-  redirect("/store");
+  redirect("/store?edit=products"); // 상품을 연달아 추가·삭제할 수 있게 수정 모드 유지
 }
 
 export async function deleteProduct(formData: FormData) {
@@ -216,15 +216,15 @@ export async function deleteProduct(formData: FormData) {
   if (!user) redirect("/login");
 
   const productId = String(formData.get("product_id") ?? "");
-  if (!productId) redirect("/store");
+  if (!productId) redirect("/store?edit=products");
 
   // RLS 정책("own products")이 소유자 아닌 삭제를 어차피 막지만, 쿼리 자체도 안전하게 유지.
   const { error } = await supabase.from("products").delete().eq("id", productId);
 
   if (error) {
-    redirect(`/store?error=${encodeURIComponent(error.message)}`);
+    redirect(`/store?edit=products&error=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/store");
-  redirect("/store");
+  redirect("/store?edit=products"); // 상품을 연달아 추가·삭제할 수 있게 수정 모드 유지
 }
