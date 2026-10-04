@@ -5,9 +5,12 @@ import { EventCard } from "@/features/events/event-card";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { PosterFrame } from "@/components/ui/poster-frame";
+import { SkyBackground } from "@/components/sky-background";
+import { InteractiveLineChart } from "@/components/ui/interactive-line-chart";
+import { ProductRevenueAreaChart } from "@/components/ui/product-revenue-area-chart";
 import { getMyParticipations } from "@/features/participations/data";
 import { getDashboardStats } from "@/features/dashboard/data";
-import { STATUS_LABEL } from "@/features/participations/status-labels";
+import { STATUS_BADGE_CLASS, STATUS_LABEL } from "@/features/participations/status-labels";
 
 export default async function HomePage() {
   const events = await getEvents();
@@ -66,16 +69,16 @@ const dashboardStats = isLoggedIn
             </span>
 
             <h1 className="mt-7 tracking-tight">
-              <span className="block text-xl font-medium leading-tight text-[#607080] sm:text-2xl">
+              <span className="block text-xl font-medium leading-tight text-[#6B6E74] sm:text-2xl">
                 어디에 나갈지 고민될 때,
               </span>
 
-              <span className="mt-3 block text-5xl font-bold leading-none text-[#15202B] sm:text-7xl">
-                Marketfit.
+              <span className="mt-3 block font-logo text-6xl font-semibold leading-none text-[#1F2023] sm:text-8xl">
+                Marketfit<span className="text-brand">.</span>
               </span>
             </h1>
 
-            <p className="mt-3 max-w-2xl text-base leading-7 text-[#607080] sm:text-lg">
+            <p className="mt-3 max-w-2xl text-base leading-7 text-[#6B6E74] sm:text-lg">
               전국 행사 정보를 한눈에 확인하고, 데이터를 바탕으로 더 나은 마켓 선택을
               시작해보세요.
             </p>
@@ -108,7 +111,7 @@ const dashboardStats = isLoggedIn
                     absolute left-0 top-0 block w-[285px]
                     -rotate-3
                     rounded-[24px] border border-white/80 bg-white p-5
-                    shadow-[0_20px_50px_rgba(47,128,237,0.14)]
+                    shadow-[0_20px_50px_rgba(10,120,174,0.14)]
                     transition-all duration-300 ease-out
 
                     group-hover:z-50
@@ -116,7 +119,7 @@ const dashboardStats = isLoggedIn
                     group-hover:translate-y-[30px]
                     group-hover:rotate-0
                     group-hover:scale-[1.04]
-                    group-hover:shadow-[0_28px_70px_rgba(47,128,237,0.22)]
+                    group-hover:shadow-[0_28px_70px_rgba(10,120,174,0.22)]
                   "
                 >
                   <div className="mb-4 flex items-center justify-between">
@@ -124,7 +127,7 @@ const dashboardStats = isLoggedIn
                       지금 모집 중
                     </span>
 
-                    <span className="rounded-full bg-[#E8F7EF] px-3 py-1 text-xs font-semibold text-[#279566]">
+                    <span className="rounded-full bg-[#FFEEDD] px-3 py-1 text-xs font-semibold text-[#B4530A]">
                       {featuredEvent.dday ?? "모집중"}
                     </span>
                   </div>
@@ -139,11 +142,11 @@ const dashboardStats = isLoggedIn
                     />
                   </div>
 
-                  <h3 className="text-lg font-bold text-[#15202B]">
+                  <h3 className="text-lg font-bold text-[#1F2023]">
                     {featuredEvent.name}
                   </h3>
 
-                  <p className="mt-1 text-sm text-[#728090]">
+                  <p className="mt-1 text-sm text-[#6B6E74]">
                     {[featuredEvent.region, featuredEvent.venue]
                       .filter(Boolean)
                       .join(" · ") || "지역 미기재"}
@@ -168,35 +171,35 @@ const dashboardStats = isLoggedIn
                   absolute inset-0 block
                   rotate-3
                   rounded-[22px] border border-white/80 bg-white p-5
-                  shadow-[0_20px_50px_rgba(47,128,237,0.12)]
+                  shadow-[0_20px_50px_rgba(10,120,174,0.12)]
                   transition-all duration-300 ease-out
 
                   group-hover:-translate-x-[90px]
                   group-hover:-translate-y-[55px]
                   group-hover:rotate-0
                   group-hover:scale-[1.04]
-                  group-hover:shadow-[0_28px_70px_rgba(47,128,237,0.22)]
+                  group-hover:shadow-[0_28px_70px_rgba(10,120,174,0.22)]
                 "
               >
-                <p className="text-xs font-medium text-[#728090]">
+                <p className="text-xs font-medium text-[#6B6E74]">
                   현재 모집 중인 행사
                 </p>
 
                 <div className="mt-2 flex items-end gap-2">
-                  <span className="text-4xl font-bold tracking-tight text-[#15202B]">
+                  <span className="text-4xl font-bold tracking-tight text-[#1F2023]">
                     {openEventCount}
                   </span>
 
-                  <span className="pb-1 text-sm text-[#728090]">
+                  <span className="pb-1 text-sm text-[#6B6E74]">
                     개
                   </span>
                 </div>
 
                 <div className="mt-4 flex gap-1">
                   <div className="h-2 flex-1 rounded-full bg-brand" />
-                  <div className="h-2 flex-1 rounded-full bg-[#82CFFF]" />
-                  <div className="h-2 flex-1 rounded-full bg-[#BDE7FF]" />
-                  <div className="h-2 flex-1 rounded-full bg-[#E0F3FF]" />
+                  <div className="h-2 flex-1 rounded-full bg-[#5BB3DA]" />
+                  <div className="h-2 flex-1 rounded-full bg-[#A9D8EC]" />
+                  <div className="h-2 flex-1 rounded-full bg-[#D7EEF7]" />
                 </div>
               </Link>
 
@@ -204,30 +207,30 @@ const dashboardStats = isLoggedIn
 
 
             {/* AI 도우미 바로가기 카드 */}
-            <div className="group absolute bottom-0 left-10 z-30 h-[145px] w-[230px] hover:z-50">
+            <div className="group absolute bottom-0 left-10 z-30 h-[120px] w-[230px] hover:z-50">
 
               <Link
                 href="/ai"
                 className="
-                  absolute inset-0 block
+                  absolute inset-0 flex flex-col justify-center
                   -rotate-2
                   rounded-[20px] border border-white/80 bg-white p-5
-                  shadow-[0_18px_40px_rgba(47,128,237,0.10)]
+                  shadow-[0_18px_40px_rgba(10,120,174,0.10)]
                   transition-all duration-300 ease-out
 
                   group-hover:translate-x-[55px]
                   group-hover:-translate-y-[150px]
                   group-hover:rotate-0
                   group-hover:scale-[1.04]
-                  group-hover:shadow-[0_28px_70px_rgba(47,128,237,0.22)]
+                  group-hover:shadow-[0_28px_70px_rgba(10,120,174,0.22)]
                 "
               >
-                <p className="text-xs font-medium text-[#728090]">
+                <p className="text-sm font-medium text-[#6B6E74]">
                   궁금한 건 바로 물어보세요
                 </p>
 
-                <p className="mt-2 flex items-center gap-1.5 text-lg font-bold text-[#15202B]">
-                  <Sparkles className="size-4 text-brand" />
+                <p className="mt-2 flex items-center gap-1.5 text-xl font-bold text-[#1F2023]">
+                  <Sparkles className="size-5 text-brand" />
                   AI 도우미 바로가기
                 </p>
               </Link>
@@ -251,55 +254,14 @@ const dashboardStats = isLoggedIn
           shadow-[0_-24px_70px_rgba(40,80,120,0.12)]
         "
       >
-         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-t-[56px]">
+        {/* 스크롤 위치에 따라 바뀌는 하늘 배경 */}
+        <SkyBackground />
 
-          <div
-            className="
-              absolute -left-32 top-[10%]
-              h-[480px] w-[480px]
-              rounded-full
-              bg-[#FFD7A8]/45
-              blur-[95px]
-            "
-          />
-
-          <div
-            className="
-              absolute -right-32 top-[34%]
-              h-[520px] w-[520px]
-              rounded-full
-              bg-[#BFDFFF]/45
-              blur-[100px]
-            "
-          />
-
-          <div
-            className="
-              absolute -left-24 top-[60%]
-              h-[460px] w-[460px]
-              rounded-full
-              bg-[#FFE5C7]/38
-              blur-[95px]
-            "
-          />
-
-          <div
-            className="
-              absolute -right-24 top-[82%]
-              h-[500px] w-[500px]
-              rounded-full
-              bg-[#CFE8FF]/42
-              blur-[100px]
-            "
-          />
-
-        </div>
-
-        <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-24 pt-20 lg:px-8">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-24 pt-20 lg:px-8">
 
 
           {/* 2. 마감 임박 행사 */}
-          <section className="flex min-h-[calc(100vh-64px)] items-center">
+          <section data-sky="0" className="flex min-h-[calc(100vh-64px)] items-center">
             <div className="w-full">
               <HomeSection
                 title="마감 임박 행사"
@@ -317,7 +279,7 @@ const dashboardStats = isLoggedIn
 
 
           {/* 3. 최근 등록 행사 */}
-          <section className="flex min-h-[calc(100vh-64px)] snap-start snap-always items-center">
+          <section data-sky="1" className="flex min-h-[calc(100vh-64px)] snap-start snap-always items-center">
             <div className="w-full">
               <HomeSection
                 title="최근 등록 행사"
@@ -335,7 +297,7 @@ const dashboardStats = isLoggedIn
 
 
           {/* 4. 내 참가 예정 행사 */}
-          <section className="flex min-h-[calc(100vh-64px)] snap-start snap-always items-center">
+          <section data-sky="2" className="flex min-h-[calc(100vh-64px)] snap-start snap-always items-center">
             <div className="w-full">
               <HomeSection
                 title="내 참가 예정 행사"
@@ -343,7 +305,7 @@ const dashboardStats = isLoggedIn
               >
                 {isLoggedIn ? (
                   <MyEventsPreview
-                    participations={participations.slice(0, 3)}
+                    participations={participations.slice(0, 4)}
                   />
                 ) : (
                   <EmptyState
@@ -361,7 +323,7 @@ const dashboardStats = isLoggedIn
 
 
           {/* 5. 최근 성과 */}
-          <section className="flex min-h-[calc(100vh-64px)] snap-start snap-always items-center">
+          <section data-sky="3" className="flex min-h-[calc(100vh-64px)] snap-start snap-always items-center">
             <div className="w-full">
               <HomeSection
                 title="최근 성과"
@@ -404,9 +366,9 @@ function HomeSection({
   return (
     <section className="py-8">
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
 
-        <h2 className="text-lg font-semibold text-neutral-900">
+        <h2 className="text-2xl font-bold text-neutral-900">
           {title}
         </h2>
 
@@ -446,7 +408,7 @@ function EmptyState({
   const isBlue = accent === "blue";
 
   return (
-    <div className="col-span-full overflow-hidden rounded-[24px] border border-[#E3EDF5] bg-white shadow-[0_12px_35px_rgba(40,80,120,0.06)]">
+    <div className="col-span-full overflow-hidden rounded-[24px] border border-[#DEDFE3] bg-white shadow-[0_12px_35px_rgba(40,80,120,0.06)]">
       <div className="flex flex-col items-start justify-between gap-8 p-7 sm:flex-row sm:items-center sm:p-8">
 
         {/* 왼쪽 설명 */}
@@ -456,7 +418,7 @@ function EmptyState({
           <div
             className={
               isBlue
-                ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EAF4FF] text-sm font-bold text-brand"
+                ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-light text-sm font-bold text-brand"
                 : "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#E8F7EF] text-sm font-bold text-[#279566]"
             }
           >
@@ -474,11 +436,11 @@ function EmptyState({
               {label}
             </p>
 
-            <h3 className="mt-2 text-lg font-bold text-[#15202B]">
+            <h3 className="mt-2 text-lg font-bold text-[#1F2023]">
               {title}
             </h3>
 
-            <p className="mt-2 max-w-xl text-sm leading-6 text-[#728090]">
+            <p className="mt-2 max-w-xl text-sm leading-6 text-[#6B6E74]">
               {description}
             </p>
           </div>
@@ -515,8 +477,8 @@ function MyEventsPreview({
 }) {
   if (participations.length === 0) {
     return (
-      <div className="col-span-full rounded-[24px] border border-[#E3EDF5] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
-        <p className="text-sm font-medium text-[#607080]">
+      <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
+        <p className="text-sm font-medium text-[#6B6E74]">
           아직 추가한 행사가 없어요.
         </p>
 
@@ -537,35 +499,35 @@ function MyEventsPreview({
           key={p.participationId}
           href={`/my-events/${p.participationId}`}
           className="
-            rounded-[22px] border border-[#E3EDF5] bg-white p-5
+            rounded-[22px] border border-[#DEDFE3] bg-white p-5
             shadow-[0_12px_30px_rgba(40,80,120,0.06)]
             transition-all duration-200
             hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(40,80,120,0.10)]
           "
         >
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-full bg-[#EAF4FF] px-3 py-1 text-xs font-semibold text-brand">
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_BADGE_CLASS[p.status] ?? ""}`}>
               {STATUS_LABEL[p.status] ?? p.status}
             </span>
 
             {p.category && (
-              <span className="rounded-full bg-[#F2F5F7] px-3 py-1 text-xs font-medium text-[#607080]">
+              <span className="rounded-full bg-[#EEEFF1] px-3 py-1 text-xs font-medium text-[#6B6E74]">
                 {p.category}
               </span>
             )}
           </div>
 
-          <h3 className="mt-4 line-clamp-2 text-base font-bold text-[#15202B]">
+          <h3 className="mt-4 line-clamp-2 text-base font-bold text-[#1F2023]">
             {p.eventName}
           </h3>
 
-          <p className="mt-2 text-sm text-[#728090]">
+          <p className="mt-2 text-sm text-[#6B6E74]">
             {[p.region, p.venue].filter(Boolean).join(" · ") ||
               "지역 미기재"}
           </p>
 
           {p.startDate && (
-            <p className="mt-2 text-xs text-[#9AA7B4]">
+            <p className="mt-2 text-xs text-[#8A8D93]">
               {p.endDate && p.endDate !== p.startDate
                 ? `${p.startDate} ~ ${p.endDate}`
                 : p.startDate}
@@ -583,8 +545,8 @@ function DashboardPreview({
 }) {
   if (!stats) {
     return (
-      <div className="col-span-full rounded-[24px] border border-[#E3EDF5] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
-        <p className="text-sm font-medium text-[#607080]">
+      <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
+        <p className="text-sm font-medium text-[#6B6E74]">
           가게를 등록하면 참가 성과를 확인할 수 있어요.
         </p>
 
@@ -600,12 +562,12 @@ function DashboardPreview({
 
   if (stats.totalParticipations === 0) {
     return (
-      <div className="col-span-full rounded-[24px] border border-[#E3EDF5] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
-        <p className="text-sm font-medium text-[#607080]">
+      <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
+        <p className="text-sm font-medium text-[#6B6E74]">
           아직 참가 기록이 없어요.
         </p>
 
-        <p className="mt-1 text-xs text-[#9AA7B4]">
+        <p className="mt-1 text-xs text-[#8A8D93]">
           참가 기록을 추가하면 이곳에서 성과를 바로 확인할 수 있어요.
         </p>
       </div>
@@ -613,8 +575,8 @@ function DashboardPreview({
   }
 
   return (
-    <div className="col-span-full rounded-[24px] border border-[#E3EDF5] bg-white p-7 shadow-[0_12px_35px_rgba(40,80,120,0.06)]">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-6 shadow-[0_12px_35px_rgba(40,80,120,0.06)]">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
 
         <PerformanceTile
           label="총 참가 행사"
@@ -644,26 +606,87 @@ function DashboardPreview({
           }
         />
 
+        <PerformanceTile
+          label="평균 만족도"
+          value={
+            stats.averageSatisfaction != null
+              ? `${stats.averageSatisfaction.toFixed(1)} / 5`
+              : "기록 없음"
+          }
+        />
+
       </div>
 
-      {stats.averageSatisfaction != null && (
-        <div className="mt-5 flex items-center justify-between rounded-2xl bg-[#F3FAF7] px-5 py-4">
-          <div>
-            <p className="text-xs font-medium text-[#728090]">
-              평균 만족도
-            </p>
+      {/* 대시보드 그래프 미리보기 */}
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
 
-            <p className="mt-1 text-lg font-bold text-[#15202B]">
-              {stats.averageSatisfaction.toFixed(1)} / 5
-            </p>
-          </div>
+        <ChartPanel title="행사별 매출 추이">
+          {stats.eventRevenueTrend.length === 0 ? (
+            <ChartEmpty text="매출을 입력한 참가 기록이 아직 없어요." />
+          ) : (
+            <InteractiveLineChart
+              color="#F2542D"
+              format="currency"
+              height={200}
+              points={stats.eventRevenueTrend.map((e) => ({
+                label:
+                  e.eventName.length > 6
+                    ? `${e.eventName.slice(0, 6)}…`
+                    : e.eventName,
+                value: e.revenue,
+                title: e.eventName,
+                meta: e.startDate,
+                sublabel:
+                  e.netProfit != null
+                    ? `순이익 ${e.netProfit.toLocaleString()}원`
+                    : undefined,
+              }))}
+            />
+          )}
+        </ChartPanel>
 
-          <span className="rounded-full bg-[#E3F5EC] px-4 py-2 text-xs font-semibold text-[#279566]">
-            {stats.satisfactionEntryCount}건 기준
-          </span>
-        </div>
-      )}
+        <ChartPanel title="품목별 매출 비교">
+          {stats.popularProducts.length === 0 ? (
+            <ChartEmpty text="상품별 판매 실적이 아직 없어요." />
+          ) : (
+            <ProductRevenueAreaChart
+              height={200}
+              items={stats.popularProducts.map((p) => ({
+                label: p.productName,
+                value: p.totalRevenue,
+              }))}
+            />
+          )}
+        </ChartPanel>
+
+      </div>
     </div>
+  );
+}
+
+function ChartPanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-2xl bg-[#F8FBFD] p-4">
+      <p className="mb-3 text-sm font-semibold text-[#1F2023]">
+        {title}
+      </p>
+
+      {children}
+    </div>
+  );
+}
+
+function ChartEmpty({ text }: { text: string }) {
+  return (
+    <p className="flex h-[200px] items-center justify-center text-sm text-[#8A8D93]">
+      {text}
+    </p>
   );
 }
 
@@ -675,12 +698,12 @@ function PerformanceTile({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl bg-[#F8FBFD] p-5">
-      <p className="text-xs font-medium text-[#728090]">
+    <div className="rounded-2xl bg-[#F8FBFD] px-5 py-4">
+      <p className="text-xs font-medium text-[#6B6E74]">
         {label}
       </p>
 
-      <p className="mt-2 text-xl font-bold tracking-tight text-[#15202B]">
+      <p className="mt-2 text-xl font-bold tracking-tight text-[#1F2023]">
         {value}
       </p>
     </div>

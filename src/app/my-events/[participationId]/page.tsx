@@ -16,7 +16,7 @@ import {
   updateParticipationStatus,
   updateProductSale,
 } from "@/features/participations/actions";
-import { STATUS_LABEL, STATUS_ORDER } from "@/features/participations/status-labels";
+import { STATUS_BADGE_CLASS, STATUS_LABEL, STATUS_ORDER } from "@/features/participations/status-labels";
 import { BOOTH_PROVIDED_OPTIONS, PAYMENT_METHODS } from "@/features/store/constants";
 
 export default async function ParticipationDetailPage(
@@ -53,7 +53,7 @@ export default async function ParticipationDetailPage(
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">{STATUS_LABEL[p.status]}</Badge>
+        <Badge variant="secondary" className={STATUS_BADGE_CLASS[p.status]}>{STATUS_LABEL[p.status]}</Badge>
       </div>
       <h1 className="mt-2 text-2xl font-bold text-neutral-950">{detail.eventName}</h1>
       <p className="mt-1 text-sm text-neutral-500">

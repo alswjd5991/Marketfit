@@ -14,6 +14,14 @@ const suit = localFont({
   variable: "--font-suit",
 });
 
+// Rubik(Google Fonts, SIL OFL) 가변 폰트 라틴 서브셋 — "Marketfit" 로고 글자에만 쓴다.
+const rubik = localFont({
+  src: "./fonts/Rubik-Variable.woff2",
+  weight: "300 900",
+  display: "swap",
+  variable: "--font-rubik",
+});
+
 export const metadata: Metadata = {
   title: "Marketfit — 소상공인을 위한 마켓 인사이트 플랫폼",
   description:
@@ -22,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${suit.variable} h-full antialiased`}>
+    <html lang="ko" className={`${suit.variable} ${rubik.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-background font-sans text-neutral-900">
         <NavBar />
         <main className="flex-1 pb-16 sm:pb-0">{children}</main>

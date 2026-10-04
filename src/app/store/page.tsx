@@ -15,9 +15,9 @@ export default async function StorePage(props: PageProps<"/store">) {
   if (!user) {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="text-xl font-semibold text-neutral-900">내 가게</h1>
+        <h1 className="text-2xl font-bold text-neutral-950">내 가게</h1>
         <p className="mt-3 text-sm text-neutral-500">
-          가게 정보와 상품을 등록하려면 먼저 로그인해 주세요.
+          로그인 후 이용 가능
         </p>
         <Button asChild className="mt-6">
           <Link href="/login">로그인하러 가기</Link>
@@ -32,11 +32,10 @@ export default async function StorePage(props: PageProps<"/store">) {
     <div className="min-h-screen bg-[linear-gradient(135deg,#FFF3DC_0%,#F6FAFD_30%,#E3F2FC_68%,#F8FBFD_100%)]">
       <div className="mx-auto w-full max-w-6xl px-6 py-10 lg:px-8">
         <div className="mx-auto max-w-3xl">
-          <h1 className="text-xl font-bold text-neutral-950">내 가게</h1>
-
-          <p className="mt-1 text-sm text-neutral-500">
-            행사 참가 추천과 데이터 기록에 쓰일 가게·상품 정보입니다.
-          </p>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="text-2xl font-bold text-neutral-950">내 가게</h1>
+            <p className="text-sm text-neutral-500">행사 참가 추천과 데이터 기록에 쓰일 가게·상품 정보</p>
+          </div>
 
           {error && (
             <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -76,7 +75,7 @@ function CreateStoreForm() {
           <Field
             name="business_registration_number"
             label="사업자등록번호 (선택)"
-            placeholder="없으면 비워두세요 — 비사업자/부업 판매도 괜찮아요"
+            placeholder="없으면 비워두기 — 비사업자/부업 판매도 가능"
           />
           <Field name="sns_url" label="SNS/인스타그램 링크 (선택)" placeholder="https://instagram.com/..." />
           <PaymentMethodsField />
@@ -111,7 +110,7 @@ function StoreCard({ store }: { store: Store }) {
             name="business_registration_number"
             label="사업자등록번호"
             defaultValue={store.business_registration_number ?? ""}
-            placeholder="없으면 비워두세요"
+            placeholder="없으면 비워두기"
           />
           <Field name="sns_url" label="SNS/인스타그램 링크" defaultValue={store.sns_url ?? ""} />
           <PaymentMethodsField defaultValue={store.payment_methods ?? []} />
@@ -238,7 +237,7 @@ function ProductsSection({
 
         {products.length === 0 ? (
           <p className="text-sm text-neutral-400">
-            아직 등록된 상품이 없습니다.
+            등록된 상품 없음
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -402,7 +401,7 @@ function CategorySelect({ defaultValue }: { defaultValue?: string }) {
         className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
       >
         <option value="" disabled>
-          선택해 주세요
+          선택
         </option>
         {STORE_CATEGORIES.map((c) => (
           <option key={c} value={c}>
@@ -447,7 +446,7 @@ function StoreProfile({
           <div className="flex flex-col gap-5 p-7 sm:flex-row sm:items-center">
 
             {/* 프로필 이미지 임시 */}
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#D6EEFF,#EEF8FD)] text-3xl font-bold text-[#3C78B4] shadow-sm">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#D3ECF7,#F1F9FC)] text-3xl font-bold text-brand-dark shadow-sm">
               {store.name.slice(0, 1)}
             </div>
 
@@ -465,7 +464,7 @@ function StoreProfile({
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                <span className="rounded-full bg-[#FFF6BF] px-3 py-1 text-xs font-medium text-[#776100]">
                   {store.category}
                 </span>
 
@@ -478,8 +477,8 @@ function StoreProfile({
 
               <p className="mt-4 text-sm leading-6 text-neutral-500">
                 {store.flagship_product
-                  ? `${store.flagship_product}을(를) 중심으로 판매하는 ${store.category} 브랜드입니다.`
-                  : `${store.category} 카테고리의 상품을 판매하고 있어요.`}
+                  ? `${store.flagship_product}을(를) 중심으로 판매하는 ${store.category} 브랜드`
+                  : `${store.category} 카테고리 상품 판매`}
               </p>
             </div>
           </div>
@@ -488,12 +487,12 @@ function StoreProfile({
           <div className="grid border-t border-neutral-100 sm:grid-cols-3">
             <ProfileInfo
               label="대표 상품"
-              value={store.flagship_product ?? "아직 등록되지 않았어요"}
+              value={store.flagship_product ?? "미등록"}
             />
 
             <ProfileInfo
               label="주요 활동 지역"
-              value={store.active_region ?? "아직 등록되지 않았어요"}
+              value={store.active_region ?? "미등록"}
             />
 
             <ProfileInfo
@@ -511,7 +510,7 @@ function StoreProfile({
           <div>
             <CardTitle>주력 상품</CardTitle>
             <p className="mt-1 text-sm font-normal text-neutral-500">
-              등록한 상품을 한눈에 확인해보세요.
+              등록한 상품 한눈에 보기
             </p>
           </div>
 
@@ -524,7 +523,7 @@ function StoreProfile({
           {products.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-neutral-200 px-6 py-10 text-center">
               <p className="text-sm text-neutral-400">
-                아직 등록한 상품이 없어요.
+                등록한 상품 없음
               </p>
             </div>
           ) : (

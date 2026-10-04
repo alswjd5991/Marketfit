@@ -17,17 +17,17 @@ export async function NavBar() {
     <header
       className="
         sticky top-0 z-40
-        border-b border-[#DDE7EF]
+        border-b border-[#DEDFE3]
         bg-[#FAFBFC]/95
         backdrop-blur-lg
       "
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+      <div className="flex h-16 items-center justify-between px-6 lg:px-10">
 
         {/* 로고 */}
         <Link
           href="/"
-          className="flex items-center font-bold tracking-tight text-neutral-950"
+          className="flex items-center font-logo font-semibold tracking-tight text-neutral-950"
         >
           <span className="text-[17px]">
             Marketfit
@@ -38,13 +38,13 @@ export async function NavBar() {
         </Link>
 
         {/* 메뉴 */}
-        <nav className="hidden items-center gap-7 text-sm sm:flex">
+        <nav className="hidden items-center gap-9 text-sm sm:flex">
           <NavLinks />
 
           {user ? (
             <form
               action={signOut}
-              className="flex items-center gap-3 border-l border-neutral-300/50 pl-7"
+              className="flex items-center gap-3 border-l border-neutral-300/50 pl-9"
             >
               <span className="max-w-[120px] truncate text-neutral-500">
                 {displayName}

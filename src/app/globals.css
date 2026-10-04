@@ -11,11 +11,11 @@
 
 :root {
   --background: #f8fbfd;
-  --foreground: #1c2430;
+  --foreground: #1f2023;
 
-  --brand: #2f80ed;
-  --brand-dark: #236fd1;
-  --brand-light: #eaf4ff;
+  --brand: #0a78ae;
+  --brand-dark: #08648f;
+  --brand-light: #e3f3fa;
 }
 
 @theme inline {
@@ -26,10 +26,28 @@
   --color-brand-dark: var(--brand-dark);
   --color-brand-light: var(--brand-light);
 
+  /* 보조 글자·테두리 회색을 구름빛 회색 계열로 맞춘다 (기본 neutral 팔레트 덮어쓰기).
+     200·300은 구름 색 그대로(테두리·아이콘), 400~600은 같은 색조를 글자용으로 진하게. */
+  --color-neutral-100: #eeeff1;
+  --color-neutral-200: #dedfe3;
+  --color-neutral-300: #bebfc1;
+  --color-neutral-400: #8a8d93;
+  --color-neutral-500: #6b6e74;
+  --color-neutral-600: #55585e;
+
+  /* 제목·본문 검정은 진한 구름 차콜(#1F2023) 하나로 통일하고, 700·800은 그 사이 단계 */
+  --color-neutral-700: #43464b;
+  --color-neutral-800: #2b2d31;
+  --color-neutral-900: #1f2023;
+  --color-neutral-950: #1f2023;
+
   --font-sans: var(--font-suit), -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Noto Sans KR", sans-serif;
 
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* "Marketfit" 로고 글자 전용 */
+  --font-logo: var(--font-rubik), var(--font-suit), sans-serif;
 
   /* AI 도우미 화면 등장 모션 — 살짝 떠오르며 나타난다. */
   --animate-fade-up: fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -66,6 +84,24 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .poster-blob {
+    animation: none;
+  }
+}
+
+/* 메인 페이지 하늘 배경(SkyBackground)의 구름 원이 천천히 흘러가는 애니메이션.
+   원마다 --drift-x/--drift-y로 흐르는 방향만 바꿔 쓴다. */
+@keyframes sky-drift {
+  to {
+    transform: translate(var(--drift-x, 60px), var(--drift-y, -30px));
+  }
+}
+
+.sky-cloud {
+  animation: sky-drift 18s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky-cloud {
     animation: none;
   }
 }

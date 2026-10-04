@@ -63,7 +63,7 @@ export function NavLinks() {
   }, [pathname]);
 
   return (
-    <div className="relative flex items-center gap-7">
+    <div className="relative flex items-center gap-9">
       {NAV_ITEMS.map((item, index) => {
         const active = pathname.startsWith(item.href);
 

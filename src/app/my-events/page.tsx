@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyParticipations } from "@/features/participations/data";
-import { STATUS_LABEL } from "@/features/participations/status-labels";
+import { STATUS_BADGE_CLASS, STATUS_LABEL } from "@/features/participations/status-labels";
 
 export default async function MyEventsPage() {
   const user = await getCurrentUser();
@@ -12,9 +12,9 @@ export default async function MyEventsPage() {
   if (!user) {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="text-xl font-semibold text-neutral-900">내 행사</h1>
+        <h1 className="text-2xl font-bold text-neutral-950">내 행사</h1>
         <p className="mt-3 text-sm text-neutral-500">
-          참가할 행사를 관리하려면 먼저 로그인해 주세요.
+          로그인 후 이용 가능
         </p>
         <Button asChild className="mt-6">
           <Link href="/login">로그인하러 가기</Link>
@@ -28,26 +28,21 @@ export default async function MyEventsPage() {
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#FFE8C2_0%,#F3F9FF_32%,#D6EEFF_68%,#EEF8FD_100%)]">
       <div className="mx-auto w-full max-w-4xl px-6 py-10 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-950">
-            내 행사
-          </h1>
-
-          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-neutral-500">
-              내 행사에 추가한 행사를 관리해보세요.
-            </p>
-
-            <span className="text-sm text-neutral-400">
-              총 {participations.length}개
-            </span>
+        <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="text-2xl font-bold text-neutral-950">내 행사</h1>
+            <p className="text-sm text-neutral-500">내 행사에 추가한 행사 관리</p>
           </div>
+
+          <span className="text-sm text-neutral-400">
+            총 {participations.length}개
+          </span>
         </div>
 
         {participations.length === 0 ? (
           <div className="rounded-2xl border border-white/70 bg-white/80 px-6 py-14 text-center shadow-sm backdrop-blur-sm">
             <p className="text-sm text-neutral-500">
-              아직 추가한 행사가 없어요.
+              추가한 행사 없음
             </p>
 
             <Link
@@ -68,20 +63,15 @@ export default async function MyEventsPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusClass(
-                            p.status
-                          )}`}
+                          className={`rounded-full px-3 py-1 text-xs font-medium ${
+                            STATUS_BADGE_CLASS[p.status] ?? "bg-neutral-100 text-neutral-600"
+                          }`}
                         >
                           {STATUS_LABEL[p.status] ?? p.status}
                         </span>
 
                         {p.category && (
-                          <Badge
-                            variant="outline"
-                            className="border-neutral-200 bg-neutral-50 text-neutral-600"
-                          >
-                            {p.category}
-                          </Badge>
+                          <Badge variant="secondary">{p.category}</Badge>
                         )}
                       </div>
 
@@ -113,7 +103,11 @@ export default async function MyEventsPage() {
                         </Button>
                       )}
 
-                      <Button asChild size="sm" className="px-4">
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-brand-light px-4 text-brand-dark shadow-none hover:bg-[#CDEAF6] hover:shadow-none"
+                      >
                         <Link href={`/my-events/${p.participationId}`}>
                           관리하기 →
                         </Link>
@@ -129,7 +123,7 @@ export default async function MyEventsPage() {
         {participations.length > 0 && (
           <div className="mt-8 text-center">
             <p className="text-sm text-neutral-400">
-              다른 마켓도 둘러보시겠어요?
+              다른 마켓도 둘러보기
             </p>
 
             <Link
@@ -148,29 +142,4 @@ export default async function MyEventsPage() {
 function formatRange(start: string, end: string | null) {
   if (!end || end === start) return start;
   return `${start} ~ ${end}`;
-}
-
-function getStatusClass(status: string) {
-  switch (status) {
-    case "interested":
-      return "bg-blue-50 text-blue-700";
-
-    case "planning_to_apply":
-      return "bg-amber-50 text-amber-700";
-
-    case "applied":
-      return "bg-indigo-50 text-indigo-700";
-
-    case "planning_to_attend":
-      return "bg-violet-50 text-violet-700";
-
-    case "attended":
-      return "bg-emerald-50 text-emerald-700";
-
-    case "cancelled":
-      return "bg-neutral-100 text-neutral-500";
-
-    default:
-      return "bg-neutral-100 text-neutral-600";
-  }
 }
