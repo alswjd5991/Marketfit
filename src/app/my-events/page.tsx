@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyParticipations } from "@/features/participations/data";
-import { STATUS_BADGE_CLASS, STATUS_LABEL, toDisplayStatus } from "@/features/participations/status-labels";
+import { STATUS_BADGE_CLASS, STATUS_LABEL, STATUS_ORDER, toDisplayStatus } from "@/features/participations/status-labels";
 import { CenteredNotice, PageHeader } from "@/components/page-header";
 import { ChevronRight } from "lucide-react";
 
@@ -19,8 +19,24 @@ export default async function MyEventsPage() {
 
   return (
     <div className="min-h-screen" style={{ background: skyGradient(1) }}>
-      <div className="mx-auto w-full max-w-4xl px-6 py-10 lg:px-8">
-        <PageHeader title="내 행사" sub={`${participations.length}개`} />
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <PageHeader
+          title="내 행사"
+          actions={
+            participations.length > 0 && (
+              <ul className="flex flex-wrap gap-2">
+                {STATUS_ORDER.map((s) => (
+                  <li key={s} className={`flex items-baseline gap-2 rounded-xl px-4 py-2 ${STATUS_BADGE_CLASS[s]}`}>
+                    <span className="text-[13px] font-semibold">{STATUS_LABEL[s]}</span>
+                    <span className="text-xl font-extrabold tabular-nums">
+                      {participations.filter((p) => toDisplayStatus(p.status) === s).length}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+        />
 
         {participations.length === 0 ? (
           <div className="rounded-2xl border border-white/70 bg-white/80 px-6 py-14 text-center shadow-sm backdrop-blur-sm">
@@ -36,7 +52,7 @@ export default async function MyEventsPage() {
             </Link>
           </div>
         ) : (
-          <ul className="flex flex-col gap-3">
+          <ul className="grid gap-3 lg:grid-cols-2">
             {participations.map((p) => (
               <li key={p.participationId}>
                 <Link href={`/my-events/${p.participationId}`} className="block">
