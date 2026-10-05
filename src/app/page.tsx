@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { CalendarCheck, ChevronRight, Sparkles, TrendingUp } from "lucide-react";
+import { CalendarCheck, ChevronRight, TrendingUp } from "lucide-react";
+import { BotIcon } from "@/components/bot-icon";
 import { getEvents } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
 import { Button } from "@/components/ui/button";
@@ -57,38 +58,35 @@ const dashboardStats = isLoggedIn
       {/* 랜딩 / 히어로 영역 */}
       <section className="sticky top-0 z-0 h-[calc(100vh-64px)] overflow-hidden bg-[linear-gradient(135deg,#FFE8C2_0%,#F3F9FF_38%,#D6EEFF_72%,#EEF8FD_100%)]">
 
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-6 pb-40 pt-20 lg:grid-cols-[1.35fr_0.65fr] lg:pb-44 lg:pt-24">
+        <div className="mx-auto grid h-full max-w-7xl items-center gap-10 px-6 pb-32 pt-10 lg:grid-cols-[1.15fr_0.85fr]">
 
-          {/* 왼쪽 메인 타이틀 영역 */}
-          <div className="relative w-full px-4 py-10 sm:px-8 sm:py-14">
+          {/* 왼쪽 메인 타이틀 — 얇은 꺽쇠 두 개가 문구 묶음만 감싼다 */}
+          <div className="flex w-full justify-center lg:justify-start">
+            <div className="relative inline-block px-10 py-12 sm:px-14 sm:py-14">
+              <span className="pointer-events-none absolute left-0 top-0 size-10 rounded-tl-2xl border-l-[3px] border-t-[3px] border-[#1F2023]/75 sm:size-12" />
+              <span className="pointer-events-none absolute bottom-0 right-0 size-10 rounded-br-2xl border-b-[3px] border-r-[3px] border-[#1F2023]/75 sm:size-12" />
 
-            {/* 왼쪽 위 코너 */}
-            <div className="pointer-events-none absolute left-[-24px] top-0 h-14 w-14 border-l-[8px] border-t-[8px] border-[#465563]" />
-
-            {/* 오른쪽 아래 코너 */}
-            <div className="pointer-events-none absolute bottom-0 right-0 h-14 w-14 border-b-[8px] border-r-[8px] border-[#465563]" />
-
-            <span className="inline-block rounded-full bg-white/65 px-4 py-2 text-xs font-semibold text-brand shadow-sm backdrop-blur-sm">
-              셀러를 위한 행사 지도
-            </span>
-
-            <h1 className="mt-7 tracking-tight">
-              <span className="block text-xl font-medium leading-tight text-[#6B6E74] sm:text-2xl">
-                어디에 나갈지 고민될 때,
+              <span className="inline-block rounded-full bg-white/70 px-4 py-1.5 text-[13px] font-semibold text-brand shadow-sm backdrop-blur-sm">
+                셀러를 위한 행사 지도
               </span>
 
-              <span className="mt-3 block font-logo text-6xl font-semibold leading-none text-[#1F2023] sm:text-8xl">
-                Marketfit<span className="text-brand">.</span>
-              </span>
-            </h1>
+              <h1 className="mt-6">
+                <span className="block text-2xl font-semibold tracking-tight text-[#55585E] sm:text-[28px]">
+                  어디에 나갈지 고민될 때,
+                </span>
+                <span className="mt-2 block font-logo text-7xl font-semibold leading-[0.95] tracking-[-0.02em] text-[#1F2023] sm:text-[112px]">
+                  Marketfit<span className="text-brand">.</span>
+                </span>
+              </h1>
 
-            <Button
-              asChild
-              size="lg"
-              className="mt-6 rounded-xl bg-brand px-7 text-white shadow-sm transition-all hover:bg-brand-dark hover:shadow-md"
-            >
-              <Link href="/events">행사 찾아보기</Link>
-            </Button>
+              <Button
+                asChild
+                size="lg"
+                className="mt-9 h-12 rounded-xl bg-brand px-8 text-[15px] text-white shadow-sm transition-all hover:bg-brand-dark hover:shadow-md"
+              >
+                <Link href="/events">행사 찾아보기</Link>
+              </Button>
+            </div>
           </div>
 
 
@@ -205,36 +203,15 @@ const dashboardStats = isLoggedIn
             </div>
 
 
-            {/* AI 도우미 바로가기 카드 */}
-            <div className="group absolute bottom-0 left-10 z-30 h-[120px] w-[230px] hover:z-50">
-
-              <Link
-                href="/ai"
-                className="
-                  absolute inset-0 flex flex-col justify-center
-                  -rotate-2
-                  rounded-[20px] border border-white/80 bg-white p-5
-                  shadow-[0_18px_40px_rgba(10,120,174,0.10)]
-                  transition-all duration-300 ease-out
-
-                  group-hover:translate-x-[55px]
-                  group-hover:-translate-y-[150px]
-                  group-hover:rotate-0
-                  group-hover:scale-[1.04]
-                  group-hover:shadow-[0_28px_70px_rgba(10,120,174,0.22)]
-                "
-              >
-                <p className="text-sm font-medium text-[#6B6E74]">
-                  궁금한 건 바로 질문
-                </p>
-
-                <p className="mt-2 flex items-center gap-1.5 text-xl font-bold text-[#1F2023]">
-                  <Sparkles className="size-5 text-brand" />
-                  AI 도우미 바로가기
-                </p>
-              </Link>
-
-            </div>
+            {/* AI 도우미 바로가기 — 카드 대신 챗봇 아이콘. 클릭하기 쉽게 살짝만 떠오른다 */}
+            <Link
+              href="/ai"
+              aria-label="AI 도우미"
+              title="AI 도우미에게 물어보기"
+              className="absolute -bottom-8 right-20 z-30 block rounded-full transition-transform duration-200 ease-out hover:-translate-y-1"
+            >
+              <BotIcon className="size-24 text-[#1B8FCB] drop-shadow-[0_10px_18px_rgba(10,120,174,0.25)]" />
+            </Link>
 
           </div>
         </div>
