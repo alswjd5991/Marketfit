@@ -42,62 +42,64 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
           </section>
         )}
 
-        <section className="mt-6">
-          <h2 className="mb-3 text-lg font-bold text-neutral-950">최근 성과</h2>
+        <Group title="최근 성과" first>
           <RecentPerformance stats={stats} withTypeFilter />
-        </section>
+        </Group>
 
-        <section className="mt-5 grid gap-3 sm:grid-cols-3">
-          <Kpi
-            label="행사당 평균 매출"
-            value={stats.totalRevenue != null ? won(stats.totalRevenue / stats.revenueEntryCount) : "기록 없음"}
-            badge={
-              trendDiff != null && Math.abs(trendDiff) >= 0.05 // 인사이트 문장과 같은 기준
-                ? { text: `최근 ${trend!.recentCount}회 ${trendDiff > 0 ? "▲" : "▼"} ${Math.round(Math.abs(trendDiff) * 100)}%`, good: trendDiff > 0 }
-                : undefined
-            }
-          />
-          <Kpi
-            label="투자 대비 수익률"
-            value={stats.returnOnCost ? `${Math.round(stats.returnOnCost.percent).toLocaleString()}%` : "기록 없음"}
-            tone={stats.returnOnCost && stats.returnOnCost.percent < 0 ? "bad" : undefined}
-            sub={stats.returnOnCost ? `비용 ${won(stats.returnOnCost.totalCost)}` : "비용 입력 시 표시"}
-          />
-          <Kpi
-            label="목표 매출 달성률"
-            value={stats.targetAchievement ? `${Math.round(stats.targetAchievement.percent)}%` : "기록 없음"}
-            sub={stats.targetAchievement ? `${stats.targetAchievement.entryCount}회 기준` : "목표 매출 입력 시 표시"}
-          />
-        </section>
+        <Group title="수익성">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Kpi
+              label="행사당 평균 매출"
+              value={stats.totalRevenue != null ? won(stats.totalRevenue / stats.revenueEntryCount) : "기록 없음"}
+              badge={
+                trendDiff != null && Math.abs(trendDiff) >= 0.05 // 인사이트 문장과 같은 기준
+                  ? { text: `최근 ${trend!.recentCount}회 ${trendDiff > 0 ? "▲" : "▼"} ${Math.round(Math.abs(trendDiff) * 100)}%`, good: trendDiff > 0 }
+                  : undefined
+              }
+            />
+            <Kpi
+              label="투자 대비 수익률"
+              value={stats.returnOnCost ? `${Math.round(stats.returnOnCost.percent).toLocaleString()}%` : "기록 없음"}
+              tone={stats.returnOnCost && stats.returnOnCost.percent < 0 ? "bad" : undefined}
+              sub={stats.returnOnCost ? `비용 ${won(stats.returnOnCost.totalCost)}` : "비용 입력 시 표시"}
+            />
+            <Kpi
+              label="목표 매출 달성률"
+              value={stats.targetAchievement ? `${Math.round(stats.targetAchievement.percent)}%` : "기록 없음"}
+              sub={stats.targetAchievement ? `${stats.targetAchievement.entryCount}회 기준` : "목표 매출 입력 시 표시"}
+            />
+          </div>
+        </Group>
 
-        <section className="mt-5 grid gap-5 lg:grid-cols-3">
-          <Panel title="참가 전환 흐름">
-            <Funnel stats={stats} />
-          </Panel>
+        <Group title="참가 활동">
+          <div className="grid gap-5 lg:grid-cols-3">
+            <Panel title="참가 전환 흐름">
+              <Funnel stats={stats} />
+            </Panel>
+            <Panel title="월별 참가" className="lg:col-span-2">
+              <ColumnChart
+                unit="건"
+                barName="참가 행사 수"
+                barColor={COUNT_BAR_COLOR}
+                height={290}
+                points={stats.monthlyParticipationCounts.map((m) => {
+                  const [y, mo] = m.monthKey.split("-");
+                  return { label: `${y.slice(2)}.${Number(mo)}`, value: m.count, title: `${y}년 ${Number(mo)}월` };
+                })}
+              />
+            </Panel>
+          </div>
+        </Group>
 
-          <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"} className="lg:col-span-2">
+        <Group title="상품 판매">
+          <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"}>
             {stats.productSalesByEvent.series.length === 0 ? (
               <Empty>상품별 판매 기록 없음</Empty>
             ) : (
               <ProductTrendChart title="품목별 판매 수량 추이" data={stats.productSalesByEvent} />
             )}
           </Panel>
-        </section>
-
-        <section className="mt-5">
-          <Panel title="월별 참가">
-            <ColumnChart
-              unit="건"
-              barName="참가 행사 수"
-              barColor={COUNT_BAR_COLOR}
-              height={170}
-              points={stats.monthlyParticipationCounts.map((m) => {
-                const [y, mo] = m.monthKey.split("-");
-                return { label: `${y.slice(2)}.${Number(mo)}`, value: m.count, title: `${y}년 ${Number(mo)}월` };
-              })}
-            />
-          </Panel>
-        </section>
+        </Group>
       </div>
     </div>
   );
@@ -106,6 +108,16 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
 /** "**굵게**" 표시만 지원하는 아주 작은 렌더러(인사이트 문장용). */
 function bold(text: string): ReactNode[] {
   return text.split("**").map((part, i) => (i % 2 ? <strong key={i} className="font-bold text-neutral-950">{part}</strong> : part));
+}
+
+/** 목적이 같은 차트 묶음. 묶음이 바뀔 때마다 구분선 + 소제목으로 나눈다. */
+function Group({ title, first = false, children }: { title: string; first?: boolean; children: ReactNode }) {
+  return (
+    <section className={first ? "mt-8" : "mt-10 border-t border-neutral-300/60 pt-8"}>
+      <h2 className="mb-4 text-lg font-bold text-neutral-950">{title}</h2>
+      {children}
+    </section>
+  );
 }
 
 /** title을 비우면 제목 줄을 자식(드롭다운이 붙은 차트)이 직접 그린다. */
