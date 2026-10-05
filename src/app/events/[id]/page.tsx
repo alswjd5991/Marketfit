@@ -11,8 +11,17 @@ import { Button } from "@/components/ui/button";
 import { PosterFrame } from "@/components/ui/poster-frame";
 import { getCategoryGroup } from "@/features/events/category-group";
 
-// 상세 배경: 노을→하늘 컨셉은 유지하되 목록보다 노을은 왼쪽 위에 조금만, 하늘은 더 깊게 — 목록과 구분된다.
-const DETAIL_BG = "linear-gradient(135deg, #FFE6CF 0%, #F5F9FD 14%, #D6EAFB 52%, #EAF4FD 100%)";
+// 상세 배경: 메인 스크롤 배경(sky-background.tsx)의 '햇살 오후' 톤 — 크림 바탕 위에 노란·코랄 구름 원 그라데이션.
+// background-attachment: fixed라 스크롤해도 구름이 화면에 머문다.
+const DETAIL_BG = {
+  background: [
+    "radial-gradient(620px circle at 8% 12%, #FFE074B3 0%, transparent 68%)",
+    "radial-gradient(560px circle at 92% 38%, #FFA394B3 0%, transparent 68%)",
+    "radial-gradient(520px circle at 30% 95%, #FFFFFFCC 0%, transparent 68%)",
+    "linear-gradient(180deg, #FFF9E6 0%, #FFF6EE 50%, #FFF0EC 100%)",
+  ].join(", "),
+  backgroundAttachment: "fixed",
+};
 
 export default async function EventDetailPage(props: PageProps<"/events/[id]">) {
   const { id } = await props.params;
@@ -42,7 +51,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: DETAIL_BG }}>
+    <div className="min-h-screen" style={DETAIL_BG}>
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <Link
         href="/events"
