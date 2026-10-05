@@ -43,7 +43,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
 
   return (
     <div className="min-h-screen" style={{ background: DETAIL_BG }}>
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <Link
         href="/events"
         aria-label="행사 찾기"

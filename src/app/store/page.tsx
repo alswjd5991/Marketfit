@@ -19,7 +19,7 @@ export default async function StorePage(props: PageProps<"/store">) {
 
   return (
     <div className="min-h-[calc(100vh-4rem)]" style={{ background: skyGradient(4) }}>
-      <div className="mx-auto w-full max-w-[1440px] px-4 py-8 lg:px-8 lg:py-10">
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <PageHeader title="내 가게" />
 
         {error && <p className="mb-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
