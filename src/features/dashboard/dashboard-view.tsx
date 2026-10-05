@@ -4,15 +4,15 @@ import { PageHeader } from "@/components/page-header";
 import { Lightbulb } from "lucide-react";
 import { ColumnChart } from "@/components/ui/column-chart";
 import { ProductTrendChart } from "./product-trend-chart";
-import { COUNT_BAR_COLOR, SERIES_COLORS } from "@/components/ui/chart-colors";
+import { COUNT_BAR_COLOR, COUNT_LINE_COLOR } from "@/components/ui/chart-colors";
 import type { DashboardStats } from "@/features/dashboard/data";
 import { RecentPerformance } from "./recent-performance";
 
-// 퍼널 단계 색: 노을(관심) → 옅은 하늘(참가 예정) → 하늘(참가 완료). 배경 컨셉처럼 노을에서 하늘로 넘어간다.
+// 퍼널 색 = 내 행사 상태 배지와 같은 고유 색(관심 노랑·참가 예정 초록·참가 완료 빨강), 조금 진하게.
 const FUNNEL = {
-  interested: { bg: "#FFD3B0", ink: "#8A4320" },
-  planning_to_attend: { bg: "#A9D5F2", ink: "#1F4E73" },
-  attended: { bg: SERIES_COLORS[0], ink: "#FFFFFF" },
+  interested: { bg: "#FFE58A", ink: "#6E5600" },
+  planning_to_attend: { bg: "#8FD3AE", ink: "#1F5A3E" },
+  attended: { bg: "#F4917F", ink: "#FFFFFF" },
 };
 
 const won = (n: number) => `${Math.round(n).toLocaleString()}원`;
@@ -118,7 +118,7 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
                 barName="참가 행사 수"
                 barColor={COUNT_BAR_COLOR}
                 lineName="추이"
-                lineColor="#2E9C83"
+                lineColor={COUNT_LINE_COLOR}
                 lineInTooltip={false}
                 height={290}
                 points={stats.monthlyParticipationCounts.map((m) => {
