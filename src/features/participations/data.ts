@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCategoryGroup } from "@/features/events/category-group";
 import type {
   EventChecklistItem,
   EventParticipation,
@@ -135,7 +136,7 @@ export async function getMyParticipations(): Promise<MyParticipation[]> {
         eventName: e?.name ?? "(정보를 찾을 수 없는 행사)",
         region: e?.region ?? null,
         venue: e?.venue ?? null,
-        category: e?.category ?? null,
+        category: e ? getCategoryGroup(e.category, e.name) : null,
         startDate: e?.start_date ?? null,
         endDate: e?.end_date ?? null,
         detailSeedId: seedIdMap.get(p.event_id) ?? null,

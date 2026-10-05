@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export type SmoothAreaPoint = {
@@ -30,18 +30,30 @@ export function SmoothAreaChart({
   series,
   formatValue,
   height = 260,
+  bars = false,
 }: {
   points: SmoothAreaPoint[];
   series: SmoothAreaSeries[];
   formatValue: (value: number) => string;
   height?: number;
+  /** 첫 번째 곡선 값을 곡선 아래 연한 막대로도 그린다(항목 비교용). */
+  bars?: boolean;
 }) {
   // useId 결과의 특수문자는 SVG url(#...) 참조를 깨뜨릴 수 있어 걸러 낸다
   const gradientId = `area-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [activeSeries, setActiveSeries] = useState<number | null>(null);
 
-  const width = 640;
+  // 실제 그려지는 폭으로 좌표계를 맞춘다 — 고정 폭(640)을 늘려 그리면 넓은 카드에서 글자·점이 가로로 퍼진다.
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(640);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(Math.max(280, Math.round(entry.contentRect.width))));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const paddingLeft = 44;
   const paddingRight = 24;
   const paddingTop = 24;
@@ -55,18 +67,29 @@ export function SmoothAreaChart({
   const smallUpper = Math.max(2, Math.ceil(maxValue * 1.2));
   const upperBound = maxValue <= 10 ? smallUpper + (smallUpper % 2) : maxValue * 1.2;
   const multi = series.length > 1;
+  const labelStep = Math.max(1, Math.ceil(points.length / Math.max(1, Math.floor((width - 68) / 64)))); // 라벨 하나에 약 64px
 
+  // 막대를 그릴 땐 양 끝 막대가 축 밖으로 나가지 않게 점들을 안쪽으로 들인다(모든 막대 같은 두께).
+  const inset = bars ? 24 : 0;
   const xAt = (i: number) =>
-    points.length === 1 ? paddingLeft + plotWidth / 2 : paddingLeft + (i / (points.length - 1)) * plotWidth;
+    points.length === 1
+      ? paddingLeft + plotWidth / 2
+      : paddingLeft + inset + (i / (points.length - 1)) * (plotWidth - inset * 2);
   const yAt = (v: number) => baseline - (v / upperBound) * plotHeight;
+
+  // 막대 두께(막대 모드). 끝 막대도 축 안에 들어오는 같은 두께.
+  const barStep = points.length > 1 ? (plotWidth - inset * 2) / (points.length - 1) : plotWidth;
+  const barW = Math.min(inset * 2 - 8, barStep * 0.45);
 
   const lines = series.map((s) => {
     const coords = s.values.map((v, i) => ({ x: xAt(i), y: yAt(v) }));
-    const line = smoothPath(coords, paddingTop, baseline);
-    const area =
-      coords.length > 1
-        ? `${line} L ${coords[coords.length - 1].x} ${baseline} L ${coords[0].x} ${baseline} Z`
-        : "";
+    // 막대 모드에선 곡선·영역을 양 끝 막대의 가장자리까지 평평하게 이어, 막대가 곡선 밖으로 튀어나오지 않게 한다.
+    const path =
+      bars && coords.length > 1
+        ? [{ x: coords[0].x - barW / 2, y: coords[0].y }, ...coords, { x: coords[coords.length - 1].x + barW / 2, y: coords[coords.length - 1].y }]
+        : coords;
+    const line = smoothPath(path, paddingTop, baseline);
+    const area = path.length > 1 ? `${line} L ${path[path.length - 1].x} ${baseline} L ${path[0].x} ${baseline} Z` : "";
     return { coords, line, area };
   });
 
@@ -76,7 +99,7 @@ export function SmoothAreaChart({
 
   return (
     <div className="w-full">
-      <div className="relative w-full" onMouseLeave={() => setActiveIndex(null)}>
+      <div ref={boxRef} className="relative w-full" onMouseLeave={() => setActiveIndex(null)}>
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full overflow-visible"
@@ -130,24 +153,45 @@ export function SmoothAreaChart({
                   // 점은 평소엔 작게, 마우스를 올린 위치만 크게(나머지 점은 흐리게)
                   return (
                     <g key={j} opacity={activeIndex !== null && !active ? 0.35 : 1}>
-                      {active && <circle cx={c.x} cy={c.y} r="12" fill={s.color} opacity="0.15" />}
+                      {active && <circle cx={c.x} cy={c.y} r="9" fill={s.color} opacity="0.15" />}
                       <circle
                         cx={c.x}
                         cy={c.y}
-                        r={active ? 6 : 3.5}
+                        r={active ? 4.5 : 2.2}
                         fill={s.color}
                         stroke="white"
-                        strokeWidth={active ? 2.5 : 1.5}
+                        strokeWidth={active ? 2 : 1}
                       />
                     </g>
                   );
                 })}
+
+          {/* 연한 막대(선택) — 영역 채움 위에 그려야 양 끝 막대도 같은 두께로 보인다 */}
+          {bars &&
+            series[0]?.values.map((v, i) => {
+              const w = barW;
+              const top = yAt(v);
+              return (
+                <rect
+                  key={`bar-${i}`}
+                  x={xAt(i) - w / 2}
+                  y={top}
+                  width={w}
+                  height={Math.max(0, baseline - top)}
+                  rx={4}
+                  fill={series[0].color}
+                  opacity={activeIndex === i ? 0.28 : 0.14}
+                  className="transition-opacity duration-150"
+                />
+              );
+            })}
+
               </g>
             );
           })}
 
-          {/* x축 이름 */}
-          {points.map((p, i) => (
+          {/* x축 이름 — 점이 많으면 겹치지 않게 일정 간격으로만(마우스 올린 점은 항상) */}
+          {points.map((p, i) => (i % labelStep === 0 || activeIndex === i) && (
             <text
               key={`label-${i}`}
               x={xAt(i)}

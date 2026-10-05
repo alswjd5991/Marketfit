@@ -9,8 +9,8 @@ export interface EventListItem {
   name: string;
   region: string | null;
   venue: string | null;
-  category: string | null;
-  /** 필터·대시보드용 대분류(6종) — category-group.ts 참고. */
+  /** 화면에 보이는 카테고리 = 8종 분류(category-group.ts). 원문 카테고리는 쓰지 않는다. */
+  category: CategoryGroup;
   categoryGroup: CategoryGroup;
   organizer: string | null;
   startDate: string | null;
@@ -52,7 +52,7 @@ function toListItem(e: SeedEvent): EventListItem {
     name: e.name,
     region: e.region,
     venue: e.venue,
-    category: e.category ?? categoryGroup,
+    category: categoryGroup,
     categoryGroup,
     organizer: e.organizer,
     startDate: e.startDate,

@@ -1,20 +1,32 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getEventById } from "@/features/events/data";
+import type { ReactNode } from "react";
+import { Building2, CalendarDays, ChevronLeft, Clock, ExternalLink, MapPin } from "lucide-react";
+import { getEventById, getPosterImage } from "@/features/events/data";
 import { computeRecruitmentStatus, formatDday } from "@/features/events/status";
 import { getMyParticipationStatus } from "@/features/participations/data";
 import { addParticipation } from "@/features/participations/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { PosterFrame } from "@/components/ui/poster-frame";
-import { getPosterImage } from "@/features/events/data";
+import { getCategoryGroup } from "@/features/events/category-group";
+
+// 상세 배경: 메인 스크롤 배경(sky-background.tsx)의 '햇살 오후' 톤 — 크림 바탕 위에 노란·코랄 구름 원 그라데이션.
+// background-attachment: fixed라 스크롤해도 구름이 화면에 머문다.
+const DETAIL_BG = {
+  background: [
+    "radial-gradient(620px circle at 8% 12%, #FFE074B3 0%, transparent 68%)",
+    "radial-gradient(560px circle at 92% 38%, #FFA394B3 0%, transparent 68%)",
+    "radial-gradient(520px circle at 30% 95%, #FFFFFFCC 0%, transparent 68%)",
+    "linear-gradient(180deg, #FFF9E6 0%, #FFF6EE 50%, #FFF0EC 100%)",
+  ].join(", "),
+  backgroundAttachment: "fixed",
+};
 
 export default async function EventDetailPage(props: PageProps<"/events/[id]">) {
   const { id } = await props.params;
   const sp = await props.searchParams;
   const error = typeof sp.error === "string" ? sp.error : null;
-  const notice = typeof sp.notice === "string" ? sp.notice : null;
 
   const event = await getEventById(id);
   if (!event) notFound();
@@ -24,117 +36,141 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
     eventEndDate: event.endDate,
   });
   const closed = status === "closed";
+  const group = getCategoryGroup(event.category, event.name);
   const dday = !closed ? formatDday(event.recruitEnd, event.endDate) : null;
   const participationStatus = await getMyParticipationStatus(event.sourceDataset, event.id);
+  const place = [event.region, event.gu, event.venue].filter(Boolean).join(" · ");
+  const hours = event.hours?.filter(Boolean).join(" ~ ");
+  const fee = event.feeKrw === 0 ? "무료" : event.feeKrw != null ? `${event.feeKrw.toLocaleString()}원` : null;
+
+  const conditions: [string, string | null][] = [
+    ["모집 대상", event.eligibility],
+    ["판매 품목", event.items],
+    ["준비물·지급품", event.equipment],
+    ["선정 방식", event.selection],
+  ];
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <Link href="/events" className="text-sm text-neutral-500 hover:text-neutral-900">
-        ← 행사 찾기로 돌아가기
+    <div className="min-h-screen" style={DETAIL_BG}>
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <Link
+        href="/events"
+        aria-label="행사 찾기"
+        className="inline-flex size-10 items-center justify-center rounded-full bg-white text-neutral-800 shadow-sm ring-1 ring-neutral-200 transition hover:bg-neutral-50"
+      >
+        <ChevronLeft className="size-6" strokeWidth={2.25} />
       </Link>
 
-      <div className="mt-4 aspect-[16/7] overflow-hidden rounded-2xl shadow-sm">
-        {/* 실제 포스터 사진이 있으면(event-poster-manifest.json) 그걸, 없으면
-            카테고리별 생성 그래픽 포스터를 보여준다(poster-frame.tsx 참고). */}
-        <PosterFrame
-          imageUrl={getPosterImage(event.id)}
-          alt={`${event.name} 포스터`}
-          category={event.category}
-          seed={event.id}
-          size="hero"
-          badgeLabel={event.category}
-        />
-      </div>
+      <div className="mt-5 grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12">
+        <div className="min-w-0">
+          <div className="aspect-[16/9] overflow-hidden rounded-3xl shadow-sm">
+            <PosterFrame
+              imageUrl={getPosterImage(event.id)}
+              alt={`${event.name} 포스터`}
+              category={group}
+              seed={event.id}
+              size="hero"
+            />
+          </div>
 
-      {closed && (
-        <div className="mt-4 rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white">
-          이 모집공고는 종료되었습니다. 아래 정보는 계속 확인할 수 있고, 과거
-          참가 이력으로 등록할 수 있습니다.
+          <div className="mt-6 flex items-center gap-2">
+            {closed ? <Badge variant="muted">모집 종료</Badge> : dday ? <Badge variant="warning">{dday}</Badge> : null}
+            <Badge variant="secondary">{group}</Badge>
+          </div>
+          <h1 className="mt-3 break-keep text-[26px] font-extrabold leading-tight tracking-[-0.03em] text-neutral-950 sm:text-[32px]">
+            {event.name}
+          </h1>
+
+          <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+            <Fact icon={<CalendarDays />} label="행사 기간" value={formatRange(event.startDate, event.endDate)} />
+            <Fact icon={<Clock />} label="운영 시간" value={hours} />
+            <Fact icon={<MapPin />} label="장소" value={place} />
+            <Fact icon={<Building2 />} label="주최" value={event.organizer} />
+          </dl>
+
+          {conditions.some(([, v]) => v) && (
+            <section className="mt-10">
+              <h2 className="text-lg font-bold text-neutral-950">모집 조건</h2>
+              <dl className="mt-3 divide-y divide-neutral-200/80 border-y border-neutral-200/80">
+                {conditions
+                  .filter(([, v]) => v)
+                  .map(([label, value]) => (
+                    <div key={label} className="grid gap-1 py-4 sm:grid-cols-[8rem_1fr] sm:gap-4">
+                      <dt className="text-sm font-semibold text-neutral-500">{label}</dt>
+                      <dd className="text-[15px] leading-relaxed text-neutral-900">{value}</dd>
+                    </div>
+                  ))}
+              </dl>
+            </section>
+          )}
         </div>
-      )}
 
-      <div className="mt-4 flex items-center gap-2">
-        {closed ? (
-          <Badge variant="muted">모집 종료</Badge>
-        ) : dday ? (
-          <Badge variant="warning">{dday}</Badge>
-        ) : null}
-        {event.category && <Badge variant="secondary">{event.category}</Badge>}
-        {event.orgType && <Badge variant="outline">{event.orgType}</Badge>}
-      </div>
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="rounded-3xl bg-white p-6 shadow-[0_1px_3px_rgba(15,23,42,0.06),0_12px_32px_-12px_rgba(15,23,42,0.18)]">
+            <dl className="space-y-4">
+              <div>
+                <dt className="text-sm text-neutral-500">모집 마감</dt>
+                <dd className="mt-1 flex items-baseline gap-2">
+                  <span className="text-2xl font-bold tracking-tight text-neutral-950">{event.recruitEnd ?? "공고 확인"}</span>
+                  {closed ? (
+                    <span className="text-sm font-semibold text-neutral-400">종료</span>
+                  ) : (
+                    event.recruitEnd && dday && <span className="text-sm font-semibold text-amber-600">{dday}</span>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm text-neutral-500">참가비</dt>
+                <dd className="mt-1 text-2xl font-bold tracking-tight text-neutral-950">{fee ?? "공고 확인"}</dd>
+              </div>
+            </dl>
 
-      <h1 className="mt-3 text-2xl font-bold text-neutral-950">{event.name}</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        {[event.region, event.gu, event.venue].filter(Boolean).join(" · ") || "지역 미기재"}
-      </p>
+            <div className="mt-6">
+              {participationStatus ? (
+                <Button asChild variant="secondary" className="h-12 w-full text-[15px]">
+                  <Link href="/my-events">내 행사에서 보기</Link>
+                </Button>
+              ) : (
+                <form action={addParticipation}>
+                  <input type="hidden" name="source_dataset" value={event.sourceDataset} />
+                  <input type="hidden" name="seed_id" value={event.id} />
+                  <input type="hidden" name="back_to" value={`/events/${event.id}`} />
+                  <Button type="submit" className="h-12 w-full text-[15px]">
+                    내 행사에 추가
+                  </Button>
+                </form>
+              )}
+            </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <InfoRow label="행사기간" value={formatRange(event.startDate, event.endDate)} />
-        <InfoRow label="영업시간" value={event.hours?.filter(Boolean).join(" ~ ") || null} />
-        <InfoRow label="모집마감일" value={event.recruitEnd} />
-        <InfoRow label="참가비" value={event.feeKrw === 0 ? "무료" : event.feeKrw != null ? `${event.feeKrw.toLocaleString()}원` : "미기재"} />
-        <InfoRow label="주최기관" value={event.organizer} />
-        <InfoRow label="모집대상" value={event.eligibility} />
-        <InfoRow label="판매 품목" value={event.items} />
-        <InfoRow label="준비물/지급품" value={event.equipment} />
-        <InfoRow label="선정방식" value={event.selection} />
-      </div>
+            {error && <p className="mt-3 rounded-lg bg-[#FFE4DE] px-3 py-2 text-sm text-[#BE3A2A]">{error}</p>}
 
-      <Card className="mt-6">
-        <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-5">
-          <div className="text-sm text-neutral-500">
-            출처: {event.organizer ?? event.sourceType ?? "확인 필요"}
             {event.sourceUrl && (
-              <>
-                {" · "}
-                <a
-                  href={event.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-2"
-                >
-                  원본 모집공고 보기
-                </a>
-              </>
+              <a
+                href={event.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 flex items-center justify-center gap-1.5 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900"
+              >
+                원본 공고 <ExternalLink className="size-3.5" />
+              </a>
             )}
           </div>
-          {participationStatus ? (
-            <Button asChild variant="secondary">
-              <Link href="/my-events">내 행사에 추가됨 · 내 행사에서 보기</Link>
-            </Button>
-          ) : (
-            <form action={addParticipation}>
-              <input type="hidden" name="source_dataset" value={event.sourceDataset} />
-              <input type="hidden" name="seed_id" value={event.id} />
-              <input type="hidden" name="back_to" value={`/events/${event.id}`} />
-              <Button type="submit">내 행사에 추가</Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
-
-      {notice && (
-        <p className="mt-4 rounded-lg bg-[#E0EFE8] px-3 py-2 text-sm text-[#2F5F4B]">{notice}</p>
-      )}
-      {error && (
-        <p className="mt-4 rounded-lg bg-[#FFE4DE] px-3 py-2 text-sm text-[#BE3A2A]">{error}</p>
-      )}
-
-      <p className="mt-6 text-xs text-neutral-400">
-        이 정보는 공개된 모집공고를 1차 코딩한 실제 자료입니다. 발표·의사결정
-        전에는 원문 대조를 권장합니다.
-      </p>
+        </aside>
+      </div>
     </div>
     </div>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
+function Fact({ icon, label, value }: { icon: ReactNode; label: string; value: string | null | undefined }) {
+  if (!value) return null;
   return (
-    <div className="rounded-xl border border-neutral-200/80 bg-white px-4 py-3">
-      <dt className="text-xs text-neutral-400">{label}</dt>
-      <dd className="mt-0.5 text-sm text-neutral-800">{value || "미기재"}</dd>
+    <div className="flex gap-3">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-light text-brand [&>svg]:size-5">{icon}</span>
+      <div className="min-w-0">
+        <dt className="text-xs font-medium text-neutral-500">{label}</dt>
+        <dd className="mt-0.5 break-keep text-[15px] font-semibold text-neutral-900">{value}</dd>
+      </div>
     </div>
   );
 }

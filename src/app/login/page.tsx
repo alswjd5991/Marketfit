@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { skyGradient } from "@/components/sky-page";
 import { signIn } from "@/features/auth/actions";
 import { AuthSubmitButton } from "@/features/auth/submit-button";
 
@@ -8,12 +9,9 @@ export default async function LoginPage(props: PageProps<"/login">) {
   const notice = typeof sp.notice === "string" ? sp.notice : null;
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
+    <div className="min-h-screen" style={{ background: skyGradient(0) }}>
     <div className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-4 py-10">
-      <h1 className="text-xl font-bold text-neutral-950">로그인</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        가게 등록과 참가 기록 관리를 위한 로그인
-      </p>
+      <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-neutral-950">로그인</h1>
 
       {notice && (
         <p className="mt-4 rounded-lg bg-[#E0EFE8] px-3 py-2 text-sm text-[#2F5F4B]">

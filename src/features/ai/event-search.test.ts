@@ -5,7 +5,7 @@ import {
   type EventQuery, type EventRecord, type MarketfitEventRow,
 } from "./event-search";
 import { generateChatReply, type ChatDeps } from "./reply";
-import { participationStats } from "./stats";
+import { participationStats, productStats } from "./stats";
 
 const now = new Date("2026-09-29T15:30:00Z"); // 한국 9월 30일
 const question = (text: string) => [{ role: "user" as const, text }];
@@ -250,4 +250,29 @@ test("개인 통계의 합계·평균·순위를 코드에서 계산한다", () 
   assert.ok(lines.includes("적자 행사 1건"));
   assert.ok(lines.includes("평균 만족도 3.5/5 (2건)"));
   assert.ok(lines.includes("재참가 의향 있음 1건 / 없음 1건"));
+});
+
+test("조건별·기간별 비교와 상품 판매율도 코드에서 계산한다", () => {
+  const row = (name: string, start_date: string, total_revenue: number, net_profit: number, weather: string) =>
+    ({ name, status: "attended" as const, total_revenue, net_profit, satisfaction: null, would_reattend: null, start_date, weather, region: "서울", category: null, fee: 10000 });
+  const lines = participationStats([
+    row("A", "2024-05-01", 100000, 50000, "맑음"),
+    row("B", "2024-06-01", 100000, 50000, "비"),
+    row("C", "2024-07-01", 100000, 50000, "맑음"),
+    row("D", "2025-05-01", 300000, 250000, "맑음"),
+    row("E", "2025-06-01", 300000, 250000, "맑음"),
+    row("F", "2025-07-01", 300000, -10000, "비"),
+  ]).join("\n");
+  assert.ok(lines.includes("날씨별: 맑음 평균 매출 200,000원·순이익 150,000원(4건), 비 평균 매출 200,000원·순이익 20,000원(2건)"));
+  assert.ok(lines.includes("연도별: 2024년 평균 매출 100,000원·순이익 50,000원(3건), 2025년"));
+  assert.ok(lines.includes("매출 추이: 오래된 3건 평균 100,000원 → 최근 3건 평균 300,000원 (+200%, 2024-05-01~2025-07-01)"));
+  assert.ok(lines.includes("비용 합계 60,000원 (매출의 5%): 참가비 60,000원"));
+  assert.ok(!lines.includes("지역별"), "그룹이 하나뿐이면 비교 줄을 만들지 않는다");
+
+  const products = productStats([
+    { product_name: "쿠키", prepared: 20, sold: 15, revenue: 45000 },
+    { product_name: "쿠키", prepared: 20, sold: 5, revenue: 15000 },
+    { product_name: "약과", prepared: 10, sold: 10, revenue: 20000 },
+  ], 5);
+  assert.deepEqual(products, ["- 쿠키: 판매 20개 / 준비 40개 (판매율 50%) / 매출 60,000원", "- 약과: 판매 10개 / 준비 10개 (판매율 100%) / 매출 20,000원"]);
 });

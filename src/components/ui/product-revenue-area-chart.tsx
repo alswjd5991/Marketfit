@@ -21,6 +21,7 @@ export function ProductRevenueAreaChart({
   return (
     <div className="w-full">
       <SmoothAreaChart
+        bars
         height={height}
         formatValue={(v) => `${v.toLocaleString()}원`}
         points={items.map((item) => ({ label: item.label, title: item.label }))}

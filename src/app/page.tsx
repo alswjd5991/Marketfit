@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { CalendarCheck, ChevronRight, Sparkles, TrendingUp } from "lucide-react";
+import { CalendarCheck, ChevronRight, TrendingUp } from "lucide-react";
+import { BotIcon } from "@/components/bot-icon";
+import { SiteFooter } from "@/components/site-footer";
 import { getEvents } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { PosterFrame } from "@/components/ui/poster-frame";
 import { SkyBackground } from "@/components/sky-background";
-import { InteractiveLineChart } from "@/components/ui/interactive-line-chart";
-import { ProductRevenueAreaChart } from "@/components/ui/product-revenue-area-chart";
+import { RecentPerformance } from "@/features/dashboard/recent-performance";
 import { getMyParticipations } from "@/features/participations/data";
 import { getDashboardStats } from "@/features/dashboard/data";
 import { STATUS_BADGE_CLASS, STATUS_LABEL } from "@/features/participations/status-labels";
@@ -60,36 +61,33 @@ const dashboardStats = isLoggedIn
 
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-6 pb-40 pt-20 lg:grid-cols-[1.35fr_0.65fr] lg:pb-44 lg:pt-24">
 
-          {/* 왼쪽 메인 타이틀 영역 */}
-          <div className="relative w-full px-4 py-10 sm:px-8 sm:py-14">
+          {/* 왼쪽 메인 타이틀 — 얇은 꺽쇠 두 개가 문구 묶음만 감싼다 */}
+          <div className="flex w-full justify-center lg:justify-start">
+            <div className="relative inline-block px-10 py-12 sm:px-14 sm:py-14">
+              <span className="pointer-events-none absolute left-0 top-0 size-10 rounded-tl-2xl border-l-[3px] border-t-[3px] border-[#1F2023]/75 sm:size-12" />
+              <span className="pointer-events-none absolute bottom-0 right-0 size-10 rounded-br-2xl border-b-[3px] border-r-[3px] border-[#1F2023]/75 sm:size-12" />
 
-            {/* 왼쪽 위 코너 */}
-            <div className="pointer-events-none absolute left-[-24px] top-0 h-14 w-14 border-l-[8px] border-t-[8px] border-[#465563]" />
-
-            {/* 오른쪽 아래 코너 */}
-            <div className="pointer-events-none absolute bottom-0 right-0 h-14 w-14 border-b-[8px] border-r-[8px] border-[#465563]" />
-
-            <span className="inline-block rounded-full bg-white/65 px-4 py-2 text-xs font-semibold text-brand shadow-sm backdrop-blur-sm">
-              셀러를 위한 행사 지도
-            </span>
-
-            <h1 className="mt-7 tracking-tight">
-              <span className="block text-xl font-medium leading-tight text-[#6B6E74] sm:text-2xl">
-                어디에 나갈지 고민될 때,
+              <span className="inline-block rounded-full bg-white/70 px-4 py-1.5 text-[13px] font-semibold text-brand shadow-sm backdrop-blur-sm">
+                셀러를 위한 행사 지도
               </span>
 
-              <span className="mt-3 block font-logo text-6xl font-semibold leading-none text-[#1F2023] sm:text-8xl">
-                Marketfit<span className="text-brand">.</span>
-              </span>
-            </h1>
+              <h1 className="mt-6">
+                <span className="block text-2xl font-semibold tracking-tight text-[#55585E] sm:text-[28px]">
+                  어디에 나갈지 고민될 때,
+                </span>
+                <span className="mt-2 block font-logo text-7xl font-semibold leading-[0.95] tracking-[-0.02em] text-[#1F2023] sm:text-[112px]">
+                  Marketfit<span className="text-brand">.</span>
+                </span>
+              </h1>
 
-            <Button
-              asChild
-              size="lg"
-              className="mt-6 rounded-xl bg-brand px-7 text-white shadow-sm transition-all hover:bg-brand-dark hover:shadow-md"
-            >
-              <Link href="/events">행사 찾아보기</Link>
-            </Button>
+              <Button
+                asChild
+                size="lg"
+                className="mt-9 h-12 rounded-xl bg-brand px-8 text-[15px] text-white shadow-sm transition-all hover:bg-brand-dark hover:shadow-md"
+              >
+                <Link href="/events">행사 찾아보기</Link>
+              </Button>
+            </div>
           </div>
 
 
@@ -149,7 +147,7 @@ const dashboardStats = isLoggedIn
                   <p className="mt-1 text-sm text-[#6B6E74]">
                     {[featuredEvent.region, featuredEvent.venue]
                       .filter(Boolean)
-                      .join(" · ") || "지역 미기재"}
+                      .join(" · ")}
                   </p>
 
                   {featuredEvent.category && (
@@ -218,8 +216,8 @@ const dashboardStats = isLoggedIn
                   shadow-[0_18px_40px_rgba(10,120,174,0.10)]
                   transition-all duration-300 ease-out
 
-                  group-hover:translate-x-[55px]
-                  group-hover:-translate-y-[150px]
+                  group-hover:translate-x-[10px]
+                  group-hover:-translate-y-[24px]
                   group-hover:rotate-0
                   group-hover:scale-[1.04]
                   group-hover:shadow-[0_28px_70px_rgba(10,120,174,0.22)]
@@ -230,7 +228,7 @@ const dashboardStats = isLoggedIn
                 </p>
 
                 <p className="mt-2 flex items-center gap-1.5 text-xl font-bold text-[#1F2023]">
-                  <Sparkles className="size-5 text-brand" />
+                  <BotIcon className="size-6 text-[#1B8FCB]" />
                   AI 도우미 바로가기
                 </p>
               </Link>
@@ -311,8 +309,7 @@ const dashboardStats = isLoggedIn
                   <EmptyState
                     label="내 행사"
                     title="참가할 행사를 한곳에서 관리"
-                    description="로그인하면 저장하거나 참가 예정으로 등록한 행사를 바로 확인"
-                    buttonText="로그인하고 확인하기"
+                    buttonText="로그인"
                     href="/login"
                     accent="blue"
                   />
@@ -335,8 +332,7 @@ const dashboardStats = isLoggedIn
                   <EmptyState
                     label="참가 성과"
                     title="참가 결과 기록"
-                    description="로그인하면 행사별 매출·순이익 기록과 성과 확인 가능"
-                    buttonText="로그인하고 확인하기"
+                    buttonText="로그인"
                     href="/login"
                     accent="green"
                   />
@@ -349,6 +345,7 @@ const dashboardStats = isLoggedIn
       </section>
       </div>
 
+      <SiteFooter className="relative z-20 snap-end" />
     </main>
   );
 }
@@ -400,14 +397,12 @@ function HomeSection({
 function EmptyState({
   label,
   title,
-  description,
   buttonText,
   href,
   accent,
 }: {
   label: string;
   title: string;
-  description: string;
   buttonText: string;
   href: string;
   accent: "blue" | "green";
@@ -446,10 +441,6 @@ function EmptyState({
             <h3 className="mt-2 text-lg font-bold text-[#1F2023]">
               {title}
             </h3>
-
-            <p className="mt-2 max-w-xl text-sm leading-6 text-[#6B6E74]">
-              {description}
-            </p>
           </div>
 
         </div>
@@ -493,7 +484,7 @@ function MyEventsPreview({
           href="/events"
           className="mt-3 inline-block text-sm font-semibold text-brand hover:underline"
         >
-          참가할 행사 찾아보기
+          행사 찾기
         </Link>
       </div>
     );
@@ -529,8 +520,7 @@ function MyEventsPreview({
           </h3>
 
           <p className="mt-2 text-sm text-[#6B6E74]">
-            {[p.region, p.venue].filter(Boolean).join(" · ") ||
-              "지역 미기재"}
+            {[p.region, p.venue].filter(Boolean).join(" · ")}
           </p>
 
           {p.startDate && (
@@ -554,14 +544,14 @@ function DashboardPreview({
     return (
       <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
         <p className="text-sm font-medium text-[#6B6E74]">
-          가게 등록 후 참가 성과 확인 가능
+          등록된 가게 없음
         </p>
 
         <Link
           href="/store"
           className="mt-3 inline-block text-sm font-semibold text-[#3F7A64] hover:underline"
         >
-          가게 등록하기
+          가게 등록
         </Link>
       </div>
     );
@@ -573,146 +563,9 @@ function DashboardPreview({
         <p className="text-sm font-medium text-[#6B6E74]">
           참가 기록 없음
         </p>
-
-        <p className="mt-1 text-xs text-[#8A8D93]">
-          참가 기록을 추가하면 성과 표시
-        </p>
       </div>
     );
   }
 
-  return (
-    <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-6 shadow-[0_12px_35px_rgba(40,80,120,0.06)]">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-
-        <PerformanceTile
-          label="총 참가 행사"
-          value={`${stats.totalParticipations}건`}
-        />
-
-        <PerformanceTile
-          label="참가 완료"
-          value={`${stats.statusCounts.attended}건`}
-        />
-
-        <PerformanceTile
-          label="총 매출"
-          value={
-            stats.totalRevenue != null
-              ? `${stats.totalRevenue.toLocaleString()}원`
-              : "기록 없음"
-          }
-        />
-
-        <PerformanceTile
-          label="총 순이익"
-          value={
-            stats.totalNetProfit != null
-              ? `${stats.totalNetProfit.toLocaleString()}원`
-              : "기록 없음"
-          }
-        />
-
-        <PerformanceTile
-          label="평균 만족도"
-          value={
-            stats.averageSatisfaction != null
-              ? `${stats.averageSatisfaction.toFixed(1)} / 5`
-              : "기록 없음"
-          }
-        />
-
-      </div>
-
-      {/* 대시보드 그래프 미리보기 */}
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-
-        <ChartPanel title="행사별 매출 추이">
-          {stats.eventRevenueTrend.length === 0 ? (
-            <ChartEmpty text="매출 기록 없음" />
-          ) : (
-            <InteractiveLineChart
-              color="#F2542D"
-              format="currency"
-              height={200}
-              points={stats.eventRevenueTrend.map((e) => ({
-                label:
-                  e.eventName.length > 6
-                    ? `${e.eventName.slice(0, 6)}…`
-                    : e.eventName,
-                value: e.revenue,
-                title: e.eventName,
-                meta: e.startDate,
-                sublabel:
-                  e.netProfit != null
-                    ? `순이익 ${e.netProfit.toLocaleString()}원`
-                    : undefined,
-              }))}
-            />
-          )}
-        </ChartPanel>
-
-        <ChartPanel title="품목별 매출 비교">
-          {stats.popularProducts.length === 0 ? (
-            <ChartEmpty text="상품별 판매 실적 없음" />
-          ) : (
-            <ProductRevenueAreaChart
-              height={200}
-              items={stats.popularProducts.map((p) => ({
-                label: p.productName,
-                value: p.totalRevenue,
-              }))}
-            />
-          )}
-        </ChartPanel>
-
-      </div>
-    </div>
-  );
-}
-
-function ChartPanel({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="min-w-0 overflow-hidden rounded-2xl bg-[#F8FBFD] p-4">
-      <p className="mb-3 text-sm font-semibold text-[#1F2023]">
-        {title}
-      </p>
-
-      {children}
-    </div>
-  );
-}
-
-function ChartEmpty({ text }: { text: string }) {
-  return (
-    <p className="flex h-[200px] items-center justify-center text-sm text-[#8A8D93]">
-      {text}
-    </p>
-  );
-}
-
-function PerformanceTile({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-[#F8FBFD] px-5 py-4">
-      <p className="text-xs font-medium text-[#6B6E74]">
-        {label}
-      </p>
-
-      <p className="mt-2 text-xl font-bold tracking-tight text-[#1F2023]">
-        {value}
-      </p>
-    </div>
-  );
+  return <RecentPerformance stats={stats} />;
 }

@@ -69,6 +69,12 @@ const THEME_BY_CATEGORY: Record<string, PosterTheme> = {
   브랜드마켓: { bg: "#38A88F", pop: "#D7F1EB", icon: "tote" },
   "로컬 플리마켓": { bg: "#38A88F", pop: "#D7F1EB", icon: "tote" },
   "가정셀러 플리마켓": { bg: "#38A88F", pop: "#D7F1EB", icon: "tote" },
+
+  // category-group.ts의 8종 분류 이름(카드·상세는 이 이름으로 테마를 찾는다).
+  "축제 부스": { bg: "#F0823C", pop: "#FBE1D1", icon: "flag" },
+  "먹거리 부스": { bg: "#E1A11A", pop: "#F8E7B8", icon: "bowl" },
+  "박람회·전시": { bg: "#4F78B8", pop: "#DCE8FA", icon: "stall" },
+  "아트·디자인 마켓": { bg: "#CF5C95", pop: "#F6DCE8", icon: "palette" },
 };
 
 const DEFAULT_THEME: PosterTheme = {

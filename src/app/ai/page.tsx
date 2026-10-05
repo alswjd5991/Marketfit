@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { ChevronRight, ExternalLink, MoreVertical, Plus, Sparkles, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { skyGradient } from "@/components/sky-page";
+import { CenteredNotice } from "@/components/page-header";
+import { ChevronRight, ExternalLink, MoreVertical, Plus, Trash2 } from "lucide-react";
+import { BotIcon } from "@/components/bot-icon";
 import { getCurrentUser } from "@/features/store/data";
 import { getMyConversations, getConversationDetail, type ConversationSummary } from "@/features/ai/data";
 import { isGeminiConfigured } from "@/features/ai/gemini";
@@ -16,17 +18,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
 
   const user = await getCurrentUser();
   if (!user) {
-    return (
-      <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
-      <div className="mx-auto max-w-md px-4 py-20 text-center font-[350]">
-        <h1 className="text-xl font-normal tracking-[-0.025em] text-neutral-900">AI 도우미</h1>
-        <p className="mt-3 text-sm text-neutral-500">로그인 후 이용할 수 있어요.</p>
-        <Button asChild className="mt-6">
-          <Link href="/login">로그인하러 가기</Link>
-        </Button>
-      </div>
-      </div>
-    );
+    return <CenteredNotice level={3} title="AI 도우미" text="로그인 후 이용 가능" href="/login" cta="로그인" />;
   }
 
   const conversations = await getMyConversations();
@@ -43,7 +35,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
     <>
       {!geminiReady && (
         <p className="rounded-2xl bg-[#FFEEDD] px-4 py-3 text-sm text-[#B4530A]">
-          AI 연결을 준비하고 있어요. 답변을 받을 수 없다면 관리자에게 문의해 주세요.
+          지금은 AI 답변을 받을 수 없어요.
         </p>
       )}
       {notice && <p className="rounded-2xl bg-[#FFE4DE] px-4 py-3 text-sm text-[#BE3A2A]">{notice}</p>}
@@ -51,7 +43,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
   );
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] font-[350] tracking-[-0.025em] bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
+    <div className="min-h-[calc(100vh-4rem)] font-[350] tracking-[-0.025em]" style={{ background: skyGradient(3) }}>
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 lg:h-[calc(100vh-4rem)] lg:flex-row lg:px-8">
         {/* 대화 기록 사이드바 — 모바일에선 본문 아래로 내려간다. */}
         <aside className="order-2 flex shrink-0 flex-col rounded-3xl border border-white bg-white/80 p-4 shadow-sm shadow-neutral-900/5 backdrop-blur lg:order-1 lg:w-60">
@@ -84,10 +76,9 @@ export default async function AiPage(props: PageProps<"/ai">) {
         <main className="order-1 flex min-h-[70vh] min-w-0 flex-1 flex-col lg:order-2 lg:min-h-0">
           {!detail || detail.messages.length === 0 ? (
             <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 py-12 text-center motion-safe:animate-fade-up">
-              <Sparkles className="size-14 text-brand" fill="currentColor" strokeWidth={1} />
+              <BotIcon className="size-20 text-[#1B8FCB]" />
               <div>
                 <h1 className="text-3xl font-normal leading-[1.21] text-neutral-950 sm:text-4xl">어떤 도움이 필요하세요?</h1>
-                <p className="mt-3 text-sm text-neutral-400">가게 기록부터 다음 행사까지, 함께 살펴봐요.</p>
               </div>
               <div className="flex w-full flex-col gap-2 text-left">{banners}</div>
               <form action={sendMessage} className="flex w-full flex-col gap-6">
@@ -105,9 +96,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
                 {detail.messages.map((m) =>
                   m.role === "assistant" ? (
                     <div key={m.id} className="flex min-w-0 items-start gap-3 motion-safe:animate-fade-up">
-                      <div className="hidden size-8 shrink-0 items-center justify-center rounded-full bg-white text-brand shadow-sm sm:flex">
-                        <Sparkles className="size-4" />
-                      </div>
+                      <BotIcon className="hidden size-9 text-[#1B8FCB] sm:inline-block" />
                       <div className="flex min-w-0 max-w-full flex-1 flex-col items-start gap-2 sm:max-w-[90%]">
                         <div className="w-full min-w-0 rounded-3xl bg-white p-4 shadow-sm shadow-neutral-900/5 sm:px-6 sm:py-5">
                           <MessageContent content={m.content} />
