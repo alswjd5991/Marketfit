@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { skyGradient } from "@/components/sky-page";
 import type { EventPeriod, EventSort } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
-import { EventFiltersBar } from "@/features/events/filters-bar";
+import { EventFiltersBar, EventResultsBar } from "@/features/events/filters-bar";
 import type { RecruitmentStatus } from "@/types/database";
 
 export default async function EventsPage(props: PageProps<"/events">) {
@@ -26,16 +26,17 @@ export default async function EventsPage(props: PageProps<"/events">) {
   return (
     <div className="min-h-screen" style={{ background: skyGradient(0) }}>
     <div className="mx-auto w-full max-w-6xl px-6 py-10 lg:px-8">
-      <PageHeader title="행사 찾기" sub={`셀러 모집 공고 ${events.length}건`} />
+      <PageHeader title="행사 찾기" />
 
       <EventFiltersBar regions={regions} categories={categories} />
+      <EventResultsBar count={events.length} />
 
       {events.length === 0 ? (
         <p className="py-16 text-center text-sm text-neutral-400">
           조건에 맞는 행사 없음
         </p>
       ) : (
-        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+        <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
           {events.map((e) => (
             <EventCard key={e.id} event={e} />
           ))}

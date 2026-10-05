@@ -25,33 +25,36 @@ const SORT_OPTIONS = [
   { value: "start_date", label: "행사 시작일순" },
 ];
 
-const BASE = "h-11 rounded-xl border text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/15";
-const FIELD = `${BASE} border-neutral-200 bg-white text-neutral-800 hover:border-neutral-300`;
-const FIELD_ACTIVE = `${BASE} border-brand/40 bg-brand-light font-semibold text-brand-dark`;
-
-export function EventFiltersBar({ regions, categories }: { regions: string[]; categories: string[] }) {
+/** 쿼리스트링 한 값을 바꿔 다시 조회한다. */
+function useSetParam() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  return {
+    searchParams,
+    setParam(key: string, value: string) {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) params.set(key, value);
+      else params.delete(key);
+      router.push(`${pathname}?${params.toString()}`);
+    },
+  };
+}
 
-  function setParam(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value) params.set(key, value);
-    else params.delete(key);
-    router.push(`${pathname}?${params.toString()}`);
-  }
-
+/** 검색 → 구분선 → 필터. 테두리·박스 없이 글자만 두고, 선택된 필터는 색·굵기·밑줄로 구분한다. */
+export function EventFiltersBar({ regions, categories }: { regions: string[]; categories: string[] }) {
+  const { searchParams, setParam } = useSetParam();
   const period = searchParams.get("period") ?? "";
 
   return (
     <div className="flex flex-col gap-4">
-      <label className="relative block">
-        <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-neutral-400" />
+      <label className="flex items-center gap-3">
+        <Search className="size-5 shrink-0 text-neutral-500" strokeWidth={2.25} />
         <input
           type="search"
           aria-label="행사명·장소 검색"
           placeholder="행사명·장소 검색"
-          className={`${FIELD} w-full pl-11 pr-4`}
+          className="w-full bg-transparent py-1 text-[17px] font-medium text-neutral-900 outline-none placeholder:font-normal placeholder:text-neutral-400"
           defaultValue={searchParams.get("q") ?? ""}
           onKeyDown={(e) => {
             if (e.key === "Enter") setParam("q", e.currentTarget.value);
@@ -59,48 +62,65 @@ export function EventFiltersBar({ regions, categories }: { regions: string[]; ca
         />
       </label>
 
-      {/* 검색 ↔ 드롭다운 구분선 */}
-      <hr className="border-neutral-300/60" />
+      <hr className="border-neutral-300/70" />
 
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-        <Select label="지역" value={searchParams.get("region") ?? ""} onChange={(v) => setParam("region", v)} options={[{ value: "", label: "전체 지역" }, ...regions.map((r) => ({ value: r, label: r }))]} />
-        <Select label="카테고리" value={searchParams.get("category") ?? ""} onChange={(v) => setParam("category", v)} options={[{ value: "", label: "전체 카테고리" }, ...categories.map((c) => ({ value: c, label: c }))]} />
-        <Select label="모집 상태" value={searchParams.get("status") ?? ""} onChange={(v) => setParam("status", v)} options={STATUS_OPTIONS} />
-        <Select label="기간" value={period} onChange={(v) => setParam("period", v)} options={PERIOD_OPTIONS} />
-        <div className="col-span-2 sm:col-span-1 sm:ml-auto">
-          <Select label="정렬" value={searchParams.get("sort") ?? ""} onChange={(v) => setParam("sort", v)} options={SORT_OPTIONS} />
-        </div>
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
+        <TextSelect label="지역" value={searchParams.get("region") ?? ""} onChange={(v) => setParam("region", v)} options={[{ value: "", label: "전체 지역" }, ...regions.map((r) => ({ value: r, label: r }))]} />
+        <TextSelect label="카테고리" value={searchParams.get("category") ?? ""} onChange={(v) => setParam("category", v)} options={[{ value: "", label: "전체 카테고리" }, ...categories.map((c) => ({ value: c, label: c }))]} />
+        <TextSelect label="모집 상태" value={searchParams.get("status") ?? ""} onChange={(v) => setParam("status", v)} options={STATUS_OPTIONS} />
+        <TextSelect label="기간" value={period} onChange={(v) => setParam("period", v)} options={PERIOD_OPTIONS} />
       </div>
 
       {period === "custom" && (
-        <div className="flex items-center gap-2 text-sm">
-          <input type="date" aria-label="시작일" className={`${FIELD} px-3`} defaultValue={searchParams.get("from") ?? ""} onChange={(e) => setParam("from", e.target.value)} />
+        <div className="flex items-center gap-3 text-[15px] text-neutral-700">
+          <input type="date" aria-label="시작일" className="bg-transparent outline-none" defaultValue={searchParams.get("from") ?? ""} onChange={(e) => setParam("from", e.target.value)} />
           <span className="text-neutral-400">~</span>
-          <input type="date" aria-label="종료일" className={`${FIELD} px-3`} defaultValue={searchParams.get("to") ?? ""} onChange={(e) => setParam("to", e.target.value)} />
+          <input type="date" aria-label="종료일" className="bg-transparent outline-none" defaultValue={searchParams.get("to") ?? ""} onChange={(e) => setParam("to", e.target.value)} />
         </div>
       )}
     </div>
   );
 }
 
-function Select({
+/** 카드 목록 바로 위 줄: 왼쪽 결과 수, 오른쪽 정렬. */
+export function EventResultsBar({ count }: { count: number }) {
+  const { searchParams, setParam } = useSetParam();
+  return (
+    <div className="mt-8 flex items-center justify-between">
+      <p className="text-[15px] text-neutral-500">
+        <span className="font-bold tabular-nums text-neutral-950">{count}</span>개 행사
+      </p>
+      <TextSelect label="정렬" value={searchParams.get("sort") ?? ""} onChange={(v) => setParam("sort", v)} options={SORT_OPTIONS} quiet />
+    </div>
+  );
+}
+
+function TextSelect({
   label,
   value,
   onChange,
   options,
+  quiet,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
+  /** 정렬처럼 선택돼도 강조하지 않는 메뉴 */
+  quiet?: boolean;
 }) {
+  const active = Boolean(value) && !quiet;
   return (
     <div className="relative">
       <select
         aria-label={label}
         defaultValue={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`${value ? FIELD_ACTIVE : FIELD} w-full appearance-none pl-4 pr-10 sm:w-auto`}
+        className={`cursor-pointer appearance-none bg-transparent py-1 pr-6 text-[15px] outline-none transition-colors focus-visible:underline focus-visible:underline-offset-8 ${
+          active
+            ? "font-bold text-brand-dark underline decoration-brand/40 decoration-2 underline-offset-8"
+            : "font-medium text-neutral-600 hover:text-neutral-950"
+        }`}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -108,7 +128,7 @@ function Select({
           </option>
         ))}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
+      <ChevronDown className={`pointer-events-none absolute right-0 top-1/2 size-4 -translate-y-1/2 ${active ? "text-brand-dark" : "text-neutral-400"}`} />
     </div>
   );
 }
