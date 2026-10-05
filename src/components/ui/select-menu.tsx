@@ -9,7 +9,7 @@ export type SelectOption = { value: string; label: string };
 const TRIGGER = {
   // 폼 입력칸
   field:
-    "flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white px-3.5 text-left text-sm text-neutral-800 transition-colors hover:border-neutral-300",
+    "flex h-11 w-full items-center justify-between gap-2 rounded-full border border-neutral-200 bg-white pl-4 pr-3.5 text-left text-sm text-neutral-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-neutral-300 hover:bg-[#FAFCFE]",
   // 박스 없는 글자형(행사 찾기 필터)
   text: "flex items-center gap-1.5 bg-transparent py-1 text-[15px] font-medium text-neutral-600 transition-colors hover:text-neutral-950",
   // 둥근 알약형(차트 제목 옆)
@@ -124,7 +124,7 @@ export function SelectMenu({
           role="listbox"
           aria-label={ariaLabel}
           className={cn(
-            "absolute top-full z-40 mt-2 max-h-[360px] min-w-full w-max max-w-[280px] overflow-y-auto rounded-xl [scrollbar-width:thin] border border-neutral-200/80 bg-white p-1.5 shadow-[0_12px_32px_rgba(40,80,120,0.16)]",
+            "absolute top-full z-40 mt-2 max-h-[360px] min-w-full w-max max-w-[280px] overflow-y-auto rounded-xl [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-track]:bg-transparent border border-neutral-200/80 bg-white p-1.5 shadow-[0_12px_32px_rgba(40,80,120,0.16)]",
             align === "right" ? "right-0" : "left-0"
           )}
         >

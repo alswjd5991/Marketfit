@@ -48,7 +48,7 @@ export function ProductTrendChart({ title, data }: { title: string; data: Produc
           <ChevronDown className={`size-4 text-neutral-400 transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
         {open && (
-          <ul className="absolute left-0 top-11 z-30 max-h-72 w-56 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg">
+          <ul className="absolute left-0 top-11 z-30 max-h-72 w-56 overflow-y-auto rounded-xl border border-neutral-200/80 bg-white p-1.5 shadow-[0_12px_32px_rgba(40,80,120,0.16)] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 [&::-webkit-scrollbar-track]:bg-transparent">
             <li>
               <button
                 type="button"
