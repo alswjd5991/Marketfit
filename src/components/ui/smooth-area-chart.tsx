@@ -77,13 +77,19 @@ export function SmoothAreaChart({
       : paddingLeft + inset + (i / (points.length - 1)) * (plotWidth - inset * 2);
   const yAt = (v: number) => baseline - (v / upperBound) * plotHeight;
 
+  // 막대 두께(막대 모드). 끝 막대도 축 안에 들어오는 같은 두께.
+  const barStep = points.length > 1 ? (plotWidth - inset * 2) / (points.length - 1) : plotWidth;
+  const barW = Math.min(inset * 2 - 8, barStep * 0.45);
+
   const lines = series.map((s) => {
     const coords = s.values.map((v, i) => ({ x: xAt(i), y: yAt(v) }));
-    const line = smoothPath(coords, paddingTop, baseline);
-    const area =
-      coords.length > 1
-        ? `${line} L ${coords[coords.length - 1].x} ${baseline} L ${coords[0].x} ${baseline} Z`
-        : "";
+    // 막대 모드에선 곡선·영역을 양 끝 막대의 가장자리까지 평평하게 이어, 막대가 곡선 밖으로 튀어나오지 않게 한다.
+    const path =
+      bars && coords.length > 1
+        ? [{ x: coords[0].x - barW / 2, y: coords[0].y }, ...coords, { x: coords[coords.length - 1].x + barW / 2, y: coords[coords.length - 1].y }]
+        : coords;
+    const line = smoothPath(path, paddingTop, baseline);
+    const area = path.length > 1 ? `${line} L ${path[path.length - 1].x} ${baseline} L ${path[0].x} ${baseline} Z` : "";
     return { coords, line, area };
   });
 
@@ -163,8 +169,7 @@ export function SmoothAreaChart({
           {/* 연한 막대(선택) — 영역 채움 위에 그려야 양 끝 막대도 같은 두께로 보인다 */}
           {bars &&
             series[0]?.values.map((v, i) => {
-              const step = points.length > 1 ? (plotWidth - inset * 2) / (points.length - 1) : plotWidth;
-              const w = Math.min(inset * 2 - 8, step * 0.45); // 끝 막대도 축 안에 들어오는 같은 두께
+              const w = barW;
               const top = yAt(v);
               return (
                 <rect
