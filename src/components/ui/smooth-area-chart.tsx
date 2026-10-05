@@ -69,8 +69,12 @@ export function SmoothAreaChart({
   const multi = series.length > 1;
   const labelStep = Math.max(1, Math.ceil(points.length / Math.max(1, Math.floor((width - 68) / 64)))); // 라벨 하나에 약 64px
 
+  // 막대를 그릴 땐 양 끝 막대가 축 밖으로 나가지 않게 점들을 안쪽으로 들인다(모든 막대 같은 두께).
+  const inset = bars ? 24 : 0;
   const xAt = (i: number) =>
-    points.length === 1 ? paddingLeft + plotWidth / 2 : paddingLeft + (i / (points.length - 1)) * plotWidth;
+    points.length === 1
+      ? paddingLeft + plotWidth / 2
+      : paddingLeft + inset + (i / (points.length - 1)) * (plotWidth - inset * 2);
   const yAt = (v: number) => baseline - (v / upperBound) * plotHeight;
 
   const lines = series.map((s) => {
@@ -123,30 +127,6 @@ export function SmoothAreaChart({
             <line x1={activeX} x2={activeX} y1={paddingTop} y2={baseline} stroke="#BEBFC1" strokeDasharray="4 4" />
           )}
 
-          {/* 곡선 아래 연한 막대(선택) */}
-          {bars &&
-            series[0]?.values.map((v, i) => {
-              const step = points.length > 1 ? plotWidth / (points.length - 1) : plotWidth;
-              const w = Math.min(40, step * 0.45);
-              const top = yAt(v);
-              // 양 끝 막대가 축 바깥으로 삐져나오지 않게 그래프 영역 안으로 자른다
-              const left = Math.max(paddingLeft, xAt(i) - w / 2);
-              const right = Math.min(paddingLeft + plotWidth, xAt(i) + w / 2);
-              return (
-                <rect
-                  key={`bar-${i}`}
-                  x={left}
-                  y={top}
-                  width={Math.max(0, right - left)}
-                  height={Math.max(0, baseline - top)}
-                  rx={4}
-                  fill={series[0].color}
-                  opacity={activeIndex === i ? 0.28 : 0.14}
-                  className="transition-opacity duration-150"
-                />
-              );
-            })}
-
           {/* 영역 + 곡선 */}
           {lines.map((l, i) => {
             const s = series[i];
@@ -179,6 +159,28 @@ export function SmoothAreaChart({
                     </g>
                   );
                 })}
+
+          {/* 연한 막대(선택) — 영역 채움 위에 그려야 양 끝 막대도 같은 두께로 보인다 */}
+          {bars &&
+            series[0]?.values.map((v, i) => {
+              const step = points.length > 1 ? (plotWidth - inset * 2) / (points.length - 1) : plotWidth;
+              const w = Math.min(inset * 2 - 8, step * 0.45); // 끝 막대도 축 안에 들어오는 같은 두께
+              const top = yAt(v);
+              return (
+                <rect
+                  key={`bar-${i}`}
+                  x={xAt(i) - w / 2}
+                  y={top}
+                  width={w}
+                  height={Math.max(0, baseline - top)}
+                  rx={4}
+                  fill={series[0].color}
+                  opacity={activeIndex === i ? 0.28 : 0.14}
+                  className="transition-opacity duration-150"
+                />
+              );
+            })}
+
               </g>
             );
           })}

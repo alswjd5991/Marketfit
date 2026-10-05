@@ -119,7 +119,7 @@ export function ColumnChart({
         {linePath && <path d={linePath} fill="none" stroke={lineColor} strokeWidth="2" strokeLinejoin="round" pointerEvents="none" />}
         {points.map((p, i) =>
           p.line != null ? (
-            <circle key={i} cx={cx(i)} cy={y(p.line)} r={active === i ? 5 : 3.5} fill={lineColor} stroke="#fff" strokeWidth="2" pointerEvents="none" />
+            <circle key={i} cx={cx(i)} cy={y(p.line)} r={active === i ? 3.5 : 2.2} fill={lineColor} stroke="#fff" strokeWidth="1.25" pointerEvents="none" />
           ) : null
         )}
       </svg>
