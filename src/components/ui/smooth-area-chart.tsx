@@ -55,6 +55,7 @@ export function SmoothAreaChart({
   const smallUpper = Math.max(2, Math.ceil(maxValue * 1.2));
   const upperBound = maxValue <= 10 ? smallUpper + (smallUpper % 2) : maxValue * 1.2;
   const multi = series.length > 1;
+  const labelStep = Math.max(1, Math.ceil(points.length / 8));
 
   const xAt = (i: number) =>
     points.length === 1 ? paddingLeft + plotWidth / 2 : paddingLeft + (i / (points.length - 1)) * plotWidth;
@@ -146,8 +147,8 @@ export function SmoothAreaChart({
             );
           })}
 
-          {/* x축 이름 */}
-          {points.map((p, i) => (
+          {/* x축 이름 — 점이 많으면 겹치지 않게 일정 간격으로만(마우스 올린 점은 항상) */}
+          {points.map((p, i) => (i % labelStep === 0 || activeIndex === i) && (
             <text
               key={`label-${i}`}
               x={xAt(i)}

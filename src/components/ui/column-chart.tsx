@@ -11,6 +11,8 @@ export interface ColumnPoint {
   /** 툴팁 제목(행사명 등). */
   title?: string;
   meta?: string;
+  /** 툴팁 맨 아래 덧붙이는 한 줄(예: 행사 유형 평균 순이익). */
+  note?: string;
 }
 
 /**
@@ -126,6 +128,7 @@ export function ColumnChart({
               {lineName} <span className="font-semibold tabular-nums text-neutral-900">{hovered.line.toLocaleString()}{unit}</span>
             </p>
           )}
+          {hovered.note && <p className="mt-2 border-t border-neutral-100 pt-2 text-neutral-500">{hovered.note}</p>}
         </div>
       )}
     </div>
