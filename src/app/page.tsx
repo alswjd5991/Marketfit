@@ -311,8 +311,7 @@ const dashboardStats = isLoggedIn
                   <EmptyState
                     label="내 행사"
                     title="참가할 행사를 한곳에서 관리"
-                    description="로그인하면 저장하거나 참가 예정으로 등록한 행사를 바로 확인"
-                    buttonText="로그인하고 확인하기"
+                    buttonText="로그인"
                     href="/login"
                     accent="blue"
                   />
@@ -335,8 +334,7 @@ const dashboardStats = isLoggedIn
                   <EmptyState
                     label="참가 성과"
                     title="참가 결과 기록"
-                    description="로그인하면 행사별 매출·순이익 기록과 성과 확인 가능"
-                    buttonText="로그인하고 확인하기"
+                    buttonText="로그인"
                     href="/login"
                     accent="green"
                   />
@@ -400,14 +398,12 @@ function HomeSection({
 function EmptyState({
   label,
   title,
-  description,
   buttonText,
   href,
   accent,
 }: {
   label: string;
   title: string;
-  description: string;
   buttonText: string;
   href: string;
   accent: "blue" | "green";
@@ -446,10 +442,6 @@ function EmptyState({
             <h3 className="mt-2 text-lg font-bold text-[#1F2023]">
               {title}
             </h3>
-
-            <p className="mt-2 max-w-xl text-sm leading-6 text-[#6B6E74]">
-              {description}
-            </p>
           </div>
 
         </div>
@@ -493,7 +485,7 @@ function MyEventsPreview({
           href="/events"
           className="mt-3 inline-block text-sm font-semibold text-brand hover:underline"
         >
-          참가할 행사 찾아보기
+          행사 찾기
         </Link>
       </div>
     );
@@ -529,8 +521,7 @@ function MyEventsPreview({
           </h3>
 
           <p className="mt-2 text-sm text-[#6B6E74]">
-            {[p.region, p.venue].filter(Boolean).join(" · ") ||
-              "지역 미기재"}
+            {[p.region, p.venue].filter(Boolean).join(" · ")}
           </p>
 
           {p.startDate && (
@@ -554,14 +545,14 @@ function DashboardPreview({
     return (
       <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
         <p className="text-sm font-medium text-[#6B6E74]">
-          가게 등록 후 참가 성과 확인 가능
+          등록된 가게 없음
         </p>
 
         <Link
           href="/store"
           className="mt-3 inline-block text-sm font-semibold text-[#3F7A64] hover:underline"
         >
-          가게 등록하기
+          가게 등록
         </Link>
       </div>
     );
@@ -572,10 +563,6 @@ function DashboardPreview({
       <div className="col-span-full rounded-[24px] border border-[#DEDFE3] bg-white p-8 text-center shadow-[0_12px_35px_rgba(40,80,120,0.05)]">
         <p className="text-sm font-medium text-[#6B6E74]">
           참가 기록 없음
-        </p>
-
-        <p className="mt-1 text-xs text-[#8A8D93]">
-          참가 기록을 추가하면 성과 표시
         </p>
       </div>
     );

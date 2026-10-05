@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { skyGradient } from "@/components/sky-page";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Building2, CalendarDays, ChevronLeft, Clock, ExternalLink, MapPin } from "lucide-react";
@@ -39,7 +40,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
   ];
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
+    <div className="min-h-screen" style={{ background: skyGradient(0) }}>
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
       <Link
         href="/events"

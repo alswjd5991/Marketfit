@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { skyGradient } from "@/components/sky-page";
 import { signUp } from "@/features/auth/actions";
 import { AuthSubmitButton } from "@/features/auth/submit-button";
 
@@ -7,12 +8,9 @@ export default async function SignupPage(props: PageProps<"/signup">) {
   const error = typeof sp.error === "string" ? sp.error : null;
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
+    <div className="min-h-screen" style={{ background: skyGradient(0) }}>
     <div className="mx-auto flex min-h-[70vh] max-w-sm flex-col justify-center px-4 py-10">
-      <h1 className="text-xl font-bold text-neutral-950">회원가입</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        가게 정보와 행사 참가 기록을 저장할 계정 만들기
-      </p>
+      <h1 className="text-[26px] font-extrabold tracking-[-0.03em] text-neutral-950">회원가입</h1>
 
       {error && (
         <p role="alert" className="mt-4 rounded-lg bg-[#FFE4DE] px-3 py-2 text-sm text-[#BE3A2A]">{error}</p>
