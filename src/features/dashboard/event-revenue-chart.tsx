@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { InteractiveLineChart } from "@/components/ui/interactive-line-chart";
 import type { EventTrendPoint, GroupPerformance } from "./data";
 
@@ -22,22 +22,13 @@ export function EventRevenueChart({ title, points, groups }: { title: string; po
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2.5">
         <p className="text-sm font-semibold text-[#1F2023]">{title}</p>
-        <div className="relative">
-          <select
-            aria-label="행사 유형"
-            value={group}
-            onChange={(e) => setGroup(e.target.value)}
-            className="h-8 appearance-none rounded-full border border-neutral-200 bg-white pl-3 pr-8 text-[13px] text-neutral-700 outline-none transition-colors hover:border-neutral-300 focus:ring-2 focus:ring-brand/15"
-          >
-            <option value="">전체 유형</option>
-            {options.map((g) => (
-              <option key={g.group} value={g.group}>
-                {g.group} · 평균 순이익 {won(g.avgNetProfit!)}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
-        </div>
+        <SelectMenu
+          variant="pill"
+          ariaLabel="행사 유형"
+          value={group}
+          onChange={setGroup}
+          options={[{ value: "", label: "전체 유형" }, ...options.map((g) => ({ value: g.group, label: `${g.group} · 평균 순이익 ${won(g.avgNetProfit!)}` }))]}
+        />
         {selected?.avgNetProfit != null && (
           <p className="text-[13px] text-neutral-600">
             평균 순이익{" "}

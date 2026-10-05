@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { seededUnit } from "@/features/events/poster-theme";
 import { addProduct, deleteProduct, updateStore } from "@/features/store/actions";
 import { STORE_CATEGORIES, PAYMENT_METHODS } from "@/features/store/constants";
@@ -375,16 +376,12 @@ function CategorySelect({ defaultValue }: { defaultValue?: string }) {
   return (
     <label className="flex flex-col gap-1.5 text-sm">
       <span className="font-medium text-neutral-600">카테고리 *</span>
-      <select name="category" required defaultValue={defaultValue ?? ""} className={INPUT}>
-        <option value="" disabled>
-          선택해 주세요
-        </option>
-        {STORE_CATEGORIES.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
+      <SelectMenu
+        name="category"
+        ariaLabel="카테고리"
+        defaultValue={defaultValue ?? ""}
+        options={[{ value: "", label: "선택" }, ...STORE_CATEGORIES.map((c) => ({ value: c, label: c }))]}
+      />
     </label>
   );
 }
@@ -410,11 +407,16 @@ function HygieneCertifiedField({ defaultValue }: { defaultValue?: boolean | null
   return (
     <label className="flex flex-col gap-1.5 text-sm">
       <span className="font-medium text-neutral-600">위생교육 이수 (음식류 판매 시)</span>
-      <select name="hygiene_certified" defaultValue={defaultValue == null ? "" : String(defaultValue)} className={INPUT}>
-        <option value="">선택 안 함</option>
-        <option value="true">이수함</option>
-        <option value="false">아직 안 함</option>
-      </select>
+      <SelectMenu
+        name="hygiene_certified"
+        ariaLabel="위생교육 이수"
+        defaultValue={defaultValue == null ? "" : String(defaultValue)}
+        options={[
+          { value: "", label: "선택 안 함" },
+          { value: "true", label: "이수함" },
+          { value: "false", label: "아직 안 함" },
+        ]}
+      />
     </label>
   );
 }

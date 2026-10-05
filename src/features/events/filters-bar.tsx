@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { ChevronDown, Search } from "lucide-react";
+import { Search } from "lucide-react";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const STATUS_OPTIONS = [
   { value: "", label: "전체 상태" },
@@ -106,29 +107,18 @@ function TextSelect({
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
-  /** 정렬처럼 선택돼도 강조하지 않는 메뉴 */
+  /** 정렬처럼 선택돼도 강조하지 않는 메뉴(오른쪽 끝이라 목록도 오른쪽 정렬) */
   quiet?: boolean;
 }) {
-  const active = Boolean(value) && !quiet;
   return (
-    <div className="relative">
-      <select
-        aria-label={label}
-        defaultValue={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`cursor-pointer appearance-none bg-transparent py-1 pr-6 text-[15px] outline-none transition-colors focus-visible:underline focus-visible:underline-offset-8 ${
-          active
-            ? "font-bold text-brand-dark underline decoration-brand/40 decoration-2 underline-offset-8"
-            : "font-medium text-neutral-600 hover:text-neutral-950"
-        }`}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className={`pointer-events-none absolute right-0 top-1/2 size-4 -translate-y-1/2 ${active ? "text-brand-dark" : "text-neutral-400"}`} />
-    </div>
+    <SelectMenu
+      variant="text"
+      ariaLabel={label}
+      defaultValue={value}
+      onChange={onChange}
+      options={options}
+      active={Boolean(value) && !quiet}
+      align={quiet ? "right" : "left"}
+    />
   );
 }

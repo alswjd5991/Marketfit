@@ -21,6 +21,9 @@ import {
 } from "@/features/participations/actions";
 import { STATUS_BADGE_CLASS, STATUS_LABEL, STATUS_ORDER, toDisplayStatus } from "@/features/participations/status-labels";
 import { ChecklistCheckbox } from "@/features/participations/checklist-checkbox";
+import { SelectMenu } from "@/components/ui/select-menu";
+
+const RATING_OPTIONS = [{ value: "", label: "선택 안 함" }, ...[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: `${n}점` }))];
 import { BOOTH_PROVIDED_OPTIONS, PAYMENT_METHODS } from "@/features/store/constants";
 
 export default async function ParticipationDetailPage(
@@ -89,17 +92,13 @@ export default async function ParticipationDetailPage(
         <CardContent>
           <form action={updateParticipationStatus} className="flex flex-wrap items-center gap-3">
             <input type="hidden" name="participation_id" value={p.id} />
-            <select
+            <SelectMenu
               name="status"
+              ariaLabel="참가 상태"
+              className="w-40"
               defaultValue={toDisplayStatus(p.status)}
-              className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-            >
-              {STATUS_ORDER.map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_LABEL[s]}
-                </option>
-              ))}
-            </select>
+              options={STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
+            />
             <Button type="submit" size="sm">
               상태 저장
             </Button>
@@ -138,18 +137,12 @@ export default async function ParticipationDetailPage(
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-neutral-600">부스/매대 제공</span>
-                <select
+                <SelectMenu
                   name="booth_provided"
+                  ariaLabel="부스/매대 제공"
                   defaultValue={p.booth_provided ?? ""}
-                  className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">미정</option>
-                  {BOOTH_PROVIDED_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  options={[{ value: "", label: "미정" }, ...BOOTH_PROVIDED_OPTIONS]}
+                />
               </label>
               <Field
                 name="booth_size"
@@ -261,18 +254,12 @@ export default async function ParticipationDetailPage(
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-neutral-600">전체 만족도(1~5)</span>
-                <select
+                <SelectMenu
                   name="satisfaction"
-                  defaultValue={p.satisfaction ?? ""}
-                  className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">선택 안 함</option>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
+                  ariaLabel="전체 만족도"
+                  defaultValue={p.satisfaction == null ? "" : String(p.satisfaction)}
+                  options={RATING_OPTIONS}
+                />
               </label>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -302,18 +289,12 @@ export default async function ParticipationDetailPage(
               />
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-neutral-600">부스 위치 만족도(1~5)</span>
-                <select
+                <SelectMenu
                   name="booth_location_rating"
-                  defaultValue={p.booth_location_rating ?? ""}
-                  className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">선택 안 함</option>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
+                  ariaLabel="부스 위치 만족도"
+                  defaultValue={p.booth_location_rating == null ? "" : String(p.booth_location_rating)}
+                  options={RATING_OPTIONS}
+                />
               </label>
             </div>
             <fieldset className="flex flex-col gap-1.5 text-sm">
@@ -415,18 +396,11 @@ export default async function ParticipationDetailPage(
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-neutral-600">내 상품에서 선택</span>
-                <select
+                <SelectMenu
                   name="product_id"
-                  defaultValue=""
-                  className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">직접 입력</option>
-                  {detail.myProducts.map((prod) => (
-                    <option key={prod.id} value={prod.id}>
-                      {prod.name}
-                    </option>
-                  ))}
-                </select>
+                  ariaLabel="내 상품에서 선택"
+                  options={[{ value: "", label: "직접 입력" }, ...detail.myProducts.map((prod) => ({ value: prod.id, label: prod.name }))]}
+                />
               </label>
               <Field name="product_name_custom" label="직접 입력 시 상품명" placeholder="예: 수제 비누" />
             </div>
@@ -493,15 +467,16 @@ function TriStateField({
   return (
     <label className="flex flex-col gap-1 text-sm">
       <span className="text-neutral-600">{label}</span>
-      <select
+      <SelectMenu
         name={name}
+        ariaLabel={label}
         defaultValue={defaultValue == null ? "" : String(defaultValue)}
-        className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-      >
-        <option value="">잘 모름</option>
-        <option value="true">가능</option>
-        <option value="false">불가능</option>
-      </select>
+        options={[
+          { value: "", label: "잘 모름" },
+          { value: "true", label: "가능" },
+          { value: "false", label: "불가능" },
+        ]}
+      />
     </label>
   );
 }
