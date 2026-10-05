@@ -166,7 +166,7 @@ function ActivitySummary({ stats }: { stats: DashboardStats }) {
     ["참가 완료", `${stats.statusCounts.attended}회`],
     ["누적 매출", stats.totalRevenue != null ? won(stats.totalRevenue) : "-"],
     ["누적 순이익", stats.totalNetProfit != null ? won(stats.totalNetProfit) : "-"],
-    ["평균 만족도", stats.averageSatisfaction != null ? `${stats.averageSatisfaction.toFixed(1)} / 5` : "-"],
+    ["평균 만족도", stats.averageSatisfaction != null ? `${stats.averageSatisfaction.toFixed(1)} / 5.0` : "-"],
   ];
   return (
     <Panel

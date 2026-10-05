@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { BAR_COLOR, LINE_COLOR } from "./chart-colors";
 
 export interface ColumnPoint {
   /** x축 라벨(짧게). */
@@ -22,8 +23,8 @@ export interface ColumnPoint {
 export function ColumnChart({
   points,
   unit,
-  barColor = "#0A78AE",
-  lineColor = "#F2542D",
+  barColor = BAR_COLOR,
+  lineColor = LINE_COLOR,
   barName,
   lineName,
   height = 240,
@@ -40,7 +41,16 @@ export function ColumnChart({
   labelEvery?: number;
 }) {
   const [active, setActive] = useState<number | null>(null);
-  const width = 640;
+  // 실제 그려지는 폭으로 좌표계를 맞춘다 — 고정 폭을 늘려 그리면 넓은 카드에서 글자까지 커진다.
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(640);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(Math.max(280, Math.round(entry.contentRect.width))));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const pad = { top: 16, right: 8, bottom: 28, left: 52 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
@@ -52,7 +62,7 @@ export function ColumnChart({
   const slot = plotW / Math.max(points.length, 1);
   const barW = Math.max(2, Math.min(28, slot - 2)); // 막대 사이 최소 2px 간격
   const cx = (i: number) => pad.left + slot * (i + 0.5);
-  const every = labelEvery ?? Math.max(1, Math.ceil(points.length / 8));
+  const every = labelEvery ?? Math.max(1, Math.ceil(points.length / Math.max(1, Math.floor(plotW / 56)))); // 라벨 하나에 약 56px
   const ticks = [...new Set([min, 0, max / 2, max])].filter((v) => unit !== "건" || Number.isInteger(v));
 
   const linePts = points.map((p, i) => (p.line != null ? `${cx(i)},${y(p.line)}` : null));
@@ -61,7 +71,7 @@ export function ColumnChart({
   const hovered = active != null ? points[active] : null;
 
   return (
-    <div className="relative" onMouseLeave={() => setActive(null)}>
+    <div ref={boxRef} className="relative" onMouseLeave={() => setActive(null)}>
       <div className="mb-3 flex items-center gap-4 text-xs text-neutral-500">
         <span className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-[3px]" style={{ background: barColor }} />
@@ -74,7 +84,7 @@ export function ColumnChart({
           </span>
         )}
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label={barName}>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ height }} role="img" aria-label={barName}>
         {ticks.map((t) => (
           <g key={t}>
             <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} stroke={t === 0 ? "#cbd5e1" : "#eef2f6"} />

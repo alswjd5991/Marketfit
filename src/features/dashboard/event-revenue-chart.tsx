@@ -27,9 +27,7 @@ export function EventRevenueChart({ points, groups }: { points: EventTrendPoint[
             aria-label="행사 유형"
             value={group}
             onChange={(e) => setGroup(e.target.value)}
-            className={`h-9 appearance-none rounded-full border pl-3.5 pr-9 text-sm outline-none transition-colors focus:ring-2 focus:ring-brand/15 ${
-              group ? "border-brand/40 bg-brand-light font-semibold text-brand-dark" : "border-neutral-200 bg-white text-neutral-700"
-            }`}
+            className="h-9 appearance-none rounded-full border border-neutral-200 bg-white pl-3.5 pr-9 text-sm text-neutral-700 outline-none transition-colors hover:border-neutral-300 focus:ring-2 focus:ring-brand/15"
           >
             <option value="">전체 유형</option>
             {options.map((g) => (

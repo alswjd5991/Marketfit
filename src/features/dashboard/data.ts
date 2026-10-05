@@ -32,7 +32,7 @@ export interface DashboardStats {
   targetAchievement: { percent: number; entryCount: number } | null;
   /** 상품별 판매 실적(참가 완료 행사)을 매출 높은 순으로. */
   popularProducts: PopularProduct[];
-  /** 판매 수량 상위 품목들의 행사별 판매 수량(행사 시작일 순). */
+  /** 품목별 행사별 판매 수량(행사 시작일 순). 품목은 판매 수량 많은 순 — 화면에서 고른 품목만 그린다. */
   productSalesByEvent: ProductSalesByEvent;
   /** 대시보드 맨 위 "종합 인사이트" 문장들. **굵게** 표시를 쓴다. */
   insights: string[];
@@ -58,8 +58,6 @@ export interface ProductSalesByEvent {
   series: { productName: string; values: number[] }[];
 }
 
-// 한 그래프에 겹쳐 그릴 품목 곡선 수 — 너무 많으면 겹쳐서 읽기 어렵다.
-const SALES_TREND_SERIES_LIMIT = 5;
 
 export interface EventTrendPoint {
   eventName: string;
@@ -300,7 +298,7 @@ function buildInsights(
 /**
  * 참가 완료 건의 event_product_sales로 두 가지를 만든다.
  * - popularProducts: 상품명으로 합산해 매출 높은 순 상위 N개(판매율 포함)
- * - productSalesByEvent: 판매 수량 상위 품목들의 행사별 판매 수량(행사 시작일 순)
+ * - productSalesByEvent: 품목별 행사별 판매 수량(행사 시작일 순, 판매 수량 많은 품목부터)
  */
 async function getProductSales(
   supabase: Supabase,
@@ -335,7 +333,6 @@ async function getProductSales(
   }));
   const trendProducts = [...totals]
     .sort((a, b) => b.totalSold - a.totalSold)
-    .slice(0, SALES_TREND_SERIES_LIMIT)
     .map((p) => p.productName);
   const eventById = new Map(attended.map((p) => [p.id, p.event]));
   const eventRows = Array.from(soldByParticipation.entries())
