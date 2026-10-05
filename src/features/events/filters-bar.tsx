@@ -44,7 +44,7 @@ export function EventFiltersBar({ regions, categories }: { regions: string[]; ca
   const period = searchParams.get("period") ?? "";
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/70 p-3 shadow-[0_4px_20px_rgba(40,80,120,0.06)] backdrop-blur-sm sm:p-4">
+    <div className="flex flex-col gap-4">
       <label className="relative block">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-neutral-400" />
         <input
@@ -58,6 +58,9 @@ export function EventFiltersBar({ regions, categories }: { regions: string[]; ca
           }}
         />
       </label>
+
+      {/* 검색 ↔ 드롭다운 구분선 */}
+      <hr className="border-neutral-300/60" />
 
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         <Select label="지역" value={searchParams.get("region") ?? ""} onChange={(v) => setParam("region", v)} options={[{ value: "", label: "전체 지역" }, ...regions.map((r) => ({ value: r, label: r }))]} />
