@@ -203,15 +203,36 @@ const dashboardStats = isLoggedIn
             </div>
 
 
-            {/* AI 도우미 바로가기 — 카드 대신 챗봇 아이콘. 클릭하기 쉽게 살짝만 떠오른다 */}
-            <Link
-              href="/ai"
-              aria-label="AI 도우미"
-              title="AI 도우미에게 물어보기"
-              className="absolute -bottom-8 right-20 z-30 block rounded-full transition-transform duration-200 ease-out hover:-translate-y-1"
-            >
-              <BotIcon className="size-24 text-[#1B8FCB] drop-shadow-[0_10px_18px_rgba(10,120,174,0.25)]" />
-            </Link>
+            {/* AI 도우미 바로가기 카드 */}
+            <div className="group absolute bottom-0 left-10 z-30 h-[120px] w-[230px] hover:z-50">
+
+              <Link
+                href="/ai"
+                className="
+                  absolute inset-0 flex flex-col justify-center
+                  -rotate-2
+                  rounded-[20px] border border-white/80 bg-white p-5
+                  shadow-[0_18px_40px_rgba(10,120,174,0.10)]
+                  transition-all duration-300 ease-out
+
+                  group-hover:translate-x-[55px]
+                  group-hover:-translate-y-[150px]
+                  group-hover:rotate-0
+                  group-hover:scale-[1.04]
+                  group-hover:shadow-[0_28px_70px_rgba(10,120,174,0.22)]
+                "
+              >
+                <p className="text-sm font-medium text-[#6B6E74]">
+                  궁금한 건 바로 질문
+                </p>
+
+                <p className="mt-2 flex items-center gap-1.5 text-xl font-bold text-[#1F2023]">
+                  <BotIcon className="size-6 text-[#1B8FCB]" />
+                  AI 도우미 바로가기
+                </p>
+              </Link>
+
+            </div>
 
           </div>
         </div>
