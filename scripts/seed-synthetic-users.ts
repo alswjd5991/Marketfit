@@ -292,6 +292,8 @@ async function seedPersona(db: Db, p: Persona, events: EventRow[], password: str
         weather,
         indoor_outdoor: pick(["실내", "실외"]),
         memo,
+        // [가정] 70%는 참가 전에 목표 매출을 적어 둠 — 실제 매출의 80~130% 수준(목표 달성률 지표용)
+        target_revenue: rand() < 0.7 ? Math.max(1000, Math.round((total * (0.8 + rand() * 0.5)) / 1000) * 1000) : null,
       });
       if (regular) {
         Object.assign(row, {
