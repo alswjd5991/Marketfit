@@ -11,7 +11,17 @@ const won = (n: number) => `${Math.round(n).toLocaleString()}원`;
  * "최근 성과"의 행사별 매출 추이 + 제목 옆 행사 유형 드롭다운(대시보드 전용).
  * 유형을 고르면 그 유형 행사만 남기고 평균 순이익을 보여주고, 점에 마우스를 올리면 순이익과 유형이 나온다.
  */
-export function EventRevenueChart({ title, points, groups }: { title: string; points: EventTrendPoint[]; groups: GroupPerformance[] }) {
+export function EventRevenueChart({
+  title,
+  points,
+  groups,
+  height = 200,
+}: {
+  title: string;
+  points: EventTrendPoint[];
+  groups: GroupPerformance[];
+  height?: number;
+}) {
   const [group, setGroup] = useState("");
   const avgByGroup = new Map(groups.map((g) => [g.group, g]));
   const shown = group ? points.filter((p) => p.group === group) : points;
@@ -27,7 +37,7 @@ export function EventRevenueChart({ title, points, groups }: { title: string; po
           ariaLabel="행사 유형"
           value={group}
           onChange={setGroup}
-          options={[{ value: "", label: "전체 유형" }, ...options.map((g) => ({ value: g.group, label: `${g.group} · 평균 순이익 ${won(g.avgNetProfit!)}` }))]}
+          options={[{ value: "", label: "전체 유형" }, ...options.map((g) => ({ value: g.group, label: g.group }))]}
         />
         {selected?.avgNetProfit != null && (
           <p className="text-[13px] text-neutral-600">
@@ -46,7 +56,7 @@ export function EventRevenueChart({ title, points, groups }: { title: string; po
         <InteractiveLineChart
           color="#F2542D"
           format="currency"
-          height={200}
+          height={height}
           points={shown.map((e) => ({
             label: e.eventName.length > 6 ? `${e.eventName.slice(0, 6)}…` : e.eventName,
             value: e.revenue,

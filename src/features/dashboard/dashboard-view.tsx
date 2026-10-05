@@ -43,7 +43,7 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
         )}
 
         <Group title="최근 성과" first>
-          <RecentPerformance stats={stats} withTypeFilter />
+          <RecentPerformance stats={stats} withTypeFilter layout="side" />
         </Group>
 
         <Group title="수익성">
@@ -91,7 +91,7 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
                       className="h-full rounded-full"
                       style={{
                         width: `${Math.min(stats.targetAchievement.percent, 100)}%`,
-                        background: stats.targetAchievement.percent >= 100 ? "#3F7A64" : "#7DBFE8",
+                        background: "linear-gradient(90deg, #F7A08C, #E5574A)", // 빨간 계열 게이지
                       }}
                     />
                   </div>
@@ -117,10 +117,13 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
                 unit="건"
                 barName="참가 행사 수"
                 barColor={COUNT_BAR_COLOR}
+                lineName="추이"
+                lineColor="#2E9C83"
+                lineInTooltip={false}
                 height={290}
                 points={stats.monthlyParticipationCounts.map((m) => {
                   const [y, mo] = m.monthKey.split("-");
-                  return { label: `${y.slice(2)}.${Number(mo)}`, value: m.count, title: `${y}년 ${Number(mo)}월` };
+                  return { label: `${y.slice(2)}.${Number(mo)}`, value: m.count, line: m.count, title: `${y}년 ${Number(mo)}월` };
                 })}
               />
             </Panel>

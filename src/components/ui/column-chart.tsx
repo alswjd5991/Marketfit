@@ -29,6 +29,7 @@ export function ColumnChart({
   lineName,
   height = 240,
   labelEvery,
+  lineInTooltip = true,
 }: {
   points: ColumnPoint[];
   unit: "원" | "건";
@@ -39,6 +40,8 @@ export function ColumnChart({
   height?: number;
   /** x축 라벨을 n개마다 하나씩만 표시(라벨이 겹치지 않게). 기본은 개수에 맞춰 자동. */
   labelEvery?: number;
+  /** 선이 막대와 같은 값을 잇기만 할 때(false) 툴팁에서 중복 표시하지 않는다. */
+  lineInTooltip?: boolean;
 }) {
   const [active, setActive] = useState<number | null>(null);
   // 실제 그려지는 폭으로 좌표계를 맞춘다 — 고정 폭을 늘려 그리면 넓은 카드에서 글자까지 커진다.
@@ -133,7 +136,7 @@ export function ColumnChart({
           <p className="mt-1.5 flex justify-between gap-3 text-neutral-600">
             {barName} <span className="font-semibold tabular-nums text-neutral-900">{hovered.value.toLocaleString()}{unit}</span>
           </p>
-          {lineName && hovered.line != null && (
+          {lineName && lineInTooltip && hovered.line != null && (
             <p className="mt-0.5 flex justify-between gap-3 text-neutral-600">
               {lineName} <span className="font-semibold tabular-nums text-neutral-900">{hovered.line.toLocaleString()}{unit}</span>
             </p>
