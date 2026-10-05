@@ -131,14 +131,14 @@ export function SmoothAreaChart({
                   // 점은 평소엔 작게, 마우스를 올린 위치만 크게(나머지 점은 흐리게)
                   return (
                     <g key={j} opacity={activeIndex !== null && !active ? 0.35 : 1}>
-                      {active && <circle cx={c.x} cy={c.y} r="12" fill={s.color} opacity="0.15" />}
+                      {active && <circle cx={c.x} cy={c.y} r="9" fill={s.color} opacity="0.15" />}
                       <circle
                         cx={c.x}
                         cy={c.y}
-                        r={active ? 6 : 3.5}
+                        r={active ? 4.5 : 2.2}
                         fill={s.color}
                         stroke="white"
-                        strokeWidth={active ? 2.5 : 1.5}
+                        strokeWidth={active ? 2 : 1}
                       />
                     </g>
                   );
