@@ -35,7 +35,7 @@ export function RecentPerformance({
   const total = stats.totalParticipations;
   const attendRate = total ? c.attended / total : 0;
   const margin = stats.totalRevenue && stats.totalNetProfit != null ? stats.totalNetProfit / stats.totalRevenue : null;
-  // 대시보드(side) 카드에만 붙는 맥락 표시 — 숫자 아래 빈 공간을 의미 있는 정보로 채운다.
+  // 대시보드(side) 카드에만 붙는 맥락 표시 — 숫자 아래 빈 공간을 의미 있는 정보로 채운다. (별점은 메인에도 표시)
   const extra = (node: ReactNode) => (side ? node : undefined);
 
   const tiles = (
@@ -98,7 +98,7 @@ export function RecentPerformance({
         large={side}
         label="평균 만족도"
         value={stats.averageSatisfaction != null ? `${stats.averageSatisfaction.toFixed(1)} / 5.0` : "기록 없음"}
-        extra={extra(
+        extra={
           stats.averageSatisfaction != null && (
             <div className="flex items-center gap-2">
               <span className="flex gap-0.5" aria-hidden>
@@ -114,7 +114,7 @@ export function RecentPerformance({
               <span className="text-xs text-[#8A8D93]">{stats.satisfactionEntryCount}회 평가</span>
             </div>
           )
-        )}
+        }
       />
     </div>
   );
