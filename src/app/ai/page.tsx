@@ -76,7 +76,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
         <main className="order-1 flex min-h-[70vh] min-w-0 flex-1 flex-col lg:order-2 lg:min-h-0">
           {!detail || detail.messages.length === 0 ? (
             <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-6 py-12 text-center motion-safe:animate-fade-up">
-              <BotIcon className="size-20 text-brand" />
+              <BotIcon className="size-20 text-[#1B8FCB]" />
               <div>
                 <h1 className="text-3xl font-normal leading-[1.21] text-neutral-950 sm:text-4xl">어떤 도움이 필요하세요?</h1>
               </div>
@@ -96,7 +96,7 @@ export default async function AiPage(props: PageProps<"/ai">) {
                 {detail.messages.map((m) =>
                   m.role === "assistant" ? (
                     <div key={m.id} className="flex min-w-0 items-start gap-3 motion-safe:animate-fade-up">
-                      <BotIcon className="hidden size-9 text-brand sm:inline-block" />
+                      <BotIcon className="hidden size-9 text-[#1B8FCB] sm:inline-block" />
                       <div className="flex min-w-0 max-w-full flex-1 flex-col items-start gap-2 sm:max-w-[90%]">
                         <div className="w-full min-w-0 rounded-3xl bg-white p-4 shadow-sm shadow-neutral-900/5 sm:px-6 sm:py-5">
                           <MessageContent content={m.content} />
