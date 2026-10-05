@@ -64,7 +64,7 @@ export function RecentPerformance({
         extra={extra(
           <div>
             <div className="h-1.5 overflow-hidden rounded-full bg-[#E6EEF5]">
-              <div className="h-full rounded-full" style={{ width: `${attendRate * 100}%`, background: "#8DBEEB" }} />
+              <div className="h-full rounded-full" style={{ width: `${attendRate * 100}%`, background: "#F2A493" }} />
             </div>
             <p className="mt-1.5 text-xs text-[#8A8D93]">참가율 {Math.round(attendRate * 100)}%</p>
           </div>

@@ -9,7 +9,7 @@ import type { DashboardStats } from "@/features/dashboard/data";
 import { RecentPerformance } from "./recent-performance";
 import { STATUS_FILL } from "@/features/participations/status-labels";
 
-// 퍼널 색 = 상태 고유 색(관심 노랑·참가 예정 초록·참가 완료 파랑)의 파스텔 톤.
+// 퍼널 색 = 상태 고유 색(관심 노랑·참가 예정 초록·참가 완료 빨강)의 파스텔 톤.
 const FUNNEL = STATUS_FILL;
 
 const won = (n: number) => `${Math.round(n).toLocaleString()}원`;

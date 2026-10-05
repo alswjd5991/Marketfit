@@ -20,17 +20,17 @@ export const STATUS_LABEL: Record<ParticipationStatus, string> = {
   cancelled: "관심",
 };
 
-// 참가 상태 고유 색: 관심=노랑, 참가 예정=초록, 참가 완료=파랑 — 배지·퍼널·대시보드 카드가 같이 쓴다.
+// 참가 상태 고유 색: 관심=노랑, 참가 예정=초록, 참가 완료=빨강 — 배지·퍼널·대시보드 카드가 같이 쓴다.
 // 예전 상태는 화면에서 합쳐지는 단계와 같은 색(신청 예정·신청 완료 → 초록, 취소 → 노랑).
 const YELLOW = "bg-[#FFF3B8] text-[#7A6100]";
 const GREEN = "bg-[#DDF0E4] text-[#2B6A4C]";
-const BLUE = "bg-[#DCEBFA] text-[#1F5FA0]";
+const RED = "bg-[#FFE1DA] text-[#B8352A]";
 export const STATUS_BADGE_CLASS: Record<ParticipationStatus, string> = {
   interested: YELLOW,
   planning_to_apply: GREEN,
   applied: GREEN,
   planning_to_attend: GREEN,
-  attended: BLUE,
+  attended: RED,
   cancelled: YELLOW,
 };
 
@@ -38,5 +38,5 @@ export const STATUS_BADGE_CLASS: Record<ParticipationStatus, string> = {
 export const STATUS_FILL = {
   interested: { bg: "#FFF1B8", ink: "#7A6100" },
   planning_to_attend: { bg: "#CDEFD9", ink: "#2B6A4C" },
-  attended: { bg: "#CFE4FA", ink: "#1F5FA0" },
+  attended: { bg: "#FBD5CD", ink: "#A8392C" },
 } as const;
