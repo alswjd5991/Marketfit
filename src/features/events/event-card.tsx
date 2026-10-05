@@ -21,7 +21,7 @@ export function EventCard({ event }: { event: EventListItem }) {
 
   return (
     <Link href={`/events/${event.id}`} className="group block h-full">
-      <Card className="h-full overflow-hidden rounded-[22px] border border-[#E3EDF5] bg-white shadow-[0_8px_24px_rgba(40,80,120,0.06)] transition-all duration-200 group-hover:-translate-y-1 group-hover:border-[#CFE4F5] group-hover:shadow-[0_16px_36px_rgba(40,80,120,0.12)]">
+      <Card className="h-full overflow-hidden rounded-[22px] border border-[#DEDFE3] bg-white shadow-[0_8px_24px_rgba(40,80,120,0.06)] transition-all duration-200 group-hover:-translate-y-1 group-hover:border-[#BFE0EF] group-hover:shadow-[0_16px_36px_rgba(40,80,120,0.12)]">
 
         {/* 행사 포스터 */}
         <div className="aspect-[16/9] overflow-hidden bg-[#F4F9FC]">
@@ -53,7 +53,7 @@ export function EventCard({ event }: { event: EventListItem }) {
           </div>
 
           {/* 행사명 */}
-          <h3 className="line-clamp-2 text-[16px] font-semibold leading-6 text-[#15202B] transition-colors group-hover:text-brand">
+          <h3 className="line-clamp-2 text-[16px] font-semibold leading-6 text-[#1F2023] transition-colors group-hover:text-brand">
             {event.name}
           </h3>
 
