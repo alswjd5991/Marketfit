@@ -5,35 +5,27 @@ import { SiteFooter } from "@/components/site-footer";
 import { getEvents } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
 import { PosterFrame } from "@/components/ui/poster-frame";
 import { SkyBackground } from "@/components/sky-background";
 import { RecentPerformance } from "@/features/dashboard/recent-performance";
 import { getMyParticipations } from "@/features/participations/data";
 import { getDashboardStats } from "@/features/dashboard/data";
+import { getCurrentUser } from "@/features/store/data";
 import { STATUS_BADGE_CLASS, STATUS_LABEL } from "@/features/participations/status-labels";
 
 export default async function HomePage() {
-  const events = await getEvents();
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const [events, user] = await Promise.all([getEvents(), getCurrentUser()]);
   const isLoggedIn = Boolean(user);
-  const participations = isLoggedIn
-  ? await getMyParticipations()
-  : [];
+  // 로그인 사용자의 기록 두 가지는 서로 기다릴 필요가 없어 동시에 불러온다.
+  const [participations, dashboardStats] = isLoggedIn
+    ? await Promise.all([getMyParticipations(), getDashboardStats()])
+    : [[], null];
 
   // '내 참가 예정 행사'에는 이미 끝났거나(참가 완료) 취소한 행사는 빼고 보여준다
   const upcomingParticipations = participations.filter(
     (p) => p.status !== "attended" && p.status !== "cancelled"
   );
 
-const dashboardStats = isLoggedIn
-  ? await getDashboardStats()
-  : null;
 
   const closingSoon = events
     .filter((e) => e.status === "open")
