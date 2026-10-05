@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { CenteredNotice } from "@/components/page-header";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,7 @@ import {
   updateParticipationStatus,
   updateProductSale,
 } from "@/features/participations/actions";
-import { STATUS_LABEL, STATUS_ORDER, toDisplayStatus } from "@/features/participations/status-labels";
+import { STATUS_BADGE_CLASS, STATUS_LABEL, STATUS_ORDER, toDisplayStatus } from "@/features/participations/status-labels";
 import { ChecklistCheckbox } from "@/features/participations/checklist-checkbox";
 import { BOOTH_PROVIDED_OPTIONS, PAYMENT_METHODS } from "@/features/store/constants";
 
@@ -33,7 +32,15 @@ export default async function ParticipationDetailPage(
   const user = await getCurrentUser();
   if (!user) {
     return (
-      <CenteredNotice title="내 행사" text="로그인 후 이용할 수 있어요." href="/login" cta="로그인" />
+      <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
+      <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <h1 className="text-xl font-semibold text-neutral-900">내 행사 관리</h1>
+        <p className="mt-3 text-sm text-neutral-500">로그인 후 이용 가능</p>
+        <Button asChild className="mt-6">
+          <Link href="/login">로그인하러 가기</Link>
+        </Button>
+      </div>
+      </div>
     );
   }
 
@@ -44,6 +51,7 @@ export default async function ParticipationDetailPage(
   const checkedCount = detail.checklist.filter((c) => c.checked).length;
 
   return (
+    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
     <div className="mx-auto max-w-2xl px-4 py-8">
       <Link
         href="/my-events"
@@ -54,7 +62,7 @@ export default async function ParticipationDetailPage(
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">{STATUS_LABEL[p.status]}</Badge>
+        <Badge variant="secondary" className={STATUS_BADGE_CLASS[p.status]}>{STATUS_LABEL[p.status]}</Badge>
       </div>
       <h1 className="mt-2 text-2xl font-bold text-neutral-950">{detail.eventName}</h1>
       <p className="mt-1 text-sm text-neutral-500">
@@ -78,9 +86,9 @@ export default async function ParticipationDetailPage(
       )}
 
       {notice && (
-        <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{notice}</p>
+        <p className="mt-4 rounded-lg bg-[#E0EFE8] px-3 py-2 text-sm text-[#2F5F4B]">{notice}</p>
       )}
-      {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="mt-4 rounded-lg bg-[#FFE4DE] px-3 py-2 text-sm text-[#BE3A2A]">{error}</p>}
 
       <Card className="mt-6">
         <CardHeader>
@@ -181,7 +189,7 @@ export default async function ParticipationDetailPage(
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           {detail.checklist.length === 0 ? (
-            <p className="text-sm text-neutral-400">아직 체크리스트 항목이 없어요.</p>
+            <p className="text-sm text-neutral-400">체크리스트 항목 없음</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {detail.checklist.map((item) => (
@@ -272,6 +280,18 @@ export default async function ParticipationDetailPage(
                       {n}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-neutral-600">다음에도 참가할 의향</span>
+                <select
+                  name="would_reattend"
+                  defaultValue={p.would_reattend == null ? "" : String(p.would_reattend)}
+                  className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">선택 안 함</option>
+                  <option value="true">예</option>
+                  <option value="false">아니오</option>
                 </select>
               </label>
             </div>
@@ -372,7 +392,7 @@ export default async function ParticipationDetailPage(
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {detail.productSales.length === 0 ? (
-            <p className="text-sm text-neutral-400">아직 등록된 판매 실적이 없어요.</p>
+            <p className="text-sm text-neutral-400">등록된 판매 실적 없음</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {detail.productSales.map((sale) => (
@@ -441,6 +461,7 @@ export default async function ParticipationDetailPage(
           </form>
         </CardContent>
       </Card>
+    </div>
     </div>
   );
 }

@@ -34,60 +34,60 @@ export interface PosterTheme {
   icon: PosterIconKey;
 }
 
-// 시딩 데이터(src/lib/data/seed-events.ts)에 실제 등장하는 category 값을
-// 모두 커버한다.
 const THEME_BY_CATEGORY: Record<string, PosterTheme> = {
-  플리마켓: { bg: "#1c3a34", pop: "#b6e34f", icon: "tote" },
-  "축제 판매부스": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
-  // category-group.ts의 8종 분류 이름(카드·상세는 이 이름으로 테마를 찾는다).
-  "축제 부스": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
-  "먹거리 부스": { bg: "#7a2e2e", pop: "#ffb703", icon: "bowl" },
-  "박람회·전시": { bg: "#1e3a5f", pop: "#7cc4ff", icon: "stall" },
-  "아트·디자인 마켓": { bg: "#4a1942", pop: "#ff6fae", icon: "palette" },
-  시즌마켓: { bg: "#3a2a5c", pop: "#c9a6ff", icon: "gift" },
-  야시장: { bg: "#14213d", pop: "#ffd166", icon: "moon" },
-  "대학 마켓": { bg: "#1f2937", pop: "#7dd3fc", icon: "cap" },
-  아트마켓: { bg: "#4a1942", pop: "#ff6fae", icon: "palette" },
-  음식: { bg: "#7a2e2e", pop: "#ffb703", icon: "bowl" },
-  농산물: { bg: "#234d20", pop: "#a7d129", icon: "leaf" },
-  수공예: { bg: "#5c4630", pop: "#f2c14e", icon: "scissors" },
-  패션: { bg: "#241b2f", pop: "#e879f9", icon: "hanger" },
-  액세서리: { bg: "#33261a", pop: "#f4b942", icon: "gem" },
-  참고: { bg: "#33363b", pop: "#d4d4d4", icon: "tag" },
+  플리마켓: { bg: "#38A88F", pop: "#D7F1EB", icon: "tote" },
+  "축제 판매부스": { bg: "#F0823C", pop: "#FBE1D1", icon: "flag" },
+  시즌마켓: { bg: "#8C68D9", pop: "#E8DEFA", icon: "gift" },
+  야시장: { bg: "#4F78B8", pop: "#DCE8FA", icon: "moon" },
+  "대학 마켓": { bg: "#5E92D6", pop: "#E0EBFB", icon: "cap" },
+  아트마켓: { bg: "#CF5C95", pop: "#F6DCE8", icon: "palette" },
+  음식: { bg: "#E1A11A", pop: "#F8E7B8", icon: "bowl" },
+  농산물: { bg: "#72B451", pop: "#DDF0D1", icon: "leaf" },
+  수공예: { bg: "#B88652", pop: "#F2E1CF", icon: "scissors" },
+  패션: { bg: "#9A69D8", pop: "#E9DDF9", icon: "hanger" },
+  액세서리: { bg: "#C89439", pop: "#F5E5BE", icon: "gem" },
+  참고: { bg: "#8796A3", pop: "#E6EBEF", icon: "tag" },
 
-  // 전국구 확충으로 새로 등장한 카테고리는 성격이 가까운 위 테마를 재사용한다
-  // (배지에 표시되는 카테고리명 자체는 각자 그대로 다르게 나온다).
-  "지역축제 장터": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
-  지역축제: { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
-  "축제 판매·체험부스": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
-  "전시·체험부스": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
-  "축제 셀러": { bg: "#6b2b1f", pop: "#ff8a4c", icon: "flag" },
-  "디자인 마켓": { bg: "#4a1942", pop: "#ff6fae", icon: "palette" },
-  "북마켓·콘텐츠 부스": { bg: "#4a1942", pop: "#ff6fae", icon: "palette" },
-  "대학축제 플리마켓": { bg: "#1f2937", pop: "#7dd3fc", icon: "cap" },
-  "크리스마스 마켓": { bg: "#3a2a5c", pop: "#c9a6ff", icon: "gift" },
-  "관광기념품 박람회": { bg: "#3a2a5c", pop: "#c9a6ff", icon: "gift" },
-  "자원순환 마켓": { bg: "#234d20", pop: "#a7d129", icon: "leaf" },
-  로컬마켓: { bg: "#234d20", pop: "#a7d129", icon: "leaf" },
-  "먹거리부스·푸드트럭": { bg: "#7a2e2e", pop: "#ffb703", icon: "bowl" },
-  브랜드마켓: { bg: "#1c3a34", pop: "#b6e34f", icon: "tote" },
-  "로컬 플리마켓": { bg: "#1c3a34", pop: "#b6e34f", icon: "tote" },
-  "가정셀러 플리마켓": { bg: "#1c3a34", pop: "#b6e34f", icon: "tote" },
+  "지역축제 장터": { bg: "#F0823C", pop: "#FBE1D1", icon: "flag" },
+  지역축제: { bg: "#F0823C", pop: "#FBE1D1", icon: "flag" },
+  "축제 판매·체험부스": { bg: "#F0823C", pop: "#FBE1D1", icon: "flag" },
+  "전시·체험부스": { bg: "#F0823C", pop: "#FBE1D1", icon: "flag" },
+  "축제 셀러": { bg: "#F0823C", pop: "#FBE1D1", icon: "flag" },
+
+  "디자인 마켓": { bg: "#CF5C95", pop: "#F6DCE8", icon: "palette" },
+  "북마켓·콘텐츠 부스": { bg: "#CF5C95", pop: "#F6DCE8", icon: "palette" },
+
+  "대학축제 플리마켓": { bg: "#5E92D6", pop: "#E0EBFB", icon: "cap" },
+  "크리스마스 마켓": { bg: "#8C68D9", pop: "#E8DEFA", icon: "gift" },
+  "관광기념품 박람회": { bg: "#8C68D9", pop: "#E8DEFA", icon: "gift" },
+
+  "자원순환 마켓": { bg: "#72B451", pop: "#DDF0D1", icon: "leaf" },
+  로컬마켓: { bg: "#72B451", pop: "#DDF0D1", icon: "leaf" },
+
+  "먹거리부스·푸드트럭": { bg: "#E1A11A", pop: "#F8E7B8", icon: "bowl" },
+
+  브랜드마켓: { bg: "#38A88F", pop: "#D7F1EB", icon: "tote" },
+  "로컬 플리마켓": { bg: "#38A88F", pop: "#D7F1EB", icon: "tote" },
+  "가정셀러 플리마켓": { bg: "#38A88F", pop: "#D7F1EB", icon: "tote" },
+
+  // category-group.ts의 8종 분류 이름(카드·상세는 이 이름으로 테마를 찾는다).
+  "축제 부스": { bg: "#F0823C", pop: "#FBE1D1", icon: "flag" },
+  "먹거리 부스": { bg: "#E1A11A", pop: "#F8E7B8", icon: "bowl" },
+  "박람회·전시": { bg: "#4F78B8", pop: "#DCE8FA", icon: "stall" },
+  "아트·디자인 마켓": { bg: "#CF5C95", pop: "#F6DCE8", icon: "palette" },
 };
 
-// 목록에 없는 카테고리(향후 새 카테고리, "기타" 등)를 위한 중립 톤.
-const DEFAULT_THEME: PosterTheme = { bg: "#33363b", pop: "#d4d4d4", icon: "stall" };
+const DEFAULT_THEME: PosterTheme = {
+  bg: "#8796A3",
+  pop: "#E6EBEF",
+  icon: "stall",
+};
 
 export function getPosterTheme(category: string | null | undefined): PosterTheme {
   if (!category) return DEFAULT_THEME;
   return THEME_BY_CATEGORY[category] ?? DEFAULT_THEME;
 }
 
-/**
- * 문자열을 0~1 사이 안정적인 의사난수로 변환한다. 행사 id를 시드로 써서
- * 같은 행사는 새로고침해도 항상 같은 블롭 회전·위치를 갖게 한다(매번
- * 랜덤하게 흔들리면 "AI가 매번 새로 그린" 느낌이 나서 오히려 안 좋음).
- */
 export function seededUnit(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {

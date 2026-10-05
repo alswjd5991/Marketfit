@@ -39,6 +39,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
   ];
 
   return (
+    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
       <Link
         href="/events"
@@ -129,7 +130,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
               )}
             </div>
 
-            {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+            {error && <p className="mt-3 rounded-lg bg-[#FFE4DE] px-3 py-2 text-sm text-[#BE3A2A]">{error}</p>}
 
             {event.sourceUrl && (
               <a
@@ -144,6 +145,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
           </div>
         </aside>
       </div>
+    </div>
     </div>
   );
 }
