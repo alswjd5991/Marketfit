@@ -23,7 +23,7 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
 
   return (
     <div className="min-h-screen" style={{ background: skyGradient(2) }}>
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:py-10">
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <PageHeader title="대시보드" />
 
         {stats.insights.length > 0 && (
@@ -48,26 +48,62 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
 
         <Group title="수익성">
           <div className="grid gap-3 sm:grid-cols-3">
-            <Kpi
+            <ProfitCard
               label="행사당 평균 매출"
               value={stats.totalRevenue != null ? won(stats.totalRevenue / stats.revenueEntryCount) : "기록 없음"}
-              badge={
-                trendDiff != null && Math.abs(trendDiff) >= 0.05 // 인사이트 문장과 같은 기준
-                  ? { text: `최근 ${trend!.recentCount}회 ${trendDiff > 0 ? "▲" : "▼"} ${Math.round(Math.abs(trendDiff) * 100)}%`, good: trendDiff > 0 }
-                  : undefined
-              }
-            />
-            <Kpi
+            >
+              {trendDiff != null && Math.abs(trendDiff) >= 0.05 ? ( // 인사이트 문장과 같은 기준
+                <span className={`self-start rounded-full px-2.5 py-1 text-[13px] font-semibold ${trendDiff > 0 ? "bg-[#E0EFE8] text-[#2F5F4B]" : "bg-[#FFE4DE] text-[#BE3A2A]"}`}>
+                  최근 {trend!.recentCount}회 {trendDiff > 0 ? "▲" : "▼"} {Math.round(Math.abs(trendDiff) * 100)}%
+                </span>
+              ) : (
+                stats.revenueEntryCount > 0 && <span className="text-[13px] text-neutral-500">{stats.revenueEntryCount}회 평균</span>
+              )}
+            </ProfitCard>
+
+            <ProfitCard
               label="투자 대비 수익률"
               value={stats.returnOnCost ? `${Math.round(stats.returnOnCost.percent).toLocaleString()}%` : "기록 없음"}
               tone={stats.returnOnCost && stats.returnOnCost.percent < 0 ? "bad" : undefined}
-              sub={stats.returnOnCost ? `비용 ${won(stats.returnOnCost.totalCost)}` : "비용 입력 시 표시"}
-            />
-            <Kpi
+            >
+              {stats.returnOnCost ? (
+                <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-neutral-500">
+                  비용 <span className="font-semibold tabular-nums text-neutral-800">{won(stats.returnOnCost.totalCost)}</span>
+                  <span className="text-neutral-300">→</span>
+                  순이익{" "}
+                  <span className="font-semibold tabular-nums text-neutral-800">
+                    {won((stats.returnOnCost.percent / 100) * stats.returnOnCost.totalCost)}
+                  </span>
+                </p>
+              ) : (
+                <span className="text-[13px] text-neutral-400">비용 입력 시 표시</span>
+              )}
+            </ProfitCard>
+
+            <ProfitCard
               label="목표 매출 달성률"
               value={stats.targetAchievement ? `${Math.round(stats.targetAchievement.percent)}%` : "기록 없음"}
-              sub={stats.targetAchievement ? `${stats.targetAchievement.entryCount}회 기준` : "목표 매출 입력 시 표시"}
-            />
+            >
+              {stats.targetAchievement ? (
+                <div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-neutral-100">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.min(stats.targetAchievement.percent, 100)}%`,
+                        background: stats.targetAchievement.percent >= 100 ? "#3F7A64" : "#7DBFE8",
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-[13px] text-neutral-500">
+                    {stats.targetAchievement.percent >= 100 ? "목표 초과 달성" : `목표까지 ${Math.round(100 - stats.targetAchievement.percent)}%`} ·{" "}
+                    {stats.targetAchievement.entryCount}회 기준
+                  </p>
+                </div>
+              ) : (
+                <span className="text-[13px] text-neutral-400">목표 매출 입력 시 표시</span>
+              )}
+            </ProfitCard>
           </div>
         </Group>
 
@@ -134,30 +170,17 @@ function Empty({ children }: { children: ReactNode }) {
   return <p className="py-8 text-center text-sm text-neutral-400">{children}</p>;
 }
 
-function Kpi({
-  label,
-  value,
-  sub,
-  tone,
-  badge,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "bad";
-  badge?: { text: string; good: boolean };
-}) {
+/** 수익성 카드: 큰 숫자 + 아래 보조 표시(추세 배지·비용 흐름·달성 막대). */
+function ProfitCard({ label, value, tone, children }: { label: string; value: string; tone?: "bad"; children?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-white/80 bg-white/85 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm p-4 sm:p-5">
-      <p className="text-[13px] text-neutral-500">{label}</p>
-      <p className={`mt-1.5 whitespace-nowrap text-xl font-bold tracking-tight tabular-nums xl:text-[19px] ${tone === "bad" ? "text-[#BE3A2A]" : "text-neutral-950"}`}>{value}</p>
-      {badge ? (
-        <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${badge.good ? "bg-[#E0EFE8] text-[#2F5F4B]" : "bg-[#FFE4DE] text-[#BE3A2A]"}`}>
-          {badge.text}
-        </span>
-      ) : (
-        sub && <p className="mt-2 text-xs text-neutral-400">{sub}</p>
-      )}
+    <div className="flex flex-col justify-between gap-4 rounded-2xl border border-white/80 bg-white/85 p-5 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm sm:p-6">
+      <div>
+        <p className="text-sm font-medium text-neutral-500">{label}</p>
+        <p className={`mt-1 whitespace-nowrap text-[30px] font-extrabold leading-tight tracking-tight tabular-nums ${tone === "bad" ? "text-[#BE3A2A]" : "text-neutral-950"}`}>
+          {value}
+        </p>
+      </div>
+      {children}
     </div>
   );
 }
