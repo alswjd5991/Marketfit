@@ -3,10 +3,9 @@
 // (앞쪽 몇 색은 배경 대비가 3:1 미만이라 범례·툴팁·값 표시와 함께 쓴다.)
 export const SERIES_COLORS = ["#3F9BD3", "#F2836B", "#8A7FD6", "#2E9C83", "#E0A82E", "#D57BA8", "#2F6FB8", "#B9783E"];
 
-/** 단일 막대 차트 색 — 차트마다 다르게 둬서 한눈에 구분되게: 매출=하늘, 참가 수=민트, 품목 매출=살구. */
+/** 단일 막대 차트 색 — 차트마다 다르게 둬서 한눈에 구분되게: 기본=하늘, 참가 수=민트. */
 export const BAR_COLOR = "#7DBFE8";
 export const COUNT_BAR_COLOR = "#7FCBB2";
-export const PRODUCT_BAR_COLOR = "#F4B08A";
 /** 매출 막대와 함께 그리는 순이익 선(노을 코랄). */
 export const LINE_COLOR = "#F2836B";
 

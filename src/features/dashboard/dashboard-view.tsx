@@ -4,9 +4,9 @@ import { PageHeader } from "@/components/page-header";
 import { Lightbulb } from "lucide-react";
 import { ColumnChart } from "@/components/ui/column-chart";
 import { ProductTrendChart } from "./product-trend-chart";
-import { COUNT_BAR_COLOR, PRODUCT_BAR_COLOR, SERIES_COLORS } from "@/components/ui/chart-colors";
+import { COUNT_BAR_COLOR, SERIES_COLORS } from "@/components/ui/chart-colors";
 import type { DashboardStats } from "@/features/dashboard/data";
-import { EventRevenueChart } from "./event-revenue-chart";
+import { RecentPerformance } from "./recent-performance";
 
 // 퍼널 단계 색: 노을(관심) → 옅은 하늘(참가 예정) → 하늘(참가 완료). 배경 컨셉처럼 노을에서 하늘로 넘어간다.
 const FUNNEL = {
@@ -42,13 +42,12 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
           </section>
         )}
 
-        <section className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <Kpi label={stats.revenueEntryCount ? `누적 매출 (${stats.revenueEntryCount}회)` : "누적 매출"} value={stats.totalRevenue != null ? won(stats.totalRevenue) : "기록 없음"} />
-          <Kpi
-            label={stats.netProfitEntryCount ? `누적 순이익 (${stats.netProfitEntryCount}회)` : "누적 순이익"}
-            value={stats.totalNetProfit != null ? won(stats.totalNetProfit) : "기록 없음"}
-            tone={stats.totalNetProfit != null && stats.totalNetProfit < 0 ? "bad" : undefined}
-          />
+        <section className="mt-6">
+          <h2 className="mb-3 text-lg font-bold text-neutral-950">최근 성과</h2>
+          <RecentPerformance stats={stats} withTypeFilter />
+        </section>
+
+        <section className="mt-5 grid gap-3 sm:grid-cols-3">
           <Kpi
             label="행사당 평균 매출"
             value={stats.totalRevenue != null ? won(stats.totalRevenue / stats.revenueEntryCount) : "기록 없음"}
@@ -69,38 +68,19 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
             value={stats.targetAchievement ? `${Math.round(stats.targetAchievement.percent)}%` : "기록 없음"}
             sub={stats.targetAchievement ? `${stats.targetAchievement.entryCount}회 기준` : "목표 매출 입력 시 표시"}
           />
-          <Kpi
-            label="평균 만족도"
-            value={stats.averageSatisfaction != null ? `${stats.averageSatisfaction.toFixed(1)} / 5.0` : "기록 없음"}
-            sub={stats.satisfactionEntryCount ? `${stats.satisfactionEntryCount}회 평가` : undefined}
-          />
         </section>
 
         <section className="mt-5 grid gap-5 lg:grid-cols-3">
-          <Panel title={stats.eventRevenueTrend.length ? undefined : "행사별 매출·순이익"} className="lg:col-span-2">
-            {stats.eventRevenueTrend.length === 0 ? (
-              <Empty>매출 기록 없음</Empty>
-            ) : (
-              <EventRevenueChart title="행사별 매출·순이익" points={stats.eventRevenueTrend} groups={stats.groupPerformance} />
-            )}
-          </Panel>
-
           <Panel title="참가 전환 흐름">
             <Funnel stats={stats} />
           </Panel>
-        </section>
 
-        <section className="mt-5 grid gap-5 lg:grid-cols-3">
           <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"} className="lg:col-span-2">
             {stats.productSalesByEvent.series.length === 0 ? (
               <Empty>상품별 판매 기록 없음</Empty>
             ) : (
               <ProductTrendChart title="품목별 판매 수량 추이" data={stats.productSalesByEvent} />
             )}
-          </Panel>
-
-          <Panel title="품목별 매출·판매율">
-            {stats.popularProducts.length === 0 ? <Empty>상품별 판매 기록 없음</Empty> : <ProductBars stats={stats} />}
           </Panel>
         </section>
 
@@ -206,29 +186,5 @@ function Funnel({ stats }: { stats: DashboardStats }) {
         전체 참가율 <span className="font-bold text-neutral-950">{Math.round((c.attended / top) * 100)}%</span>
       </p>
     </div>
-  );
-}
-
-function ProductBars({ stats }: { stats: DashboardStats }) {
-  const max = Math.max(...stats.popularProducts.map((p) => p.totalRevenue), 1);
-  return (
-    <ul className="space-y-4">
-      {stats.popularProducts.map((p) => (
-        <li key={p.productName}>
-          <div className="flex items-baseline justify-between gap-2 text-sm">
-            <span className="truncate text-neutral-700" title={p.productName}>
-              {p.productName}
-            </span>
-            <span className="shrink-0 tabular-nums">
-              <span className="font-semibold text-neutral-900">{won(p.totalRevenue)}</span>
-              <span className="ml-2 text-xs text-neutral-400">판매율 {p.sellThrough != null ? `${Math.round(p.sellThrough * 100)}%` : "-"}</span>
-            </span>
-          </div>
-          <div className="mt-1.5 h-2 rounded-full bg-neutral-100">
-            <div className="h-2 rounded-full" style={{ width: `${(p.totalRevenue / max) * 100}%`, background: PRODUCT_BAR_COLOR }} />
-          </div>
-        </li>
-      ))}
-    </ul>
   );
 }
