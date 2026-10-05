@@ -150,7 +150,11 @@ function Kpi({
   );
 }
 
-/** 참가 전환 퍼널: 각 단계까지 온 행사 수(지금 그 단계 이상인 기록). 아래로 갈수록 좁아진다. */
+/**
+ * 참가 전환 퍼널(인포그래픽형): 사다리꼴 층이 쌓여 깔때기를 이루고, 층 안에 건수,
+ * 오른쪽엔 점선 연결선 + 단계 이름·전환율. 층 너비는 값이 아니라 고정 비율로 좁아진다(모양 유지용).
+ * 각 단계는 지금 그 단계 이상인 기록 수.
+ */
 function Funnel({ stats }: { stats: DashboardStats }) {
   const c = stats.statusCounts;
   const steps = [
@@ -159,30 +163,42 @@ function Funnel({ stats }: { stats: DashboardStats }) {
     { label: "참가 완료", count: c.attended, color: FUNNEL.attended.bg, ink: FUNNEL.attended.ink },
   ];
   const top = Math.max(steps[0].count, 1);
+  const edges = [100, 74, 50, 28]; // 층 경계의 너비(%) — 위에서 아래로 좁아진다
+  const trapezoid = (i: number) => {
+    const [a, b] = [edges[i], edges[i + 1]];
+    return `polygon(${(100 - a) / 2}% 0, ${(100 + a) / 2}% 0, ${(100 + b) / 2}% 100%, ${(100 - b) / 2}% 100%)`;
+  };
+
   return (
     <div>
-      <ol>
+      <ol className="mt-2 flex flex-col gap-2">
         {steps.map((step, i) => {
           const prev = steps[i - 1];
+          const rate = prev ? (prev.count > 0 ? `${Math.round((step.count / prev.count) * 100)}%` : "-") : null;
           return (
-            <li key={step.label}>
-              {prev && (
-                <p className="py-1.5 text-center text-xs text-neutral-400">
-                  ↓ {prev.count > 0 ? `${Math.round((step.count / prev.count) * 100)}%` : "-"}
-                </p>
-              )}
+            <li key={step.label} className="flex items-center">
               <div
-                className="mx-auto flex h-14 items-center justify-center rounded-xl text-sm font-semibold"
-                style={{ width: `${Math.max((step.count / top) * 100, 30)}%`, background: step.color, color: step.ink }}
+                className="flex h-[78px] w-[56%] shrink-0 items-center justify-center text-xl font-bold tabular-nums"
+                style={{ background: step.color, color: step.ink, clipPath: trapezoid(i) }}
                 title={`${step.label} ${step.count}건`}
               >
-                {step.label} <span className="ml-1.5 tabular-nums">{step.count}</span>
+                {step.count}
+              </div>
+              <span className="mx-2 h-px flex-1 border-t border-dashed border-neutral-300" />
+              <span className="size-2 shrink-0 rounded-full" style={{ background: step.color }} />
+              <div className="ml-2.5 w-[76px] shrink-0">
+                <p className="text-sm font-bold text-neutral-900">{step.label}</p>
+                <p className="text-xs tabular-nums text-neutral-500">{rate ? `전환 ${rate}` : "전체"}</p>
               </div>
             </li>
           );
         })}
       </ol>
-      <p className="mt-5 text-center text-sm text-neutral-600">
+      {/* 깔때기 꼭지 */}
+      <div className="w-[56%]">
+        <div className="mx-auto h-4 w-[12%] rounded-b-md opacity-60" style={{ background: steps[2].color }} />
+      </div>
+      <p className="mt-4 text-center text-sm text-neutral-600">
         전체 참가율 <span className="font-bold text-neutral-950">{Math.round((c.attended / top) * 100)}%</span>
       </p>
     </div>
