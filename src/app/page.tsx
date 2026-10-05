@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarCheck, ChevronRight, TrendingUp } from "lucide-react";
 import { BotIcon } from "@/components/bot-icon";
+import { SiteFooter } from "@/components/site-footer";
 import { getEvents } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
 import { Button } from "@/components/ui/button";
@@ -344,6 +345,7 @@ const dashboardStats = isLoggedIn
       </section>
       </div>
 
+      <SiteFooter className="relative z-20 snap-end" />
     </main>
   );
 }

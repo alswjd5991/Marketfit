@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { NavBar } from "@/components/nav-bar";
 import { BottomNav } from "@/components/bottom-nav";
+import { FooterGate } from "@/components/footer-gate";
+import { SiteFooter } from "@/components/site-footer";
 
 // next/font/google은 이 샌드박스에서 fonts.googleapis.com 접근이 막혀 빌드가 실패하므로
 // 폰트 파일을 저장소에 두고 next/font/local로 쓴다(빌드 시점 네트워크 의존 없음).
@@ -33,7 +35,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko" className={`${suit.variable} ${rubik.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-background font-sans text-neutral-900">
         <NavBar />
-        <main className="flex-1 pb-16 sm:pb-0">{children}</main>
+        <main className="flex-1">{children}</main>
+        <FooterGate>
+          <SiteFooter />
+        </FooterGate>
+        {/* 모바일 하단 탭 높이만큼 여백 */}
+        <div className="h-16 sm:hidden" />
         <BottomNav />
       </body>
     </html>
