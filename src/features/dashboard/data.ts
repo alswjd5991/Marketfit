@@ -115,10 +115,19 @@ export async function computeDashboardStats(supabase: Supabase, storeId: string)
     .eq("store_id", storeId);
   if (error) throw error;
   const eventIds = (rows ?? []).map((p) => p.event_id);
-  const { data: events, error: eventsError } = eventIds.length
-    ? await supabase.from("events").select("id, name, category, start_date").in("id", eventIds)
-    : { data: [], error: null };
-  if (eventsError) throw eventsError;
+  const attendedIds = (rows ?? []).filter((p) => p.status === "attended").map((p) => p.id);
+  // 행사 정보와 상품 판매 기록은 서로 기다릴 필요가 없어 동시에 조회한다(서버↔DB 왕복 1번 절약).
+  const [eventsResult, salesResult] = await Promise.all([
+    eventIds.length
+      ? supabase.from("events").select("id, name, category, start_date").in("id", eventIds)
+      : Promise.resolve({ data: [], error: null }),
+    attendedIds.length
+      ? supabase.from("event_product_sales").select("participation_id, product_name, prepared, sold, revenue").in("participation_id", attendedIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (eventsResult.error) throw eventsResult.error;
+  if (salesResult.error) throw salesResult.error;
+  const events = eventsResult.data;
   const eventById = new Map((events ?? []).map((e) => [e.id, e]));
   const participations = (rows ?? []).map((p) => ({ ...p, event: eventById.get(p.event_id) ?? null }));
 
@@ -172,9 +181,9 @@ export async function computeDashboardStats(supabase: Supabase, storeId: string)
   const totalCost = sum(costed.map((c) => c.cost));
   const targeted = participations.filter((p) => p.total_revenue != null && p.target_revenue != null && p.target_revenue > 0);
 
-  const { popularProducts, productSalesByEvent } = await getProductSales(
-    supabase,
-    participations.filter((p) => p.status === "attended")
+  const { popularProducts, productSalesByEvent } = summarizeProductSales(
+    participations.filter((p) => p.status === "attended"),
+    salesResult.data ?? []
   );
 
   const stats: DashboardStats = {
@@ -300,18 +309,11 @@ function buildInsights(
  * - popularProducts: 상품명으로 합산해 매출 높은 순 상위 N개(판매율 포함)
  * - productSalesByEvent: 품목별 행사별 판매 수량(행사 시작일 순, 판매 수량 많은 품목부터)
  */
-async function getProductSales(
-  supabase: Supabase,
-  attended: { id: string; event: { name: string; start_date: string | null } | null }[]
-): Promise<{ popularProducts: PopularProduct[]; productSalesByEvent: ProductSalesByEvent }> {
-  const empty = { popularProducts: [], productSalesByEvent: { events: [], series: [] } };
-  if (attended.length === 0) return empty;
-
-  const { data: sales, error } = await supabase
-    .from("event_product_sales")
-    .select("participation_id, product_name, prepared, sold, revenue")
-    .in("participation_id", attended.map((p) => p.id));
-  if (error) throw error;
+function summarizeProductSales(
+  attended: { id: string; event: { name: string; start_date: string | null } | null }[],
+  sales: { participation_id: string; product_name: string; prepared: number; sold: number; revenue: number }[]
+): { popularProducts: PopularProduct[]; productSalesByEvent: ProductSalesByEvent } {
+  if (attended.length === 0) return { popularProducts: [], productSalesByEvent: { events: [], series: [] } };
 
   const byName = new Map<string, { totalSold: number; totalPrepared: number; totalRevenue: number }>();
   const soldByParticipation = new Map<string, Map<string, number>>();

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/features/store/data";
 import { signOut } from "@/features/auth/actions";
 import { NavLinks } from "./nav-links";
 
@@ -75,20 +75,4 @@ export async function NavBar() {
       </div>
     </header>
   );
-}
-
-async function getCurrentUser() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
-
-  try {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    return user;
-  } catch {
-    return null;
-  }
 }
