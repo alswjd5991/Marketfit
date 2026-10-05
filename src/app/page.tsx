@@ -58,7 +58,7 @@ const dashboardStats = isLoggedIn
       {/* 랜딩 / 히어로 영역 */}
       <section className="sticky top-0 z-0 h-[calc(100vh-64px)] overflow-hidden bg-[linear-gradient(135deg,#FFE8C2_0%,#F3F9FF_38%,#D6EEFF_72%,#EEF8FD_100%)]">
 
-        <div className="mx-auto grid h-full max-w-7xl items-center gap-10 px-6 pb-32 pt-10 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="mx-auto grid max-w-7xl items-center gap-10 px-6 pb-40 pt-20 lg:grid-cols-[1.35fr_0.65fr] lg:pb-44 lg:pt-24">
 
           {/* 왼쪽 메인 타이틀 — 얇은 꺽쇠 두 개가 문구 묶음만 감싼다 */}
           <div className="flex w-full justify-center lg:justify-start">
