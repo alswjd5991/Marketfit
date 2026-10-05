@@ -215,8 +215,8 @@ const dashboardStats = isLoggedIn
                   shadow-[0_18px_40px_rgba(10,120,174,0.10)]
                   transition-all duration-300 ease-out
 
-                  group-hover:translate-x-[55px]
-                  group-hover:-translate-y-[150px]
+                  group-hover:translate-x-[10px]
+                  group-hover:-translate-y-[24px]
                   group-hover:rotate-0
                   group-hover:scale-[1.04]
                   group-hover:shadow-[0_28px_70px_rgba(10,120,174,0.22)]
