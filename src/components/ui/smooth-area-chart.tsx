@@ -30,11 +30,14 @@ export function SmoothAreaChart({
   series,
   formatValue,
   height = 260,
+  bars = false,
 }: {
   points: SmoothAreaPoint[];
   series: SmoothAreaSeries[];
   formatValue: (value: number) => string;
   height?: number;
+  /** 첫 번째 곡선 값을 곡선 아래 연한 막대로도 그린다(항목 비교용). */
+  bars?: boolean;
 }) {
   // useId 결과의 특수문자는 SVG url(#...) 참조를 깨뜨릴 수 있어 걸러 낸다
   const gradientId = `area-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -119,6 +122,30 @@ export function SmoothAreaChart({
           {activeIndex !== null && (
             <line x1={activeX} x2={activeX} y1={paddingTop} y2={baseline} stroke="#BEBFC1" strokeDasharray="4 4" />
           )}
+
+          {/* 곡선 아래 연한 막대(선택) */}
+          {bars &&
+            series[0]?.values.map((v, i) => {
+              const step = points.length > 1 ? plotWidth / (points.length - 1) : plotWidth;
+              const w = Math.min(40, step * 0.45);
+              const top = yAt(v);
+              // 양 끝 막대가 축 바깥으로 삐져나오지 않게 그래프 영역 안으로 자른다
+              const left = Math.max(paddingLeft, xAt(i) - w / 2);
+              const right = Math.min(paddingLeft + plotWidth, xAt(i) + w / 2);
+              return (
+                <rect
+                  key={`bar-${i}`}
+                  x={left}
+                  y={top}
+                  width={Math.max(0, right - left)}
+                  height={Math.max(0, baseline - top)}
+                  rx={4}
+                  fill={series[0].color}
+                  opacity={activeIndex === i ? 0.28 : 0.14}
+                  className="transition-opacity duration-150"
+                />
+              );
+            })}
 
           {/* 영역 + 곡선 */}
           {lines.map((l, i) => {
