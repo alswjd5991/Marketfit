@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { skyGradient } from "@/components/sky-page";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Building2, CalendarDays, ChevronLeft, Clock, ExternalLink, MapPin } from "lucide-react";
@@ -11,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PosterFrame } from "@/components/ui/poster-frame";
 import { getCategoryGroup } from "@/features/events/category-group";
+
+// 상세 배경: 노을→하늘 컨셉은 유지하되 목록보다 노을은 왼쪽 위에 조금만, 하늘은 더 깊게 — 목록과 구분된다.
+const DETAIL_BG = "linear-gradient(135deg, #FFE6CF 0%, #F5F9FD 14%, #D6EAFB 52%, #EAF4FD 100%)";
 
 export default async function EventDetailPage(props: PageProps<"/events/[id]">) {
   const { id } = await props.params;
@@ -40,7 +42,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: skyGradient(0) }}>
+    <div className="min-h-screen" style={{ background: DETAIL_BG }}>
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
       <Link
         href="/events"
