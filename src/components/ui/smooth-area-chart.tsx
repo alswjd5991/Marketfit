@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export type SmoothAreaPoint = {
@@ -41,7 +41,16 @@ export function SmoothAreaChart({
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [activeSeries, setActiveSeries] = useState<number | null>(null);
 
-  const width = 640;
+  // 실제 그려지는 폭으로 좌표계를 맞춘다 — 고정 폭(640)을 늘려 그리면 넓은 카드에서 글자·점이 가로로 퍼진다.
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(640);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => setWidth(Math.max(280, Math.round(entry.contentRect.width))));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const paddingLeft = 44;
   const paddingRight = 24;
   const paddingTop = 24;
@@ -55,7 +64,7 @@ export function SmoothAreaChart({
   const smallUpper = Math.max(2, Math.ceil(maxValue * 1.2));
   const upperBound = maxValue <= 10 ? smallUpper + (smallUpper % 2) : maxValue * 1.2;
   const multi = series.length > 1;
-  const labelStep = Math.max(1, Math.ceil(points.length / 8));
+  const labelStep = Math.max(1, Math.ceil(points.length / Math.max(1, Math.floor((width - 68) / 64)))); // 라벨 하나에 약 64px
 
   const xAt = (i: number) =>
     points.length === 1 ? paddingLeft + plotWidth / 2 : paddingLeft + (i / (points.length - 1)) * plotWidth;
@@ -77,7 +86,7 @@ export function SmoothAreaChart({
 
   return (
     <div className="w-full">
-      <div className="relative w-full" onMouseLeave={() => setActiveIndex(null)}>
+      <div ref={boxRef} className="relative w-full" onMouseLeave={() => setActiveIndex(null)}>
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="w-full overflow-visible"
