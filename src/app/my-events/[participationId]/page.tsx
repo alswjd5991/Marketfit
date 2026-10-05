@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { skyGradient } from "@/components/sky-page";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CenteredNotice } from "@/components/page-header";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,17 +33,7 @@ export default async function ParticipationDetailPage(
 
   const user = await getCurrentUser();
   if (!user) {
-    return (
-      <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="text-xl font-semibold text-neutral-900">내 행사 관리</h1>
-        <p className="mt-3 text-sm text-neutral-500">로그인 후 이용 가능</p>
-        <Button asChild className="mt-6">
-          <Link href="/login">로그인하러 가기</Link>
-        </Button>
-      </div>
-      </div>
-    );
+    return <CenteredNotice level={1} title="내 행사" text="로그인 후 이용 가능" href="/login" cta="로그인" />;
   }
 
   const detail = await getParticipationDetail(participationId);
@@ -51,7 +43,7 @@ export default async function ParticipationDetailPage(
   const checkedCount = detail.checklist.filter((c) => c.checked).length;
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,#FFECD0_0%,#F4F9FD_30%,#DCEEFF_68%,#F6FAFD_100%)]">
+    <div className="min-h-screen" style={{ background: skyGradient(1) }}>
     <div className="mx-auto max-w-2xl px-4 py-8">
       <Link
         href="/my-events"
@@ -62,7 +54,7 @@ export default async function ParticipationDetailPage(
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Badge variant="secondary" className={STATUS_BADGE_CLASS[p.status]}>{STATUS_LABEL[p.status]}</Badge>
+        <Badge variant="secondary" className={STATUS_BADGE_CLASS[toDisplayStatus(p.status)]}>{STATUS_LABEL[p.status]}</Badge>
       </div>
       <h1 className="mt-2 text-2xl font-bold text-neutral-950">{detail.eventName}</h1>
       <p className="mt-1 text-sm text-neutral-500">
@@ -280,18 +272,6 @@ export default async function ParticipationDetailPage(
                       {n}
                     </option>
                   ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="text-neutral-600">다음에도 참가할 의향</span>
-                <select
-                  name="would_reattend"
-                  defaultValue={p.would_reattend == null ? "" : String(p.would_reattend)}
-                  className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">선택 안 함</option>
-                  <option value="true">예</option>
-                  <option value="false">아니오</option>
                 </select>
               </label>
             </div>
