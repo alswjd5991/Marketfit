@@ -4,6 +4,7 @@ import { InteractiveLineChart } from "@/components/ui/interactive-line-chart";
 import { ProductRevenueAreaChart } from "@/components/ui/product-revenue-area-chart";
 import type { DashboardStats } from "./data";
 import { EventRevenueChart } from "./event-revenue-chart";
+import { STATUS_FILL } from "@/features/participations/status-labels";
 
 /**
  * "최근 성과" — 메인 페이지와 대시보드가 같이 쓰는 성과 요약(숫자 5개 + 행사별 매출 추이 + 품목별 매출 비교).
@@ -46,9 +47,9 @@ export function RecentPerformance({
         extra={extra(
           <div>
             <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full">
-              <span style={{ flex: c.interested + c.cancelled, background: "#FFE58A" }} />
-              <span style={{ flex: c.planning_to_attend + c.applied + c.planning_to_apply, background: "#8FD3AE" }} />
-              <span style={{ flex: c.attended, background: "#F4917F" }} />
+              <span style={{ flex: c.interested + c.cancelled, background: STATUS_FILL.interested.bg }} />
+              <span style={{ flex: c.planning_to_attend + c.applied + c.planning_to_apply, background: STATUS_FILL.planning_to_attend.bg }} />
+              <span style={{ flex: c.attended, background: STATUS_FILL.attended.bg }} />
             </div>
             <p className="mt-1.5 text-xs text-[#8A8D93]">
               관심 {c.interested + c.cancelled} · 예정 {c.planning_to_attend + c.applied + c.planning_to_apply} · 완료 {c.attended}
@@ -63,7 +64,7 @@ export function RecentPerformance({
         extra={extra(
           <div>
             <div className="h-1.5 overflow-hidden rounded-full bg-[#E6EEF5]">
-              <div className="h-full rounded-full bg-[#F4917F]" style={{ width: `${attendRate * 100}%` }} />
+              <div className="h-full rounded-full" style={{ width: `${attendRate * 100}%`, background: "#8DBEEB" }} />
             </div>
             <p className="mt-1.5 text-xs text-[#8A8D93]">참가율 {Math.round(attendRate * 100)}%</p>
           </div>

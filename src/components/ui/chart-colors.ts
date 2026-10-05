@@ -5,8 +5,8 @@ export const SERIES_COLORS = ["#3F9BD3", "#F2836B", "#8A7FD6", "#2E9C83", "#E0A8
 
 /** 단일 막대 차트 색 — 차트마다 다르게 둬서 한눈에 구분되게: 기본=하늘, 참가 수=민트. */
 export const BAR_COLOR = "#7DBFE8";
-export const COUNT_BAR_COLOR = "#B7A6EE"; // 월별 참가: 연보라 막대
-export const COUNT_LINE_COLOR = "#7B5FD6"; // 월별 참가: 진보라 추이선
+export const COUNT_BAR_COLOR = "#D6CCF8"; // 월별 참가: 연보라 막대
+export const COUNT_LINE_COLOR = "#9C86E6"; // 월별 참가: 보라 추이선
 /** 매출 막대와 함께 그리는 순이익 선(노을 코랄). */
 export const LINE_COLOR = "#F2836B";
 
