@@ -12,7 +12,7 @@ const won = (n: number) => `${Math.round(n).toLocaleString()}원`;
  * 드롭다운으로 유형을 고르면 그 유형 행사만 남기고 평균 순이익을 보여주고,
  * 막대에 마우스를 올리면 그 행사의 유형과 유형 평균 순이익이 툴팁에 나온다.
  */
-export function EventRevenueChart({ points, groups }: { points: EventTrendPoint[]; groups: GroupPerformance[] }) {
+export function EventRevenueChart({ title, points, groups }: { title: string; points: EventTrendPoint[]; groups: GroupPerformance[] }) {
   const [group, setGroup] = useState("");
   const avgByGroup = new Map(groups.map((g) => [g.group, g]));
   const shown = group ? points.filter((p) => p.group === group) : points;
@@ -21,7 +21,8 @@ export function EventRevenueChart({ points, groups }: { points: EventTrendPoint[
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <h2 className="text-[15px] font-semibold text-neutral-900">{title}</h2>
         <div className="relative">
           <select
             aria-label="행사 유형"

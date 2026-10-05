@@ -12,7 +12,7 @@ const DEFAULT_SELECTED = 5; // 처음엔 판매 수량 상위 5개 — 곡선이
  * 품목별 판매 수량 추이 + 품목 다중 선택 드롭다운.
  * 색은 품목 자체에 고정(전체 목록 순서 기준)이라, 선택을 바꿔도 같은 품목은 같은 색이다.
  */
-export function ProductTrendChart({ data }: { data: ProductSalesByEvent }) {
+export function ProductTrendChart({ title, data }: { title: string; data: ProductSalesByEvent }) {
   const all = data.series.map((s) => s.productName);
   const [selected, setSelected] = useState<string[]>(all.slice(0, DEFAULT_SELECTED));
   const [open, setOpen] = useState(false);
@@ -35,7 +35,9 @@ export function ProductTrendChart({ data }: { data: ProductSalesByEvent }) {
 
   return (
     <div>
-      <div ref={boxRef} className="relative mb-4 inline-block">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+      <h2 className="text-[15px] font-semibold text-neutral-900">{title}</h2>
+      <div ref={boxRef} className="relative inline-block">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -80,6 +82,7 @@ export function ProductTrendChart({ data }: { data: ProductSalesByEvent }) {
             })}
           </ul>
         )}
+      </div>
       </div>
 
       {series.length === 0 ? (

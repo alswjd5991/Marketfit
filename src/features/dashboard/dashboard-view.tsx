@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { Lightbulb } from "lucide-react";
 import { ColumnChart } from "@/components/ui/column-chart";
 import { ProductTrendChart } from "./product-trend-chart";
-import { BAR_COLOR, SERIES_COLORS } from "@/components/ui/chart-colors";
+import { COUNT_BAR_COLOR, PRODUCT_BAR_COLOR, SERIES_COLORS } from "@/components/ui/chart-colors";
 import type { DashboardStats } from "@/features/dashboard/data";
 import { EventRevenueChart } from "./event-revenue-chart";
 
@@ -27,7 +27,7 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
         <PageHeader title="대시보드" />
 
         {stats.insights.length > 0 && (
-          <section className="rounded-3xl border border-white/80 bg-[linear-gradient(135deg,#FFE9D6_0%,#FFF8F1_38%,#F1F8FF_70%,#DDEEFF_100%)] p-6 shadow-[0_12px_32px_rgba(40,80,120,0.08)] sm:p-7">
+          <section className="rounded-3xl border border-white/80 bg-[#FFF6EE] p-6 shadow-[0_12px_32px_rgba(40,80,120,0.08)] sm:p-7">
             <h2 className="flex items-center gap-2 text-sm font-bold text-brand-dark">
               <Lightbulb className="size-4" /> 종합 인사이트
             </h2>
@@ -77,11 +77,11 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
         </section>
 
         <section className="mt-5 grid gap-5 lg:grid-cols-3">
-          <Panel title="행사별 매출·순이익" className="lg:col-span-2">
+          <Panel title={stats.eventRevenueTrend.length ? undefined : "행사별 매출·순이익"} className="lg:col-span-2">
             {stats.eventRevenueTrend.length === 0 ? (
               <Empty>매출 기록 없음</Empty>
             ) : (
-              <EventRevenueChart points={stats.eventRevenueTrend} groups={stats.groupPerformance} />
+              <EventRevenueChart title="행사별 매출·순이익" points={stats.eventRevenueTrend} groups={stats.groupPerformance} />
             )}
           </Panel>
 
@@ -91,11 +91,11 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
         </section>
 
         <section className="mt-5 grid gap-5 lg:grid-cols-3">
-          <Panel title="품목별 판매 수량 추이" className="lg:col-span-2">
+          <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"} className="lg:col-span-2">
             {stats.productSalesByEvent.series.length === 0 ? (
               <Empty>상품별 판매 기록 없음</Empty>
             ) : (
-              <ProductTrendChart data={stats.productSalesByEvent} />
+              <ProductTrendChart title="품목별 판매 수량 추이" data={stats.productSalesByEvent} />
             )}
           </Panel>
 
@@ -109,6 +109,7 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
             <ColumnChart
               unit="건"
               barName="참가 행사 수"
+              barColor={COUNT_BAR_COLOR}
               height={170}
               points={stats.monthlyParticipationCounts.map((m) => {
                 const [y, mo] = m.monthKey.split("-");
@@ -127,10 +128,11 @@ function bold(text: string): ReactNode[] {
   return text.split("**").map((part, i) => (i % 2 ? <strong key={i} className="font-bold text-neutral-950">{part}</strong> : part));
 }
 
-function Panel({ title, className = "", children }: { title: string; className?: string; children: ReactNode }) {
+/** title을 비우면 제목 줄을 자식(드롭다운이 붙은 차트)이 직접 그린다. */
+function Panel({ title, className = "", children }: { title?: string; className?: string; children: ReactNode }) {
   return (
     <div className={`min-w-0 rounded-2xl border border-white/80 bg-white/85 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm p-5 sm:p-6 ${className}`}>
-      <h2 className="mb-5 text-[15px] font-semibold text-neutral-900">{title}</h2>
+      {title && <h2 className="mb-5 text-[15px] font-semibold text-neutral-900">{title}</h2>}
       {children}
     </div>
   );
@@ -223,7 +225,7 @@ function ProductBars({ stats }: { stats: DashboardStats }) {
             </span>
           </div>
           <div className="mt-1.5 h-2 rounded-full bg-neutral-100">
-            <div className="h-2 rounded-full" style={{ width: `${(p.totalRevenue / max) * 100}%`, background: BAR_COLOR }} />
+            <div className="h-2 rounded-full" style={{ width: `${(p.totalRevenue / max) * 100}%`, background: PRODUCT_BAR_COLOR }} />
           </div>
         </li>
       ))}
