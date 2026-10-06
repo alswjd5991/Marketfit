@@ -34,7 +34,12 @@ async function main() {
       email: emailOf.get(s.owner_id)!, category: s.category, attended, forecastOk, lossShown,
       stock: signals.map((i) => `${i.productName}:${i.verdict === "under" ? "부족" : "과다"}`).join(",") || (judged ? `판정 ${judged}개(적정)` : a.stock.applicable ? "기록 부족" : "대상 아님"),
       plan: a.plan.status === "ok" ? `${a.plan.biased ? "편향" : "차이 없음"} ${Math.round(a.plan.pct * 100)}%` : "보류",
-      peer: a.peer.status === "ok" ? `상위 ${Math.max(1, Math.round((1 - a.peer.below) * 100))}%` : "보류",
+      peer: a.peer.status === "ok" ? (() => {
+        const total = a.peer.peers + 1;
+        const higher = Math.round(a.peer.peers * (1 - a.peer.below));
+        const top = Math.round(((higher + 1) / total) * 100);
+        return top <= 50 ? `상위 ${top}%` : `하위 ${Math.round(((total - higher) / total) * 100)}%`;
+      })() : "보류",
       score,
     });
   }

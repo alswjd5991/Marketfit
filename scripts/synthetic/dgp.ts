@@ -81,19 +81,30 @@ export class Rng {
   negBin = (mean: number, k: number) => this.poisson(mean * this.gamma(k) / k);
 }
 
+function erf(x: number) {
+  const t = 1 / (1 + 0.3275911 * Math.abs(x));
+  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return x >= 0 ? y : -y;
+}
+const normCdf = (z: number) => 0.5 * (1 + erf(z / Math.SQRT2));
+
 /** 표준정규 분위수(이분법) */
 function zQuantile(p: number): number {
-  const erf = (x: number) => {
-    const t = 1 / (1 + 0.3275911 * Math.abs(x));
-    const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
-    return x >= 0 ? y : -y;
-  };
   let lo = -8, hi = 8;
   for (let i = 0; i < 80; i++) {
     const m = (lo + hi) / 2;
-    if (0.5 * (1 + erf(m / Math.SQRT2)) < p) lo = m; else hi = m;
+    if (normCdf(m) < p) lo = m; else hi = m;
   }
   return (lo + hi) / 2;
+}
+
+/**
+ * 셀러가 생각하는 수요 X ~ 로그정규(중앙값 median, 로그 표준편차 s)일 때 준비량 q에서 기대 판매량 E[min(X, q)].
+ * = E[X]·Φ((ln q − ln median − s²)/s) + q·(1 − Φ((ln q − ln median)/s))
+ */
+function expectedSold(median: number, s: number, q: number): number {
+  const d = (Math.log(q) - Math.log(median)) / s;
+  return median * Math.exp((s * s) / 2) * normCdf(d - s) + q * (1 - normCdf(d));
 }
 
 // ---------------------------------------------------------------------------
@@ -275,7 +286,22 @@ function chooseEvents(p: Persona, pool: DgpEvent[], n: number, rng: Rng): DgpEve
 // ---------------------------------------------------------------------------
 // 3) 수요 → 판매 (반사실 계산 가능)
 // ---------------------------------------------------------------------------
-export interface SaleDraw { productIndex: number; prepared: number; demand: number; sold: number; price: number; expectedUnits: number }
+export interface SaleDraw {
+  productIndex: number; prepared: number; demand: number; sold: number; price: number;
+  expectedUnits: number; // 수요의 기본 크기(날씨·당일 충격 반영 전) — 실제 수요 평균 = 이것 × 날씨 배수 × e^충격
+  expectedSold: number; // 셀러가 생각하는 기대 판매량 E[min(수요, 준비량)]
+}
+
+/** 셀러가 경험으로 아는 평소 날씨 분포 — generateAll이 행사 날짜의 실제(기상청) 날씨 빈도로 채운다. */
+let climate: Record<string, number> = C.DEMAND.weatherFallback;
+
+/** 평소 날씨에서의 평균 수요 배수(평소 날씨 분포로 가중 평균) — 셀러가 경험으로 아는 "날씨 감안" 수준 */
+function typicalWeather(outdoor: boolean): number {
+  const table = C.DEMAND.weather[outdoor ? "실외" : "실내"];
+  const w = climate;
+  const total = Object.values(w).reduce((a, b) => a + b, 0);
+  return Object.entries(w).reduce((a, [k, p]) => a + (p / total) * (table[k] ?? 1), 0);
+}
 
 export function simulateSales(
   p: Persona,
@@ -300,8 +326,14 @@ export function simulateSales(
     const expectedUnits = known * prod.appeal;
     const mean = expectedUnits * weatherMult * Math.exp(c.shock);
     const demand = rng.negBin(mean, D.dispersion);
-    const prepared = Math.max(1, Math.round(expectedUnits * Math.exp(D.beliefSd * z)));
-    return { productIndex: j, prepared, demand, sold: Math.min(demand, prepared), price: prod.price, expectedUnits };
+    // 셀러의 수요 예상(보정된 기대): 경험으로 평균적인 날씨 영향과 수요가 들쑥날쑥한 정도는 안다고 본다.
+    // 모르는 것은 그날 날씨·행사 충격의 실제 값뿐이고, 편향은 예상 매출의 평균(낙관)에만 둔다.
+    //   평균 = 기대 수요 × 평소 날씨 배수(실내외별) × E[e^충격],  로그 분산 = ln(1 + 1/μ + 1/k) + 충격 분산
+    const beliefMean = expectedUnits * typicalWeather(c.outdoor) * Math.exp(D.eventSd ** 2 / 2);
+    const beliefSd = Math.sqrt(Math.log(1 + 1 / beliefMean + 1 / D.dispersion) + D.eventSd ** 2);
+    const beliefMedian = beliefMean * Math.exp(-(beliefSd ** 2) / 2);
+    const prepared = Math.max(1, Math.round(beliefMedian * Math.exp(beliefSd * z)));
+    return { productIndex: j, prepared, demand, sold: Math.min(demand, prepared), price: prod.price, expectedUnits, expectedSold: expectedSold(beliefMedian, beliefSd, prepared) };
   });
 }
 
@@ -349,8 +381,8 @@ export function generateSeller(p: Persona, events: DgpEvent[], cond: Map<string,
     const fee = (e.fee ?? rng.won(...R.feeWhenUnknown)) * (p.edge === "always_loss" ? 3 : 1);
     const recorded = new Date(Date.parse(e.startDate) - rng.int(10, 40) * 86_400_000).toISOString().slice(0, 10);
     const sales = attended || status === "planning_to_attend" ? simulateSales(p, t, e, c) : [];
-    // 참가 전 예상 매출(가져갈 상품의 기대 판매 × 가격 × 낙관 편향)
-    const expectedBase = sales.reduce((a, s) => a + s.expectedUnits * s.price, 0);
+    // 참가 전 예상 매출: 셀러 자신의 수요 예상으로 본 기대 판매량(준비량을 넘게 팔 수는 없음) × 가격 × 낙관 편향
+    const expectedBase = sales.reduce((a, s) => a + s.expectedSold * s.price, 0);
     const writesExpected = sales.length > 0 && rng.next() < C.DEMAND.expectedRecordShare;
     const expectedRevenue = writesExpected ? Math.max(1000, Math.round((expectedBase * Math.exp(t.optimism)) / 1000) * 1000) : null;
     const targetRevenue = expectedRevenue != null ? Math.round((expectedRevenue * (1 + 0.3 * rng.next())) / 1000) * 1000 : null;
@@ -381,5 +413,7 @@ export function generateSeller(p: Persona, events: DgpEvent[], cond: Map<string,
 export function generateAll(events: DgpEvent[], weather: WeatherLookup, today: string) {
   const personas = buildPersonas(events.map((e) => e.region));
   const cond = new Map(events.map((e) => [e.id, eventConditions(e, weather)]));
+  climate = {};
+  for (const c of cond.values()) climate[c.weather] = (climate[c.weather] ?? 0) + 1;
   return { personas, cond, sellers: personas.map((p) => generateSeller(p, events, cond, today)) };
 }

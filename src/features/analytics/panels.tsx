@@ -280,9 +280,14 @@ export function PlanLine({ plan }: { plan: DashboardAnalytics["plan"] }) {
 
 export function PeerLine({ peer }: { peer: DashboardAnalytics["peer"] }) {
   if (peer.status !== "ok") return null;
+  // 나를 포함한 (비교 가게 + 1)곳 중 위·아래에서 몇 번째인지로 백분위를 낸다. 절반보다 아래면 "하위"로 표시.
+  const total = peer.peers + 1;
+  const higher = Math.round(peer.peers * (1 - peer.below));
+  const top = Math.round(((higher + 1) / total) * 100);
+  const label = top <= 50 ? `상위 ${top}%` : `하위 ${Math.round(((total - higher) / total) * 100)}%`;
   return (
     <p className="text-[13px] text-neutral-600">
-      {peer.category} 가게 {peer.peers}곳 중 <span className="font-bold text-neutral-900">상위 {Math.max(1, Math.round((1 - peer.below) * 100))}%</span>예요
+      {peer.category} 가게 {total}곳 중 <span className="font-bold text-neutral-900">{label}</span>예요
     </p>
   );
 }
