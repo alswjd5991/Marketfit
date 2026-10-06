@@ -11,9 +11,14 @@ type RevenueItem = {
 export function ProductRevenueAreaChart({
   items,
   height = 280,
+  color = "#0E9594",
+  accent = "text-[#0E7C78]",
 }: {
   items: RevenueItem[];
   height?: number;
+  /** 막대·영역 색(기본 청록 — 메인 페이지), 대시보드는 보라 계열 */
+  color?: string;
+  accent?: string;
 }) {
   const totalRevenue = items.reduce((sum, item) => sum + item.value, 0);
   const topItem = [...items].sort((a, b) => b.value - a.value)[0];
@@ -28,7 +33,7 @@ export function ProductRevenueAreaChart({
         series={[
           {
             name: "매출",
-            color: "#0E9594",
+            color,
             values: items.map((item) => item.value),
             sublabels: items.map((item) =>
               totalRevenue > 0
@@ -43,7 +48,7 @@ export function ProductRevenueAreaChart({
         <SummaryMiniCard
           label="총 품목 매출"
           value={`${totalRevenue.toLocaleString()}원`}
-          accent="text-[#0E7C78]"
+          accent={accent}
         />
         <SummaryMiniCard
           label="1위 품목"

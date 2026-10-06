@@ -27,6 +27,8 @@ export interface DashboardStats {
   weatherPerformance: ConditionPerformance[];
   /** 순이익 ÷ (참가비 + 교통·주차·숙박·기타 비용). 비용을 기록한 건만 */
   returnOnCost: { percent: number; totalCost: number; entryCount: number } | null;
+  /** 순이익이 0보다 컸던 행사 수 / 순이익을 기록한 행사 수 */
+  profitableEvents: { count: number; total: number } | null;
   /** 총 매출 ÷ 목표 매출. 둘 다 입력한 건만 */
   targetAchievement: { percent: number; entryCount: number } | null;
   /** 상품별 판매 실적(참가 완료 행사)을 매출 높은 순으로. */
@@ -196,6 +198,7 @@ export async function computeDashboardStats(supabase: Supabase, storeId: string)
     eventRevenueTrend,
     groupPerformance,
     weatherPerformance: conditionPerformance(revenues, (p) => p.weather, ["맑음", "흐림", "비", "눈"]),
+    profitableEvents: profits.length ? { count: profits.filter((v) => v > 0).length, total: profits.length } : null,
     returnOnCost: costed.length
       ? { percent: (sum(costed.map((c) => c.p.net_profit!)) / totalCost) * 100, totalCost, entryCount: costed.length }
       : null,
