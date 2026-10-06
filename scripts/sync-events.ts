@@ -6,6 +6,7 @@
 // 매주 월요일 Vercel Cron(/api/cron/weekly-events)이 자동으로 하는 주간 행사 업데이트를
 // 로컬에서 직접 한 번 돌린다. 로직은 src/features/events/weekly-sync.ts 하나를 같이 쓴다.
 // 저장하려면 .env.local에 SUPABASE_SERVICE_ROLE_KEY, 전국 행사까지 받으려면 TOUR_API_KEY가 필요하다.
+// 기간 수집(--from/--to)에 SEOUL_OPENAPI_KEY가 있으면 서울시 문화행사 정보(2021년 10월~)도 함께 모은다.
 
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -37,7 +38,7 @@ async function main() {
     process.exit(1);
   }
 
-  const report = await runWeeklyEventSync({ supabase, dryRun, tourKey: process.env.TOUR_API_KEY?.trim(), range: from && to ? { from, to } : undefined });
+  const report = await runWeeklyEventSync({ supabase, dryRun, tourKey: process.env.TOUR_API_KEY?.trim(), seoulCultureKey: process.env.SEOUL_OPENAPI_KEY?.trim(), range: from && to ? { from, to } : undefined });
 
   console.log(`\n주간 행사 업데이트 ${dryRun ? "(dry-run)" : ""} — 대상 기간 ${report.range.from} ~ ${report.range.to}`);
   for (const s of report.sources) {

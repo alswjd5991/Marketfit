@@ -12,7 +12,7 @@ import type { EventDetails } from "@/types/database";
 
 export interface SeedEvent {
   /** seoul·pilot = 직접 수집한 시드, tour·seoulfest = 매주 월요일 자동 수집(features/events/weekly-sync.ts) */
-  sourceDataset: "seoul" | "pilot" | "tour" | "seoulfest";
+  sourceDataset: "seoul" | "pilot" | "tour" | "seoulfest" | "seoulcult";
   id: string;
   name: string;
   series: string | null;

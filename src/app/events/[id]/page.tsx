@@ -43,7 +43,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
   const hours = event.hours?.filter(Boolean).join(" ~ ");
   const fee = event.feeKrw === 0 ? "무료" : event.feeKrw != null ? `${event.feeKrw.toLocaleString()}원` : null;
   // 공공데이터로 자동 수집한 행사: 셀러 모집 공고가 아니라 행사 정보라 모집 마감·참가비가 없다.
-  const isAuto = event.sourceDataset === "tour" || event.sourceDataset === "seoulfest";
+  const isAuto = event.sourceDataset === "tour" || event.sourceDataset === "seoulfest" || event.sourceDataset === "seoulcult";
   const details = event.details ?? null;
   // 모집 정보가 없는 행사는 시작일 기준으로 상태를 보여준다(시작 전 D-n / 진행 중 / 종료).
   const startBadge = closed ? "종료" : event.startDate && formatDday(event.startDate) && event.startDate > new Date().toISOString().slice(0, 10) ? formatDday(event.startDate) : "진행 중";

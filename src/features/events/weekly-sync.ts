@@ -8,7 +8,8 @@
 //      공연·전시 같은 관람형 축제는 뺀다.
 //   3) 중복 제거: 두 출처 사이, 그리고 직접 수집한 시드 행사(seed-events.ts)와 이름·기간이
 //      겹치면 한 건만 남긴다.
-//   4) 저장: event_recruitments.source_post_id(`tour:T123` / `seoulfest:F45`)를 키로
+//   (과거 행사를 기간으로 채울 때는 서울시 문화행사 정보(2021년 10월~, 지난 행사가 지워지지 않음)도 쓴다)
+//   4) 저장: event_recruitments.source_post_id(`tour:T123` / `seoulfest:F45` / `seoulcult:C135364`)를 키로
 //      upsert — 처음 보는 행사는 새로 만들고(collected_at = 이번 주), 이미 있던 행사는
 //      일정·장소만 최신으로 고치고 last_checked_at을 갱신한다. 여러 번 돌아도 중복이 안 쌓인다.
 //
@@ -69,12 +70,13 @@ export function isNewlyListed(collectedAt: string | null | undefined, startDate:
   return startDate > day(LOOKAHEAD_DAYS - NEW_BADGE_DAYS) && startDate <= day(LOOKAHEAD_DAYS);
 }
 
-export type AutoSourceDataset = "tour" | "seoulfest";
+export type AutoSourceDataset = "tour" | "seoulfest" | "seoulcult";
 
 /** 자동 수집 출처별 정보. id 접두어(T/F)는 시드 행사 id(S01, A03 …)와 겹치지 않게 고른 것. */
 export const AUTO_SOURCES: Record<AutoSourceDataset, { prefix: string; name: string }> = {
   tour: { prefix: "T", name: "한국관광공사 TourAPI" },
   seoulfest: { prefix: "F", name: "서울시 공식 축제 찾기" },
+  seoulcult: { prefix: "C", name: "서울시 문화행사 정보" },
 };
 
 export interface CollectedEvent {
@@ -89,7 +91,13 @@ export interface CollectedEvent {
   lat: number | null;
   lng: number | null;
   sourceUrl: string;
+  /** 수집 응답에 상세 정보가 함께 오는 출처(서울시 문화행사 정보)는 여기에 담아 바로 저장한다 */
+  details?: EventDetails;
 }
+
+/** 자동 수집 행사의 source_post_id 조회 조건(PostgREST or 필터) */
+export const AUTO_SOURCE_FILTER = (Object.keys({ tour: 1, seoulfest: 1, seoulcult: 1 } satisfies Record<AutoSourceDataset, 1>))
+  .map((d) => `source_post_id.like.${d}:*`).join(",");
 
 export interface SourceReport {
   source: string;
@@ -240,6 +248,72 @@ async function fetchTour(key: string, from: string, to: string): Promise<Collect
   return parseTourItems(rows, from, to);
 }
 
+// ---------------------------------------------------------------------------
+// 서울시 문화행사 정보(서울 열린데이터광장 culturalEventInfo) — 2021년 10월부터 지난 행사가 남아 있다.
+// 키: .env.local의 SEOUL_OPENAPI_KEY(서울 열린데이터광장 인증키, 공공데이터포털 키와 다름).
+// 날짜로 거르는 요청 파라미터가 없어 전체를 1,000건씩 받아 기간·판매형 여부로 거른다(과거 행사 채우기 전용).
+// ---------------------------------------------------------------------------
+const SEOUL_CULTURE = "http://openapi.seoul.go.kr:8088";
+
+/** culturalEventInfo의 row 배열을 행사로 바꾼다. 위도·경도 칸이 서로 바뀌어 오는 경우가 있어 범위로 구분한다. */
+export function parseSeoulCultureRows(rows: unknown[], from: string, to: string): CollectedEvent[] {
+  const out: CollectedEvent[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const r = row as Record<string, unknown>;
+    const name = text(r.TITLE);
+    const id = text(r.HMPG_ADDR).match(/cultcode=(\d+)/)?.[1];
+    const start = text(r.STRTDATE).slice(0, 10);
+    const end = text(r.END_DATE).slice(0, 10) || start;
+    if (!name || !id || !isIsoDate(start) || !isIsoDate(end) || end < start) continue;
+    if (!overlaps(start, end, from, to)) continue;
+    // 공연·영화 분류는 이름에 '마켓'이 있어도 판매 부스가 없는 관람 행사다.
+    if (/콘서트|연극|뮤지컬|오페라|클래식|국악|무용|영화|독주|독창/.test(text(r.CODENAME))) continue;
+    const [a, b] = [coord(r.LAT), coord(r.LOT)];
+    const lat = a != null && a > 30 && a < 40 ? a : b != null && b > 30 && b < 40 ? b : null;
+    const lng = lat === a ? b : a;
+    const place = text(r.PLACE);
+    const details: EventDetails = Object.fromEntries(Object.entries({
+      overview: [text(r.PROGRAM), text(r.ETC_DESC)].filter(Boolean).join("\n").slice(0, 1500),
+      place,
+      sponsor: text(r.ORG_NAME),
+      admission: text(r.USE_FEE) || (text(r.IS_FREE) === "무료" ? "무료" : ""),
+      homepage: /^https?:\/\//.test(text(r.ORG_LINK)) ? text(r.ORG_LINK) : "",
+    }).filter(([, v]) => v));
+    out.push({
+      sourceDataset: "seoulcult",
+      sourceId: `${AUTO_SOURCES.seoulcult.prefix}${id}`,
+      name,
+      region: "서울",
+      venue: [text(r.GUNAME), place].filter(Boolean).join(" ") || null,
+      startDate: start,
+      endDate: end,
+      imageUrl: text(r.MAIN_IMG).replace(/^http:\/\//, "https://") || null,
+      lat,
+      lng,
+      sourceUrl: text(r.HMPG_ADDR),
+      details,
+    });
+  }
+  return out;
+}
+
+async function fetchSeoulCulture(key: string, from: string, to: string): Promise<CollectedEvent[]> {
+  const page = async (start: number, end: number) => {
+    const res = await fetch(`${SEOUL_CULTURE}/${encodeURIComponent(key)}/json/culturalEventInfo/${start}/${end}/`, { cache: "no-store", signal: AbortSignal.timeout(30000) });
+    if (!res.ok) throw new Error(`서울시 문화행사 HTTP ${res.status}`);
+    const data = await res.json() as { culturalEventInfo?: { list_total_count?: number; RESULT?: { CODE?: string; MESSAGE?: string }; row?: unknown[] }; RESULT?: { CODE?: string; MESSAGE?: string } };
+    const body = data.culturalEventInfo;
+    if (!body) throw new Error(`서울시 문화행사 거절: ${data.RESULT?.MESSAGE ?? "알 수 없음"}`);
+    if (body.RESULT?.CODE && body.RESULT.CODE !== "INFO-000") throw new Error(`서울시 문화행사 거절: ${body.RESULT.MESSAGE ?? body.RESULT.CODE}`);
+    return { total: Number(body.list_total_count ?? 0), rows: body.row ?? [] };
+  };
+  const first = await page(1, 1000);
+  const rows = [...first.rows];
+  for (let s = 1001; s <= first.total; s += 1000) rows.push(...(await page(s, Math.min(s + 999, first.total))).rows);
+  return parseSeoulCultureRows(rows, from, to);
+}
+
 async function fetchSeoul(from: string, to: string): Promise<CollectedEvent[]> {
   const res = await fetch(SEOUL_SEARCH, {
     method: "POST",
@@ -349,9 +423,10 @@ async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string
   let created = 0, updated = 0, failed = 0, detailed = 0;
   /** 새 행사와 상세 정보가 비어 있는 행사만 상세 조회한다(API 하루 호출 한도를 아끼려고). */
   const enrich = async (eventId: string, recruitmentId: string, e: CollectedEvent) => {
-    if (!detailsColumn || !tourKey || e.sourceDataset !== "tour") return;
+    if (!detailsColumn) return;
+    if (!e.details && (!tourKey || e.sourceDataset !== "tour")) return;
     try {
-      const d = await fetchTourDetails(tourKey, e.sourceId);
+      const d = e.details ?? (await fetchTourDetails(tourKey!, e.sourceId));
       if (!d || !Object.keys(d).length) return;
       const [ev, rc] = await Promise.all([
         supabase.from("events").update({ details: d, description: d.overview ?? null }).eq("id", eventId),
@@ -415,7 +490,7 @@ export async function pruneNonSellerEvents(supabase: Admin, dryRun: boolean) {
     const { data, error } = await supabase
       .from("event_recruitments")
       .select("event_id, source_post_id, events(name)")
-      .or("source_post_id.like.tour:*,source_post_id.like.seoulfest:*")
+      .or(AUTO_SOURCE_FILTER)
       .range(from, from + 999);
     if (error) throw new Error(`자동 수집 행사 조회 실패: ${error.message}`);
     rows.push(...((data ?? []) as unknown as typeof rows));
@@ -472,6 +547,8 @@ export async function runWeeklyEventSync(opts: {
   dryRun?: boolean;
   now?: Date;
   tourKey?: string;
+  /** 서울시 문화행사 정보 키 — 기간(range)을 줄 때만 쓴다(전체를 받아 걸러야 해서 매주 자동 수집에는 쓰지 않음) */
+  seoulCultureKey?: string;
   range?: { from: string; to: string };
 }): Promise<WeeklySyncReport> {
   const now = opts.now ?? new Date();
@@ -483,6 +560,7 @@ export async function runWeeklyEventSync(opts: {
   const lookups: [string, () => Promise<CollectedEvent[]>][] = [];
   if (opts.tourKey) lookups.push([AUTO_SOURCES.tour.name, () => fetchChunked(chunks, (a, b) => fetchTour(opts.tourKey!, a, b))]);
   lookups.push([AUTO_SOURCES.seoulfest.name, () => fetchChunked(chunks, fetchSeoul)]);
+  if (opts.range && opts.seoulCultureKey) lookups.push([AUTO_SOURCES.seoulcult.name, () => fetchSeoulCulture(opts.seoulCultureKey!, from, to)]);
 
   // 한 출처가 실패해도 나머지 출처 결과는 저장한다.
   const results = await Promise.allSettled(lookups.map(([, fn]) => fn()));

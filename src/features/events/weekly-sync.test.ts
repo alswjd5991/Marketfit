@@ -97,3 +97,22 @@ test("셀러 판매 부스를 낼 수 있는 행사만 남긴다", async () => {
   for (const name of yes) assert.equal(isSellerEvent(name), true, name);
   for (const name of no) assert.equal(isSellerEvent(name), false, name);
 });
+
+test("서울시 문화행사 정보: 기간·분류로 거르고 상세 정보를 함께 담는다", async () => {
+  const { parseSeoulCultureRows } = await import("./weekly-sync");
+  const row = (o: Record<string, string>) => ({
+    CODENAME: "축제-기타", GUNAME: "마포구", TITLE: "망원 한강 플리마켓", STRTDATE: "2022-05-07 00:00:00.0", END_DATE: "2022-05-07 00:00:00.0",
+    PLACE: "망원한강공원", ORG_NAME: "마포구청", USE_FEE: "", IS_FREE: "무료", ORG_LINK: "https://www.mapo.go.kr", MAIN_IMG: "http://culture.seoul.go.kr/a.jpg",
+    PROGRAM: "셀러 40팀 참여", ETC_DESC: "", LAT: "126.9", LOT: "37.55", HMPG_ADDR: "https://culture.seoul.go.kr/culture/culture/cultureEvent/view.do?cultcode=123456&menuNo=200009", ...o,
+  });
+  const out = parseSeoulCultureRows([
+    row({}),
+    row({ TITLE: "옛날 행사", STRTDATE: "2020-01-01 00:00:00.0", END_DATE: "2020-01-01 00:00:00.0", HMPG_ADDR: "cultcode=1" }),
+    row({ CODENAME: "뮤지컬/오페라", TITLE: "마켓 이야기", HMPG_ADDR: "cultcode=2" }),
+  ], "2021-10-01", "2026-10-06");
+  assert.equal(out.length, 1);
+  assert.equal(out[0].sourceId, "C123456");
+  assert.equal(out[0].lat, 37.55); // 위도·경도 칸이 바뀌어 와도 범위로 바로잡음
+  assert.equal(out[0].imageUrl, "https://culture.seoul.go.kr/a.jpg");
+  assert.deepEqual(out[0].details, { overview: "셀러 40팀 참여", place: "망원한강공원", sponsor: "마포구청", admission: "무료", homepage: "https://www.mapo.go.kr" });
+});

@@ -5,7 +5,7 @@ import posterManifest from "@/lib/data/event-poster-manifest.json";
 import { computeRecruitmentStatus, formatDday } from "./status";
 import { CATEGORY_GROUPS, getCategoryGroup, type CategoryGroup } from "./category-group";
 import type { RecruitmentStatus } from "@/types/database";
-import { AUTO_SOURCES, isNewlyListed, type AutoSourceDataset } from "./weekly-sync";
+import { AUTO_SOURCES, AUTO_SOURCE_FILTER, isNewlyListed, type AutoSourceDataset } from "./weekly-sync";
 import type { EventDetails } from "@/types/database";
 
 export interface EventListItem {
@@ -99,7 +99,7 @@ const getAutoEvents = cache(async (): Promise<SeedEvent[]> => {
     const query = (withDetails: boolean) => supabase
       .from("event_recruitments")
       .select(AUTO_COLUMNS.replace("%s", withDetails ? ", details" : ""))
-      .or("source_post_id.like.tour:*,source_post_id.like.seoulfest:*");
+      .or(AUTO_SOURCE_FILTER);
     // details 칸(0003_event_details.sql)을 아직 적용하지 않은 DB에서도 행사 목록은 보이게 한다.
     let { data, error } = await query(true);
     if (error) ({ data, error } = await query(false));
