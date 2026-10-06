@@ -15,6 +15,7 @@
     "seed:events": "tsx scripts/seed-events.ts",
     "sync:events": "tsx scripts/sync-events.ts",
     "evaluate:synthetic": "tsx scripts/evaluate-synthetic.ts",
+    "find:demo-accounts": "tsx scripts/find-demo-accounts.ts",
     "seed:synthetic": "tsx scripts/seed-synthetic-users.ts"
   },
   "dependencies": {
