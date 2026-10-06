@@ -32,7 +32,7 @@ async function main() {
       (a.plan.status === "ok" ? 1 : 0) + (a.plan.status === "ok" && a.plan.biased ? 0.5 : 0) + (a.peer.status === "ok" ? 1 : 0) + Math.min(attended, 20) / 20;
     rows.push({
       email: emailOf.get(s.owner_id)!, category: s.category, attended, forecastOk, lossShown,
-      stock: signals.map((i) => `${i.productName}:${i.verdict === "under" ? "부족" : "과다"}`).join(",") || (judged ? `판정 ${judged}개(적정)` : a.stock.applicable ? "기록 부족" : "대상 아님"),
+      stock: signals.map((i) => `${i.productName}:${i.verdict === "under" ? "부족" : "과다"}`).join(",") || (judged ? `판정 ${judged}개(적정)` : "기록 부족"),
       plan: a.plan.status === "ok" ? `${a.plan.biased ? "편향" : "차이 없음"} ${Math.round(a.plan.pct * 100)}%` : "보류",
       peer: a.peer.status === "ok" ? (() => {
         const total = a.peer.peers + 1;

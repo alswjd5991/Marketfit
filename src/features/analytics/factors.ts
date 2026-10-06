@@ -45,6 +45,8 @@ export interface FactorEffect {
   pHolm: number;
   significant: boolean;
   count: number;
+  /** 내 가게 기록의 단순 평균 비교(대시보드에서 가게별로 채움). 양쪽 다 2번 이상일 때만 */
+  mine?: { withAvg: number; withN: number; withoutAvg: number; withoutN: number } | null;
 }
 
 export type FactorAnalysis =

@@ -14,6 +14,7 @@
 import * as C from "../synthetic-users.config";
 import type { CategoryGroup } from "../../src/features/events/category-group";
 import type { Weather } from "./weather";
+import { isPerishable } from "../../src/features/analytics/stock";
 
 // ---------------------------------------------------------------------------
 // 난수
@@ -247,7 +248,8 @@ export function storeTraits(p: Persona, today: string): StoreTraits {
     const price = rng.won(...catalog.price);
     return { name, price, cost: Math.round((price * rng.int(30, 50)) / 100 / 100) * 100, appeal: Math.exp(C.DEMAND.productSd * rng.normal()) };
   });
-  const [q0, q1] = C.DEMAND.stockQuantile;
+  // 당일 폐기 상품(음식·디저트) 셀러와 다시 팔 수 있는 상품 셀러의 준비 습관을 다르게 둔다.
+  const [q0, q1] = isPerishable(p.category) ? C.DEMAND.stockQuantile : C.DEMAND.stockQuantileReusable;
   const sinceMs = Date.parse(C.ACTIVITY.since);
   const lastMs = Date.parse(today) - 60 * 86_400_000;
   return {

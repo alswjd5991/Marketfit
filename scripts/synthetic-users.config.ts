@@ -141,6 +141,8 @@ export const DEMAND = {
   /** 준비 습관: 셀러는 자기가 생각하는 수요 분포(날씨·당일 충격의 실제 값은 모름, 들쑥날쑥한 정도는 앎)의
    *  q 분위수만큼 준비. q ~ 균등(0.35, 0.9) [가정] */
   stockQuantile: [0.35, 0.9] as [number, number],
+  /** 다시 팔 수 있는 상품(공예·패션 등)을 파는 셀러는 넉넉히 가져간다: q ~ 균등(0.7, 0.97) [가정] */
+  stockQuantileReusable: [0.7, 0.97] as [number, number],
   /** 참가 전 예상 매출: Σ 가격 × (셀러가 생각하는 기대 판매량 E[min(수요, 준비량)]) × exp(N(0.15, 0.1²)) — 방향은 Cassar(2010)의 과대 예상, 크기는 [가정] */
   optimismMean: 0.15,
   optimismSd: 0.1,

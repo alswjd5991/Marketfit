@@ -29,9 +29,9 @@ const absPct = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
 // 공통 카드
 // ---------------------------------------------------------------------------
 
-function Card({ headline, sub, children, how }: { headline: ReactNode; sub?: ReactNode; children?: ReactNode; how?: string[] }) {
+function Card({ headline, sub, children, how, bare = false }: { headline: ReactNode; sub?: ReactNode; children?: ReactNode; how?: string[]; bare?: boolean }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/80 bg-white/90 p-6 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm sm:p-7">
+    <div className={bare ? "min-w-0 p-6 sm:p-7" : "min-w-0 rounded-2xl border border-white/80 bg-white/90 p-6 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm sm:p-7"}>
       <h3 className="break-keep text-[19px] font-bold leading-snug tracking-[-0.02em] text-neutral-950">{headline}</h3>
       {sub && <p className="mt-1.5 break-keep text-[14px] leading-6 text-neutral-500">{sub}</p>}
       {children && <div className="mt-6">{children}</div>}
@@ -55,6 +55,16 @@ function Card({ headline, sub, children, how }: { headline: ReactNode; sub?: Rea
   );
 }
 
+/** 다가올 행사 + 매출이 달라진 조건을 한 상자 안에 나란히(좁은 화면에서는 위아래). */
+export function ForecastAndFactors({ analytics }: { analytics: DashboardAnalytics }) {
+  return (
+    <div className="grid overflow-hidden rounded-2xl border border-white/80 bg-white/90 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm lg:grid-cols-2 lg:divide-x lg:divide-neutral-100 max-lg:divide-y max-lg:divide-neutral-100">
+      <ForecastPanel forecast={analytics.forecast} bare />
+      <FactorPanel factors={analytics.factors} bare />
+    </div>
+  );
+}
+
 function Chip({ children, tone }: { children: ReactNode; tone: "good" | "bad" | "warn" | "plain" }) {
   const style = {
     good: "bg-[#E0EFE8] text-[#2F5F4B]",
@@ -69,9 +79,9 @@ function Chip({ children, tone }: { children: ReactNode; tone: "good" | "bad" | 
 // ①② 다가올 행사
 // ---------------------------------------------------------------------------
 
-export function ForecastPanel({ forecast }: { forecast: DashboardAnalytics["forecast"] }) {
+export function ForecastPanel({ forecast, bare = false }: { forecast: DashboardAnalytics["forecast"]; bare?: boolean }) {
   if (forecast.status === "hidden") {
-    return <Card headline="아직 예상 매출을 알려 드리기엔 기록이 부족해요" sub="참가 기록이 쌓이면 다가올 행사의 예상 매출을 보여 드릴게요." />;
+    return <Card bare={bare} headline="아직 예상 매출을 알려 드리기엔 기록이 부족해요" sub="참가 기록이 쌓이면 다가올 행사의 예상 매출을 보여 드릴게요." />;
   }
   const { items, validation } = forecast;
   const shown = items.filter((i) => i.prediction.ok);
@@ -86,6 +96,7 @@ export function ForecastPanel({ forecast }: { forecast: DashboardAnalytics["fore
 
   return (
     <Card
+      bare={bare}
       headline={headline}
       sub={items.length ? "실제 매출은 보통 막대 범위 안에 들어와요." : undefined}
       how={[
@@ -146,29 +157,29 @@ export function ForecastPanel({ forecast }: { forecast: DashboardAnalytics["fore
 // ③ 매출이 달라진 조건
 // ---------------------------------------------------------------------------
 
-export function FactorPanel({ factors }: { factors: DashboardAnalytics["factors"] }) {
+export function FactorPanel({ factors, bare = false }: { factors: DashboardAnalytics["factors"]; bare?: boolean }) {
   if (factors.status !== "ok") {
-    return <Card headline="어떤 날 더 팔렸는지는 기록이 더 모이면 알려 드려요" sub="셀러들의 참가 기록과 행사 수가 늘어나면 분석할 수 있어요." />;
+    return <Card bare={bare} headline="어떤 날 더 팔렸는지는 기록이 더 모이면 알려 드려요" sub="셀러들의 참가 기록과 행사 수가 늘어나면 분석할 수 있어요." />;
   }
   const sure = factors.effects.filter((e) => e.significant).sort((a, b) => Math.abs(Math.log(1 + b.pct)) - Math.abs(Math.log(1 + a.pct)));
-  const unsure = factors.effects.filter((e) => !e.significant);
   const top = sure[0];
   const maxLog = Math.max(Math.log(1.3), ...sure.map((e) => Math.abs(Math.log(1 + e.pct))));
   const width = (p: number) => `${(Math.abs(Math.log(1 + p)) / maxLog) * 50}%`;
 
   return (
     <Card
+      bare={bare}
       headline={top ? <>{top.label}엔 {top.reference}보다 <span style={{ color: top.pct > 0 ? GOOD : BAD }}>{absPct(top.pct)} {top.pct > 0 ? "더" : "덜"}</span> 팔렸어요</> : "아직 매출이 확실하게 달라진 조건은 없어요"}
-      sub="같은 가게가 조건만 달랐을 때 매출이 얼마나 달랐는지 봤어요."
+      sub={top ? `셀러 ${factors.stores}곳의 기록으로 본 경향이에요. 아래에 내 기록도 함께 보여 드려요.` : "기록이 더 쌓이면 어떤 날 더 팔리는지 알려 드릴게요."}
       how={[
         "가게마다 파는 물건과 가격이 달라서, 같은 가게의 기록끼리만 비교했어요.",
-        `셀러 ${factors.stores}곳이 행사 ${factors.events}곳에 참가한 기록 ${factors.n.toLocaleString()}건을 썼어요.`,
-        "우연히 생겼을 수도 있는 차이는 '아직 확실하지 않아요'로 따로 묶었어요.",
-        "함께 나타난 차이일 뿐, 비가 매출을 줄인 '원인'이라고 단정할 수는 없어요.",
+        `셀러 ${factors.stores}곳이 행사 ${factors.events}곳에 참가한 기록 ${factors.n.toLocaleString()}건을 썼어요. 한 가게의 기록만으로는 날씨 같은 차이를 확실히 가리기 어려워서, 모든 셀러에게 같은 결과가 보여요.`,
+        "우연히 생겼을 수도 있는 차이는 보여 드리지 않아요.",
+        "함께 나타난 차이일 뿐, 원인이라고 단정할 수는 없어요.",
       ]}
     >
       {sure.length > 0 && (
-        <ul className="space-y-4">
+        <ul className="space-y-5">
           {sure.map((e) => (
             <li key={e.key}>
               <div className="flex items-baseline justify-between gap-3">
@@ -190,15 +201,15 @@ export function FactorPanel({ factors }: { factors: DashboardAnalytics["factors"
               <p className="mt-1 text-[12px] tabular-nums text-neutral-400">
                 대략 {e.low > 0 ? "+" : e.low < 0 ? "−" : ""}{absPct(e.low)} ~ {e.high > 0 ? "+" : e.high < 0 ? "−" : ""}{absPct(e.high)} 사이
               </p>
+              {e.mine && (
+                <p className="mt-2 rounded-xl bg-neutral-50 px-3 py-2 text-[13px] tabular-nums text-neutral-600">
+                  내 기록: {e.label} 평균 <span className="font-semibold text-neutral-900">{manwon(e.mine.withAvg)}</span>({e.mine.withN}번) · {e.reference}{" "}
+                  <span className="font-semibold text-neutral-900">{manwon(e.mine.withoutAvg)}</span>({e.mine.withoutN}번)
+                </p>
+              )}
             </li>
           ))}
         </ul>
-      )}
-      {unsure.length > 0 && (
-        <p className={`${sure.length ? "mt-5 border-t border-neutral-100 pt-4" : ""} break-keep text-[14px] leading-6 text-neutral-500`}>
-          <span className="font-semibold text-neutral-700">{josa(unsure.map((e) => e.label).join(" · "), "은", "는")}</span>
-          {" 아직 차이가 확실하지 않아요."}
-        </p>
       )}
     </Card>
   );
@@ -226,19 +237,21 @@ function stockHeadline(items: StockDiagnosis[]): ReactNode {
 }
 
 export function StockPanel({ stock }: { stock: DashboardAnalytics["stock"] }) {
-  if (!stock.applicable) {
-    return <Card headline="준비 수량 진단은 당일에 팔아야 하는 상품에만 해요" sub={`${stock.category || "이 카테고리"} 상품은 남아도 다음 행사에 다시 팔 수 있어서 진단하지 않아요.`} />;
-  }
   if (stock.items.length === 0) {
     return <Card headline="상품별로 준비한 수량과 판 수량을 적어 주세요" sub="행사가 끝난 뒤 기록하면 다음 행사에 얼마나 준비할지 알려 드려요." />;
   }
+  const lossPct = Math.round(stock.lossRate * 100);
   return (
     <Card
       headline={stockHeadline(stock.items)}
-      sub="당일에 못 팔면 버려야 하는 상품이라, 너무 많이도 너무 적게도 준비하지 않는 게 중요해요."
+      sub={stock.perishable
+        ? "당일에 못 팔면 버려야 해서, 너무 많이도 너무 적게도 준비하지 않는 게 중요해요."
+        : "가져가지 않은 상품은 팔 수 없어요. 남은 상품은 다음에 팔 수 있으니, 넉넉하게 준비하는 편이 이득이에요."}
       how={[
-        "가격에서 원가가 차지하는 비율만큼은 다 팔리는 날이 있어야 가장 이득이에요. 원가가 가격의 30%라면 10번 중 3번쯤 다 팔리는 게 적당해요.",
-        "실제로 다 팔린 횟수가 이보다 많으면 '더 준비', 적으면 '줄여도 돼요'라고 알려 드려요.",
+        "1개 덜 가져가서 못 판 손해(가격 − 원가)와 1개 더 가져가서 남은 손해를 비교해, 다 팔리는 날이 얼마나 있어야 가장 이득인지 계산해요.",
+        stock.perishable
+          ? "남은 상품은 버려야 해서 원가 전부를 손해로 봤어요. 원가가 가격의 30%라면 10번 중 3번쯤 다 팔리는 게 적당해요."
+          : `남은 상품은 다시 팔 수 있지만 운반·포장·보관·신선도 부담이 있어, 원가의 ${lossPct}%를 손해로 봤어요(가정). 그래서 다 팔리는 날이 드물수록 좋아요.`,
         `기록이 ${STOCK_RULES.minEvents}번 이상 있고, 차이가 우연이라고 보기 어려울 때만 알려 드려요. 단골이 그냥 돌아가는 손해는 계산에 넣지 않았어요.`,
       ]}
     >
@@ -250,7 +263,8 @@ export function StockPanel({ stock }: { stock: DashboardAnalytics["stock"] }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-semibold text-neutral-900">{it.productName}</p>
                 <p className="mt-0.5 text-[13px] tabular-nums text-neutral-500">
-                  {it.stockouts === 0 ? `${it.n}번 모두 남음` : `${it.n}번 중 ${it.stockouts}번 다 팔림`}{(it.verdict === "under" || it.verdict === "over") && it.optimalRate != null && ` · 적당한 건 ${Math.round(it.optimalRate * it.n)}번쯤`}
+                  {it.stockouts === 0 ? `${it.n}번 모두 남음` : `${it.n}번 중 ${it.stockouts}번 다 팔림`}
+                  {(it.verdict === "under" || it.verdict === "over") && it.optimalRate != null && ` · 적당한 건 ${Math.round(it.optimalRate * it.n)}번쯤`}
                 </p>
               </div>
               <Chip tone={v.tone}>{v.label}</Chip>

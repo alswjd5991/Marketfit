@@ -21,7 +21,7 @@ import { validateForecast } from "../src/features/analytics/forecast";
 import { peerRank } from "../src/features/analytics/peer";
 import { planAccuracy } from "../src/features/analytics/plan";
 import type { AttendedRecord } from "../src/features/analytics/records";
-import { PERISHABLE_CATEGORIES, diagnoseStock } from "../src/features/analytics/stock";
+import { diagnoseStock, leftoverLoss } from "../src/features/analytics/stock";
 import * as C from "./synthetic-users.config";
 import { Rng, generateAll, setSalt, simulateSales, type DgpEvent, type GenSeller } from "./synthetic/dgp";
 import { loadDbEvents, loadEventWeather, loadSeedFileEvents, printSummary } from "./seed-synthetic-users";
@@ -86,13 +86,13 @@ function evaluateOnce(events: DgpEvent[], weather: Awaited<ReturnType<typeof loa
   const factors = analyzeFactors(records);
   const validation = validateForecast(records);
 
-  // ⑤ 준비 수량: 음식·디저트 가게의 상품별 판정 vs 실제 품절 확률의 방향
+  // ⑤ 준비 수량: 모든 가게의 상품별 판정 vs 실제 품절 확률의 방향(카테고리별 남은 상품 손실률 반영)
   let calls = 0, right = 0, wrong = 0, tested = 0;
-  for (const s of sellers.filter((x) => x.traits && PERISHABLE_CATEGORIES.includes(x.persona.category))) {
+  for (const s of sellers.filter((x) => x.traits)) {
     const rows = s.participations.filter((g) => g.result).flatMap((g) => g.sales.map((d) => ({
       productName: s.traits!.products[d.productIndex].name, prepared: d.prepared, sold: d.sold, price: d.price, cost: s.traits!.products[d.productIndex].cost,
     })));
-    for (const d of diagnoseStock(rows)) {
+    for (const d of diagnoseStock(rows, leftoverLoss(s.persona.category))) {
       if (d.verdict !== "under" && d.verdict !== "over" && d.verdict !== "ok") continue;
       tested++;
       if (d.verdict === "ok") continue;

@@ -11,8 +11,9 @@ import { analyzeFactors, type FactorAnalysis } from "./factors";
 import { fitForecastModel, lossProbability, predict, validateForecast, type ForecastValidation, type Prediction } from "./forecast";
 import { peerRank, type PeerRank } from "./peer";
 import { planAccuracy, type PlanAccuracy } from "./plan";
-import type { AttendedRecord } from "./records";
-import { PERISHABLE_CATEGORIES, diagnoseStock, type StockDiagnosis } from "./stock";
+import { includesWeekend, type AttendedRecord } from "./records";
+import type { FactorEffect } from "./factors";
+import { diagnoseStock, isPerishable, leftoverLoss, type StockDiagnosis } from "./stock";
 
 /** 합성 테스트 셀러 이메일 도메인(scripts/synthetic-users.config.ts의 EMAIL_DOMAIN과 같음) */
 const SYNTHETIC_DOMAIN = "@synthetic.marketfit.test";
@@ -35,7 +36,7 @@ export interface DashboardAnalytics {
   forecast:
     | { status: "ok"; validation: ForecastValidation; items: ForecastItem[] }
     | { status: "hidden"; reason: string };
-  stock: { applicable: boolean; category: string; items: StockDiagnosis[] };
+  stock: { perishable: boolean; lossRate: number; category: string; items: StockDiagnosis[] };
   plan: PlanAccuracy;
   peer: PeerRank;
 }
@@ -105,7 +106,13 @@ export async function computeAnalytics(db: Admin, storeId: string, pooled?: Pool
       weather: p.weather, indoorOutdoor: p.indoor_outdoor,
     });
   }
-  const { factors, model, validation } = pooledModels(records);
+  const pooled_ = pooledModels(records);
+  const { model, validation } = pooled_;
+  // 조건별 효과는 모든 셀러 기록으로 추정한 공통 경향이다. 가게마다 "내 기록에서는 어땠나"를 단순 평균으로 덧붙인다.
+  const myRecords = records.filter((r) => r.storeId === storeId);
+  const factors = pooled_.factors.status === "ok"
+    ? { ...pooled_.factors, effects: pooled_.factors.effects.map((e) => ({ ...e, mine: ownComparison(myRecords, e) })) }
+    : pooled_.factors;
 
   const mine = participations.filter((p) => p.store_id === storeId);
   const myAttended = mine.filter((p) => p.status === "attended" && p.total_revenue != null);
@@ -163,12 +170,13 @@ export async function computeAnalytics(db: Admin, storeId: string, pooled?: Pool
   }
 
   // ⑤ 준비 수량
-  const perishable = PERISHABLE_CATEGORIES.includes(myCategory);
   const stock = {
-    applicable: perishable,
+    perishable: isPerishable(myCategory),
+    lossRate: leftoverLoss(myCategory),
     category: myCategory,
-    items: perishable ? diagnoseStock(saleRows.map((s) => ({ productName: s.product_name, prepared: s.prepared, sold: s.sold, price: Number(s.price), cost: s.cost }))) : [],
+    items: diagnoseStock(saleRows.map((s) => ({ productName: s.product_name, prepared: s.prepared, sold: s.sold, price: Number(s.price), cost: s.cost })), leftoverLoss(myCategory)),
   };
+
 
   // ⑦ 계획 정확도
   const plan = planAccuracy(myAttended.filter((p) => p.expected_revenue != null).map((p) => ({ expected: Number(p.expected_revenue), actual: Number(p.total_revenue) })));
@@ -186,4 +194,21 @@ export async function computeAnalytics(db: Admin, storeId: string, pooled?: Pool
     },
     factors, forecast, stock, plan, peer,
   };
+}
+
+/** 내 기록에서 그 조건이 있었을 때와 비교 기준일 때의 평균 매출(양쪽 2번 이상일 때만). */
+function ownComparison(mine: AttendedRecord[], e: FactorEffect): FactorEffect["mine"] {
+  const [kind, level] = e.key.split(":");
+  const side = (r: AttendedRecord): boolean | null => {
+    if (kind === "weather") return r.weather === level ? true : r.weather === "맑음" ? false : null;
+    if (kind === "outdoor") return r.indoorOutdoor === "실외" ? true : r.indoorOutdoor === "실내" ? false : null;
+    if (kind === "weekend") return includesWeekend(r.startDate, r.endDate);
+    if (kind === "group") return r.group === level ? true : r.group === e.reference ? false : null;
+    return null;
+  };
+  const withR = mine.filter((r) => side(r) === true).map((r) => r.revenue);
+  const withoutR = mine.filter((r) => side(r) === false).map((r) => r.revenue);
+  if (withR.length < 2 || withoutR.length < 2) return null;
+  const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  return { withAvg: avg(withR), withN: withR.length, withoutAvg: avg(withoutR), withoutN: withoutR.length };
 }

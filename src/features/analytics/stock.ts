@@ -1,20 +1,31 @@
 // ⑤ 준비 수량 진단 — 뉴스벤더 모형의 최적 조건을 실제 품절 빈도로 검정한다.
 //
-// 그날 못 팔면 버려야 하는 상품(음식·디저트)은 전형적인 뉴스벤더 문제다:
-//   1개 덜 준비해서 못 판 손해 = 가격 − 원가,  1개 더 준비해서 버린 손해 = 원가
-//   ⇒ 최적 준비량 Q*는 P(수요 ≤ Q*) = (가격 − 원가)/가격 을 만족하고,
-//   ⇒ 최적으로 준비했다면 품절(수요 ≥ 준비량)이 일어날 확률 = 원가/가격.
+// 행사에 가져가지 않은 상품은 팔 수 없고(부족하면 손해), 남은 상품은 상품에 따라 손해가 다르다(남아도 손해).
+//   1개 덜 준비해서 못 판 손해  c_u = 가격 − 원가
+//   1개 더 준비해서 남은 손해   c_o = 원가 × 남은 상품 손실률(아래 LEFTOVER_LOSS)
+//   ⇒ 최적 준비량에서는 P(수요 ≤ Q*) = c_u/(c_u + c_o), 즉 최적 품절 확률 = c_o/(c_u + c_o).
+// 당일에 버려야 하는 음식(손실률 1)이면 최적 품절 확률 = 원가/가격이고, 다음에 다시 팔 수 있는 공예품처럼
+// 손실률이 작으면 최적 품절 확률도 작아진다(웬만하면 넉넉히 가져가는 게 이득).
 // 이 조건은 수요 분포의 모양과 무관하고, 행사마다 수요가 달라도(행사별로 최적화했다면) 매번 성립한다.
-// 그래서 수요 분포를 억지로 추정하지 않고, "품절된 행사 수 ~ 이항(n, 원가/가격)"을 정확 이항검정으로
+// 그래서 수요 분포를 억지로 추정하지 않고, "품절된 행사 수 ~ 이항(n, 최적 품절 확률)"을 정확 이항검정으로
 // 확인한다. 상품 여러 개를 동시에 보므로 Holm 보정.
 //
-// 가정(화면에 표시): 남은 상품의 잔존가치 0(다음 행사에 못 팖), 품절로 잃는 단골·평판 비용은 미반영
-// (반영하면 최적 품절률은 원가/가격보다 조금 낮아진다), 행사 간 독립.
-// 다음 행사에 다시 팔 수 있는 상품(수공예·패션 등)은 이 모형의 전제가 맞지 않아 적용하지 않는다.
+// 가정(화면에 표시): 남은 상품 손실률은 카테고리별 [가정], 품절로 잃는 단골·평판 비용은 미반영
+// (반영하면 최적 품절률은 조금 더 낮아진다), 행사 간 독립.
 
 import { binomTestTwoSided, holmAdjust, wilsonInterval } from "./distributions";
 
-export const PERISHABLE_CATEGORIES = ["음식", "디저트"];
+/**
+ * 남은 상품 1개의 손실 = 원가 × 이 비율 [가정 — 공개 통계 없음].
+ * 음식·디저트: 당일 폐기 → 1. 농산물: 신선도 저하·운반 중 손상·재운송 → 0.5.
+ * 그 밖(공예·패션·액세서리·생활용품·반려동물): 다시 팔 수 있지만 운반·포장·파손·보관 부담 → 0.1.
+ */
+export const LEFTOVER_LOSS: Record<string, number> = { 음식: 1, 디저트: 1, 농산물: 0.5 };
+export const DEFAULT_LEFTOVER_LOSS = 0.1;
+export const leftoverLoss = (category: string) => LEFTOVER_LOSS[category] ?? DEFAULT_LEFTOVER_LOSS;
+/** 당일 폐기 상품인지(화면 문구용) */
+export const isPerishable = (category: string) => leftoverLoss(category) >= 1;
+
 export const STOCK_RULES = { minEvents: 8, alpha: 0.05 };
 
 export interface ProductSaleRecord {
@@ -35,7 +46,7 @@ export interface StockDiagnosis {
   rate: number;
   low: number;
   high: number;
-  /** 최적 품절률 = 원가/가격(중앙값) */
+  /** 최적 품절률 = 남은 손해 ÷ (못 판 손해 + 남은 손해) (기록별 값의 중앙값) */
   optimalRate: number | null;
   /** 정확 이항검정 p값(보정 전·후). 기록이 부족하거나 원가가 없으면 null */
   p: number | null;
@@ -46,7 +57,7 @@ export interface StockDiagnosis {
   leftoverCost: number | null;
 }
 
-export function diagnoseStock(records: ProductSaleRecord[]): StockDiagnosis[] {
+export function diagnoseStock(records: ProductSaleRecord[], lossRate = 1): StockDiagnosis[] {
   const byName = new Map<string, ProductSaleRecord[]>();
   for (const r of records) if (r.prepared > 0) byName.set(r.productName, [...(byName.get(r.productName) ?? []), r]);
 
@@ -54,7 +65,8 @@ export function diagnoseStock(records: ProductSaleRecord[]): StockDiagnosis[] {
     const n = rs.length;
     const stockouts = rs.filter((r) => r.sold >= r.prepared).length;
     const [low, high] = wilsonInterval(stockouts, n);
-    const ratios = rs.filter((r) => r.cost != null && r.price > 0).map((r) => r.cost! / r.price).sort((a, b) => a - b);
+    // 최적 품절 확률 = c_o/(c_u + c_o), c_u = 가격 − 원가, c_o = 원가 × 손실률
+    const ratios = rs.filter((r) => r.cost != null && r.price > r.cost).map((r) => (r.cost! * lossRate) / (r.price - r.cost! + r.cost! * lossRate)).sort((a, b) => a - b);
     const optimalRate = ratios.length ? ratios[Math.floor(ratios.length / 2)] : null;
     const prepared = rs.reduce((s, r) => s + r.prepared, 0);
     const sold = rs.reduce((s, r) => s + Math.min(r.sold, r.prepared), 0);
