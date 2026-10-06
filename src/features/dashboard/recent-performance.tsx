@@ -5,21 +5,26 @@ import { ProductRevenueAreaChart } from "@/components/ui/product-revenue-area-ch
 import type { DashboardStats } from "./data";
 import { EventRevenueChart } from "./event-revenue-chart";
 import { STATUS_FILL } from "@/features/participations/status-labels";
+import { InfoTip } from "@/components/ui/info-tip";
 
 /**
  * "최근 성과" — 메인 페이지와 대시보드가 같이 쓰는 성과 요약(숫자 5개 + 행사별 매출 추이 + 품목별 매출 비교).
  * 데이터·내용은 두 곳이 같고 배치만 다르다:
  * - stack(메인): 위에 숫자 5개 가로 한 줄, 아래 차트 2개 나란히
  * - side(대시보드): 왼쪽에 차트 2개를 위아래로 넓게, 오른쪽에 숫자 카드를 세로로. 행사별 매출 추이에 유형 드롭다운.
+ * secondChart를 주면 두 번째 차트(품목별 매출 비교) 자리에 그 차트를 넣는다 — 대시보드는 여기에 같은 업종 대비 매출을
+ * 넣고 품목별 매출 비교는 "상품" 묶음으로 옮긴다. 메인 페이지는 secondChart 없이 그대로 쓴다.
  */
 export function RecentPerformance({
   stats,
   withTypeFilter = false,
   layout = "stack",
+  secondChart,
 }: {
   stats: DashboardStats;
   withTypeFilter?: boolean;
   layout?: "stack" | "side";
+  secondChart?: ReactNode;
 }) {
   const side = layout === "side";
   const chartHeight = side ? 230 : 200;
@@ -75,11 +80,7 @@ export function RecentPerformance({
         label="총 매출"
         value={stats.totalRevenue != null ? `${stats.totalRevenue.toLocaleString()}원` : "기록 없음"}
         extra={extra(
-          stats.totalRevenue != null && (
-            <p className="text-xs text-[#8A8D93]">
-              행사당 평균 <span className="font-semibold text-[#43464B]">{Math.round(stats.totalRevenue / stats.revenueEntryCount).toLocaleString()}원</span>
-            </p>
-          )
+          stats.totalRevenue != null && <p className="text-xs text-[#8A8D93]">{stats.revenueEntryCount}회 기록</p>
         )}
       />
       <PerformanceTile
@@ -135,13 +136,11 @@ export function RecentPerformance({
         </ChartPanel>
       )}
 
-      <ChartPanel title="품목별 매출 비교">
-        {stats.popularProducts.length === 0 ? (
-          <ChartEmpty text="상품별 판매 실적 없음" />
-        ) : (
-          <ProductRevenueAreaChart height={chartHeight} items={stats.popularProducts.map((p) => ({ label: p.productName, value: p.totalRevenue }))} />
-        )}
-      </ChartPanel>
+      {secondChart ?? (
+        <ChartPanel title="품목별 매출 비교">
+          <ProductRevenueComparison stats={stats} height={chartHeight} />
+        </ChartPanel>
+      )}
     </div>
   );
 
@@ -162,13 +161,22 @@ export function RecentPerformance({
   );
 }
 
-function ChartPanel({ title, children }: { title: string; children: ReactNode }) {
+export function ChartPanel({ title, info, children }: { title: string; info?: ReactNode; children: ReactNode }) {
   return (
-    <div className="min-w-0 overflow-hidden rounded-2xl bg-[#F8FBFD] p-4">
-      <p className="mb-3 text-sm font-semibold text-[#1F2023]">{title}</p>
+    <div className="min-w-0 rounded-2xl bg-[#F8FBFD] p-4">
+      <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-[#1F2023]">
+        {title}
+        {info && <InfoTip label={`${title} 설명`}>{info}</InfoTip>}
+      </p>
       {children}
     </div>
   );
+}
+
+/** 품목별 매출 비교 차트(메인·대시보드 공용) */
+export function ProductRevenueComparison({ stats, height }: { stats: DashboardStats; height: number }) {
+  if (stats.popularProducts.length === 0) return <ChartEmpty text="상품별 판매 실적 없음" />;
+  return <ProductRevenueAreaChart height={height} items={stats.popularProducts.map((p) => ({ label: p.productName, value: p.totalRevenue }))} />;
 }
 
 function ChartEmpty({ text }: { text: string }) {

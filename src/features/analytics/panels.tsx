@@ -111,49 +111,66 @@ export function EventFitPanel({ forecast }: { forecast: DashboardAnalytics["fore
 // 같은 업종 대비 매출
 // ---------------------------------------------------------------------------
 
-export function PeerPanel({ peer }: { peer: DashboardAnalytics["peer"] }) {
-  const info = <Tip>같은 카테고리에서 행사 기록이 3번 이상인 가게들의 행사당 평균 매출과 비교해요. 다른 가게의 매출은 범위로만 보여 드려요.</Tip>;
+const PURPLE = "#8A7FD6"; // 중간 50% 범위
+const LAVENDER = "#E7E3FA"; // 80% 범위
+const DEEP_PURPLE = "#4B3FA8"; // 중앙값
+const ME = "#F2836B"; // 내 위치(사이트의 노을 코랄)
+
+export const peerInfo = (
+  <>
+    <Tip>같은 카테고리에서 행사 기록이 3번 이상인 가게들의 행사당 평균 매출과 비교해요. 다른 가게의 매출은 범위로만 보여 드려요.</Tip>
+    <Tip>진한 보라 막대는 가운데 50% 가게(25~75%), 연한 보라 막대는 가운데 80% 가게(10~90%)가 있는 범위예요.</Tip>
+    <Tip>중앙값은 가게들을 매출 순으로 세웠을 때 한가운데 가게의 매출이고, 평균은 모든 가게 매출을 더해 가게 수로 나눈 값이에요. 매출이 아주 큰 가게가 있으면 평균이 중앙값보다 커져요.</Tip>
+  </>
+);
+
+/** 같은 업종 대비 매출 — 대시보드 "최근 성과" 안에 들어가는 차트(제목·틀은 바깥 ChartPanel). */
+export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
   if (peer.status !== "ok") {
-    return (
-      <Panel title="같은 업종 대비 매출" info={info}>
-        <Empty>비교할 같은 업종 가게가 더 모이면 보여 드려요</Empty>
-      </Panel>
-    );
+    return <p className="flex h-[160px] items-center justify-center text-sm text-[#8A8D93]">비교할 같은 업종 가게가 더 모이면 보여 드려요</p>;
   }
   const total = peer.peers + 1;
   const higher = Math.round(peer.peers * (1 - peer.below));
   const top = Math.round(((higher + 1) / total) * 100);
   const label = top <= 50 ? `상위 ${top}%` : `하위 ${Math.round(((total - higher) / total) * 100)}%`;
-  const { p10, q1, median, q3, p90 } = peer.dist;
+  const { p10, q1, median, q3, p90, mean } = peer.dist;
   const lo = Math.min(p10, peer.mine) * 0.9;
   const hi = Math.max(p90, peer.mine) * 1.05;
   const x = (v: number) => `${((v - lo) / (hi - lo)) * 100}%`;
   return (
-    <Panel title="같은 업종 대비 매출" info={info}>
-      <p className="text-[14px] text-neutral-700">
-        {peer.category} 가게 {total}곳 중 <span className="font-bold text-neutral-950">{label}</span>예요
+    <div>
+      <p className="text-sm text-[#43464B]">
+        {peer.category} 가게 {total}곳 중 <span className="font-bold text-[#1F2023]">{label}</span>예요
       </p>
-      <div className="relative mx-6 mt-12 h-3">
-        <div className="absolute inset-y-0 rounded-full bg-[#EAF4FB]" style={{ left: x(p10), width: `calc(${x(p90)} - ${x(p10)})` }} />
-        <div className="absolute inset-y-0 rounded-full" style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: SKY }} />
-        <div className="absolute -inset-y-1 w-0.5 rounded bg-[#1F5F8B]" style={{ left: x(median) }} />
-        <div className="absolute top-1/2" style={{ left: x(peer.mine) }}>
-          <span className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#F2836B] px-2 py-0.5 text-[11px] font-semibold text-white">
-            나 {manwon(peer.mine)}
-          </span>
-          <span className="block size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#F2836B] shadow" />
+      <div className="relative mx-8 mt-16">
+        {/* 내 위치: 위에 금액과 "나", 아래로 ▼ */}
+        <div className="absolute bottom-full mb-1 flex -translate-x-1/2 flex-col items-center leading-none" style={{ left: x(peer.mine), color: ME }}>
+          <span className="text-[13px] font-bold tabular-nums">{manwon(peer.mine)}</span>
+          <span className="mt-1 text-[11px] font-semibold">나</span>
+          <span className="text-[11px]">▼</span>
+        </div>
+        <div className="relative h-3">
+          <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[#D9DCE3]" />
+          <div className="absolute inset-y-0 rounded-full" style={{ left: x(p10), width: `calc(${x(p90)} - ${x(p10)})`, background: LAVENDER }} />
+          <div className="absolute inset-y-0 rounded-full" style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: PURPLE }} />
+          <div className="absolute -inset-y-1.5 w-[3px] -translate-x-1/2 rounded" style={{ left: x(median), background: DEEP_PURPLE }} />
+          <div className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border-2 bg-white" style={{ left: x(mean), borderColor: DEEP_PURPLE }} />
+          <div className="absolute top-1/2 h-5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded" style={{ left: x(peer.mine), background: ME }} />
+        </div>
+        <div className="relative mt-2 h-9 text-[11px] tabular-nums">
+          <span className="absolute top-0 -translate-x-1/2 whitespace-nowrap text-[#8A8D93]" style={{ left: x(p10) }}>{manwon(p10)}</span>
+          <span className="absolute top-0 -translate-x-1/2 whitespace-nowrap text-[#8A8D93]" style={{ left: x(p90) }}>{manwon(p90)}</span>
+          <span className="absolute top-0 -translate-x-1/2 whitespace-nowrap font-semibold" style={{ left: x(median), color: DEEP_PURPLE }}>중앙값 {manwon(median)}</span>
+          <span className="absolute top-4 -translate-x-1/2 whitespace-nowrap text-[#43464B]" style={{ left: x(mean) }}>평균 {manwon(mean)}</span>
         </div>
       </div>
-      <div className="relative mx-6 mt-3 h-4 text-[11px] tabular-nums text-[#8A8D93]">
-        <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: x(p10) }}>{manwon(p10)}</span>
-        <span className="absolute -translate-x-1/2 whitespace-nowrap font-semibold text-[#1F5F8B]" style={{ left: x(median) }}>중간 {manwon(median)}</span>
-        <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: x(p90) }}>{manwon(p90)}</span>
-      </div>
-      <p className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#8A8D93]">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full" style={{ background: SKY }} />가운데 절반</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full bg-[#EAF4FB]" />대부분(80%)</span>
+      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#8A8D93]">
+        <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full" style={{ background: PURPLE }} />가운데 50%</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full" style={{ background: LAVENDER }} />가운데 80%</span>
+        <span className="flex items-center gap-1.5"><span className="h-3 w-[3px] rounded" style={{ background: DEEP_PURPLE }} />중앙값</span>
+        <span className="flex items-center gap-1.5"><span className="size-2 rotate-45 border-2 bg-white" style={{ borderColor: DEEP_PURPLE }} />평균</span>
       </p>
-    </Panel>
+    </div>
   );
 }
 

@@ -4,11 +4,11 @@ import { PageHeader } from "@/components/page-header";
 import { Lightbulb } from "lucide-react";
 import { ProductTrendChart } from "./product-trend-chart";
 import type { DashboardStats } from "@/features/dashboard/data";
-import { RecentPerformance } from "./recent-performance";
+import { ChartPanel, ProductRevenueComparison, RecentPerformance } from "./recent-performance";
 import { Empty, Group, Panel } from "./panel";
 import type { DashboardAnalytics } from "@/features/analytics/data";
 import { analyticsInsights } from "@/features/analytics/insights";
-import { EventFitPanel, PeerPanel, PlanLine, PortfolioPanel, StockPanel, methodsInfo, planInfo } from "@/features/analytics/panels";
+import { EventFitPanel, PeerChart, PlanLine, PortfolioPanel, StockPanel, methodsInfo, peerInfo, planInfo } from "@/features/analytics/panels";
 import { InfoTip } from "@/components/ui/info-tip";
 
 const won = (n: number) => `${Math.round(n).toLocaleString()}원`;
@@ -58,7 +58,16 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
         )}
 
         <Group title="최근 성과" first={!analytics}>
-          <RecentPerformance stats={stats} withTypeFilter layout="side" />
+          <RecentPerformance
+            stats={stats}
+            withTypeFilter
+            layout="side"
+            secondChart={analytics ? (
+              <ChartPanel title="같은 업종 대비 매출" info={peerInfo}>
+                <PeerChart peer={analytics.peer} />
+              </ChartPanel>
+            ) : undefined}
+          />
         </Group>
 
         <Group title="수익성">
@@ -81,10 +90,8 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
               value={stats.totalNetProfit != null ? won(stats.totalNetProfit / stats.netProfitEntryCount) : "기록 없음"}
               tone={stats.totalNetProfit != null && stats.totalNetProfit < 0 ? "bad" : undefined}
             >
-              {stats.totalNetProfit != null && stats.totalRevenue ? (
-                <span className="text-[13px] text-neutral-500">
-                  매출의 <span className="font-semibold text-neutral-800">{Math.round((stats.totalNetProfit / stats.totalRevenue) * 100)}%</span>가 남았어요 · {stats.netProfitEntryCount}회 평균
-                </span>
+              {stats.totalNetProfit != null ? (
+                <span className="text-[13px] text-neutral-500">{stats.netProfitEntryCount}회 평균</span>
               ) : (
                 <span className="text-[13px] text-neutral-400">비용을 적으면 보여 드려요</span>
               )}
@@ -131,26 +138,25 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
           </div>
         </Group>
 
-        {analytics && (
-          <Group title="내 가게 분석">
-            <div className="grid gap-5 lg:grid-cols-2">
-              <PeerPanel peer={analytics.peer} />
-              <PortfolioPanel portfolio={analytics.portfolio} />
+        {/* 상품: Z 순서 — 1행 품목별 매출 비교 | 상품 포트폴리오(1:1), 2행 준비 수량 | 품목별 판매 수량 추이(3:7) */}
+        <Group title="상품">
+          <div className="grid gap-5">
+            <div className={analytics ? "grid gap-5 lg:grid-cols-2" : ""}>
+              <Panel title="품목별 매출 비교">
+                <ProductRevenueComparison stats={stats} height={230} />
+              </Panel>
+              {analytics && <PortfolioPanel portfolio={analytics.portfolio} />}
             </div>
-          </Group>
-        )}
-
-        <Group title="상품 판매">
-          {/* 판매 수량 추이(넓게) : 준비 수량(좁게) = 7 : 3 */}
-          <div className={analytics ? "grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
-            <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"}>
-              {stats.productSalesByEvent.series.length === 0 ? (
-                <Empty>상품별 판매 기록 없음</Empty>
-              ) : (
-                <ProductTrendChart title="품목별 판매 수량 추이" data={stats.productSalesByEvent} />
-              )}
-            </Panel>
-            {analytics && <StockPanel stock={analytics.stock} />}
+            <div className={analytics ? "grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,7fr)]" : ""}>
+              {analytics && <StockPanel stock={analytics.stock} />}
+              <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"}>
+                {stats.productSalesByEvent.series.length === 0 ? (
+                  <Empty>상품별 판매 기록 없음</Empty>
+                ) : (
+                  <ProductTrendChart title="품목별 판매 수량 추이" data={stats.productSalesByEvent} />
+                )}
+              </Panel>
+            </div>
           </div>
         </Group>
       </div>
@@ -168,8 +174,8 @@ function CostVsProfit({ cost, net }: { cost: number; net: number }) {
   return (
     <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-neutral-500">
       비용 <span className={`font-semibold tabular-nums ${cost > net ? "text-[#BE3A2A]" : "text-neutral-800"}`}>{won(cost)}</span>
-      <span className="text-neutral-300">→</span>
-      순이익 <span className={`font-semibold tabular-nums ${net >= cost ? "text-[#2F6FB8]" : "text-neutral-800"}`}>{won(net)}</span>
+      <span className="font-semibold text-neutral-500">{cost > net ? ">" : cost < net ? "<" : "="}</span>
+      순이익 <span className={`font-semibold tabular-nums ${net > cost ? "text-[#2F6FB8]" : "text-neutral-800"}`}>{won(net)}</span>
     </p>
   );
 }
