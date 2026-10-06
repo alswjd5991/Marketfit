@@ -18,8 +18,6 @@ export interface DashboardStats {
   satisfactionEntryCount: number;
   /** 최근 N회 평균 매출과 그 이전 평균 — 매출 기록이 6건 이상일 때만. */
   revenueTrend: { recentAvg: number; earlierAvg: number; recentCount: number } | null;
-  /** 행사 시작월 기준 참가 건수(오래된 달 -> 최근 달, 빈 달은 0으로 채움). */
-  monthlyParticipationCounts: MonthlyCount[];
   /** 매출을 입력한 참가 기록만, 행사 시작일 순. */
   eventRevenueTrend: EventTrendPoint[];
   /** 행사 유형(대분류)별 참가 수와 평균 순이익. 참가 수 많은 순. */
@@ -35,7 +33,13 @@ export interface DashboardStats {
   /** 품목별 행사별 판매 수량(행사 시작일 순). 품목은 판매 수량 많은 순 — 화면에서 고른 품목만 그린다. */
   productSalesByEvent: ProductSalesByEvent;
   /** 대시보드 맨 위 "종합 인사이트" 문장들. **굵게** 표시를 쓴다. */
-  insights: string[];
+  insights: Insight[];
+}
+
+export interface Insight {
+  text: string;
+  /** 단순 평균 비교 문장 — 해당 통계 분석(features/analytics) 결과가 있으면 그쪽 문장으로 대체한다. */
+  supersededBy?: "factors" | "stock";
 }
 
 export interface PopularProduct {
@@ -45,11 +49,6 @@ export interface PopularProduct {
   totalRevenue: number;
   /** 판매/준비. 준비 수량이 0이면 null. */
   sellThrough: number | null;
-}
-
-export interface MonthlyCount {
-  monthKey: string; // "2026-09"
-  count: number;
 }
 
 export interface ProductSalesByEvent {
@@ -140,7 +139,6 @@ export async function computeDashboardStats(supabase: Supabase, storeId: string)
   const profits = participations.filter((p) => p.net_profit != null).map((p) => p.net_profit!);
   const satisfactions = participations.filter((p) => p.satisfaction != null).map((p) => p.satisfaction!);
 
-  const monthCounts = new Map<string, number>();
   const eventRevenueTrend: EventTrendPoint[] = [];
   const groups = new Map<CategoryGroup, { count: number; profits: number[] }>();
   for (const p of participations) {
@@ -152,8 +150,6 @@ export async function computeDashboardStats(supabase: Supabase, storeId: string)
     if (p.net_profit != null) g.profits.push(p.net_profit);
     groups.set(group, g);
     if (!e.start_date) continue;
-    const monthKey = e.start_date.slice(0, 7);
-    monthCounts.set(monthKey, (monthCounts.get(monthKey) ?? 0) + 1);
     if (p.total_revenue != null) {
       eventRevenueTrend.push({ eventName: e.name, startDate: e.start_date, group, revenue: p.total_revenue, netProfit: p.net_profit });
     }
@@ -196,7 +192,6 @@ export async function computeDashboardStats(supabase: Supabase, storeId: string)
     averageSatisfaction: avg(satisfactions),
     satisfactionEntryCount: satisfactions.length,
     revenueTrend,
-    monthlyParticipationCounts: fillMonths(monthCounts),
     eventRevenueTrend,
     groupPerformance,
     weatherPerformance: conditionPerformance(revenues, (p) => p.weather, ["맑음", "흐림", "비", "눈"]),
@@ -234,22 +229,6 @@ function conditionPerformance<T extends { total_revenue: number | null }>(
     .map(([label, xs]) => ({ label, count: xs.length, avgRevenue: xs.reduce((a, b) => a + b, 0) / xs.length }));
 }
 
-/** 첫 달부터 마지막 달까지 빈 달을 0으로 채운다 — 막대 간격이 실제 시간 간격과 같아지게. */
-function fillMonths(counts: Map<string, number>): MonthlyCount[] {
-  const keys = [...counts.keys()].sort();
-  if (!keys.length) return [];
-  const out: MonthlyCount[] = [];
-  let [y, m] = keys[0].split("-").map(Number);
-  const last = keys.at(-1)!;
-  for (;;) {
-    const monthKey = `${y}-${String(m).padStart(2, "0")}`;
-    out.push({ monthKey, count: counts.get(monthKey) ?? 0 });
-    if (monthKey >= last) break;
-    if (++m > 12) [y, m] = [y + 1, 1];
-  }
-  return out;
-}
-
 const won = (n: number) => `${Math.round(n).toLocaleString("ko-KR")}원`;
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
@@ -257,10 +236,11 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
 function buildInsights(
   s: DashboardStats,
   participations: { status: ParticipationStatus; event: { name: string; start_date: string | null } | null }[]
-): string[] {
-  const out: string[] = [];
+): Insight[] {
+  const out: Insight[] = [];
+  const add = (text: string, supersededBy?: Insight["supersededBy"]) => out.push({ text, supersededBy });
   if (s.totalNetProfit != null) {
-    out.push(
+    add(
       `참가 완료 **${s.statusCounts.attended}회**, 누적 순이익 **${won(s.totalNetProfit)}** (행사당 평균 ${won(s.totalNetProfit / s.netProfitEntryCount)})`
     );
   }
@@ -268,30 +248,31 @@ function buildInsights(
     const { recentAvg, earlierAvg, recentCount } = s.revenueTrend;
     const diff = (recentAvg - earlierAvg) / earlierAvg;
     if (Math.abs(diff) >= 0.05) {
-      out.push(`최근 ${recentCount}회 평균 매출 ${won(recentAvg)} — 이전보다 **${pct(Math.abs(diff))} ${diff > 0 ? "증가" : "감소"}**`);
+      add(`최근 ${recentCount}회 평균 매출 ${won(recentAvg)} — 이전보다 **${pct(Math.abs(diff))} ${diff > 0 ? "증가" : "감소"}**`);
     } else {
-      out.push(`최근 ${recentCount}회 평균 매출 ${won(recentAvg)} — 이전과 비슷한 수준`);
+      add(`최근 ${recentCount}회 평균 매출 ${won(recentAvg)} — 이전과 비슷한 수준`);
     }
   }
   const groups = s.groupPerformance.filter((g) => g.profitCount >= 2 && g.avgNetProfit != null);
   if (groups.length >= 2) {
     const best = [...groups].sort((a, b) => b.avgNetProfit! - a.avgNetProfit!)[0];
-    out.push(`평균 순이익이 가장 높은 유형은 **${best.group}** (${won(best.avgNetProfit!)}, ${best.profitCount}회)`);
+    add(`평균 순이익이 가장 높은 유형은 **${best.group}** (${won(best.avgNetProfit!)}, ${best.profitCount}회)`, "factors");
   }
   const sunny = s.weatherPerformance.find((w) => w.label === "맑음");
   const rainy = s.weatherPerformance.find((w) => w.label === "비");
   if (sunny && rainy && sunny.count >= 2 && rainy.avgRevenue < sunny.avgRevenue) {
-    out.push(`비 오는 날 평균 매출은 맑은 날보다 **${pct(1 - rainy.avgRevenue / sunny.avgRevenue)} 낮음** (${rainy.count}회)`);
+    add(`비 오는 날 평균 매출은 맑은 날보다 **${pct(1 - rainy.avgRevenue / sunny.avgRevenue)} 낮음** (${rainy.count}회)`, "factors");
   }
   const productTotal = s.popularProducts.reduce((a, p) => a + p.totalRevenue, 0);
   const top = s.popularProducts[0];
   if (top && productTotal > 0 && s.popularProducts.length >= 2) {
-    out.push(`매출 1위 상품 **${top.productName}** — 상품 매출의 ${pct(top.totalRevenue / productTotal)}`);
+    add(`매출 1위 상품 **${top.productName}** — 상품 매출의 ${pct(top.totalRevenue / productTotal)}`);
   }
   const rated = s.popularProducts.filter((p) => p.sellThrough != null && p.totalPrepared >= 20);
   if (rated.length >= 2) {
     const low = [...rated].sort((a, b) => a.sellThrough! - b.sellThrough!)[0];
-    if (low.sellThrough! < 0.6) out.push(`**${low.productName}** 판매율 ${pct(low.sellThrough!)} — 준비 수량 조절 필요`);
+    // 판매율만으로 "조절 필요"를 판단할 근거는 없어(상품마다 적정 판매율이 다름) 사실만 적는다. 판단은 준비 수량 진단(뉴스벤더 검정)이 맡는다.
+    if (low.sellThrough! < 0.6) add(`판매율이 가장 낮은 상품 **${low.productName}** (${pct(low.sellThrough!)})`, "stock");
   }
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date());
   const next = participations
@@ -299,7 +280,7 @@ function buildInsights(
     .sort((a, b) => a.event!.start_date!.localeCompare(b.event!.start_date!))[0];
   if (next) {
     const [, m, d] = next.event!.start_date!.split("-").map(Number);
-    out.push(`다음 참가 예정: **${next.event!.name}** (${m}월 ${d}일)`);
+    add(`다음 참가 예정: **${next.event!.name}** (${m}월 ${d}일)`);
   }
   return out;
 }
