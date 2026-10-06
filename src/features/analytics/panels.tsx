@@ -11,7 +11,6 @@ import type { DashboardAnalytics, ForecastItem } from "./data";
 import { STOCK_RULES, type StockDiagnosis, type StockVerdict } from "./stock";
 import { PLAN_RULES } from "./plan";
 
-const SKY = "#9CCFEE";
 const BAD = STATUS_COLORS.critical;
 
 export function manwon(n: number): string {
@@ -111,17 +110,17 @@ export function EventFitPanel({ forecast }: { forecast: DashboardAnalytics["fore
 // 같은 업종 대비 매출
 // ---------------------------------------------------------------------------
 
-// 같은 업종 대비 매출 — 초록 계열 박스플롯 + 내 위치(사이트의 노을 코랄)
-const BOX_FILL = "#DDF0E6";
-const BOX_LINE = "#3F7A64";
-const MEDIAN = "#1E4D3A";
+// 같은 업종 대비 매출 — 초록 계열 박스플롯. 내 위치는 벤치마크 도구들처럼 색 있는 세로선 하나로만 표시한다.
+const GREEN_LIGHT = "#CDEBDB";
+const GREEN = "#5FB98B";
+const GREEN_DARK = "#2F7A57";
 const ME = "#F2836B";
 
 export const peerInfo = (
   <>
-    <Tip>같은 카테고리에서 행사 기록이 3번 이상인 가게들의 행사당 평균 매출을 상자 그림으로 나타냈어요. 다른 가게의 매출은 범위로만 보여 드려요.</Tip>
-    <Tip>상자는 가운데 50% 가게(25~75%), 양옆으로 뻗은 선은 가운데 80% 가게(10~90%)가 있는 범위예요. 상자 안의 진한 선이 중앙값이에요.</Tip>
-    <Tip>중앙값은 가게들을 매출 순으로 세웠을 때 한가운데 가게의 매출이고, 평균은 모든 가게 매출을 더해 가게 수로 나눈 값이에요. 매출이 아주 큰 가게가 있으면 평균이 중앙값보다 커져요.</Tip>
+    <Tip>같은 카테고리에서 행사 기록이 3번 이상인 가게들의 행사당 평균 매출이에요.</Tip>
+    <Tip>양 끝 선은 가장 낮은 가게부터 가장 높은 가게까지, 상자는 가운데 50% 가게가 있는 범위, 상자 안의 선은 한가운데 가게의 매출(중앙값)이에요.</Tip>
+    <Tip>주황 선이 내 가게의 행사당 평균 매출이에요.</Tip>
   </>
 );
 
@@ -134,44 +133,39 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
   const higher = Math.round(peer.peers * (1 - peer.below));
   const top = Math.round(((higher + 1) / total) * 100);
   const label = top <= 50 ? `상위 ${top}%` : `하위 ${Math.round(((total - higher) / total) * 100)}%`;
-  const { p10, q1, median, q3, p90, mean } = peer.dist;
-  const lo = Math.min(p10, peer.mine) * 0.9;
-  const hi = Math.max(p90, peer.mine) * 1.06;
-  const pos = (v: number) => ((v - lo) / (hi - lo)) * 100;
+  const { min, q1, median, q3, max } = peer.dist;
+  const lo = Math.min(min, peer.mine);
+  const hi = Math.max(max, peer.mine);
+  const pad = (hi - lo) * 0.04;
+  const pos = (v: number) => ((v - lo + pad) / (hi - lo + 2 * pad)) * 100;
   const x = (v: number) => `${pos(v)}%`;
-  const meLabel = `${Math.min(88, Math.max(12, pos(peer.mine)))}%`; // 이름표가 가장자리에서 잘리지 않게
   return (
     <div>
       <p className="text-sm text-[#43464B]">
         {peer.category} 가게 {total}곳 중 <span className="font-bold text-[#1F2023]">{label}</span>예요
       </p>
-      <div className="relative mx-6 mt-11 h-[92px]">
-        {/* 내 위치 이름표 */}
-        <span className="absolute top-0 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-semibold text-white shadow-sm" style={{ left: meLabel, background: ME }}>
-          내 가게 {manwon(peer.mine)}
-        </span>
-        {/* 수염(10~90%)과 끝 막대 */}
-        <div className="absolute top-[30px] h-0.5 -translate-y-1/2" style={{ left: x(p10), width: `calc(${x(p90)} - ${x(p10)})`, background: BOX_LINE }} />
-        <div className="absolute top-[18px] h-6 w-0.5 -translate-x-1/2" style={{ left: x(p10), background: BOX_LINE }} />
-        <div className="absolute top-[18px] h-6 w-0.5 -translate-x-1/2" style={{ left: x(p90), background: BOX_LINE }} />
-        {/* 상자(25~75%)와 중앙값 */}
-        <div className="absolute top-[10px] h-10 rounded-md border-2" style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: BOX_FILL, borderColor: BOX_LINE }} />
-        <div className="absolute top-[10px] h-10 w-[3px] -translate-x-1/2 rounded" style={{ left: x(median), background: MEDIAN }} />
-        <div className="absolute top-[30px] size-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border-2 bg-white" style={{ left: x(mean), borderColor: MEDIAN }} />
-        {/* 내 위치: 점선 + 점 */}
-        <div className="absolute top-0 h-[60px] w-0 -translate-x-1/2 border-l-2 border-dashed" style={{ left: x(peer.mine), borderColor: ME }} />
-        <div className="absolute top-[30px] size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow" style={{ left: x(peer.mine), background: ME }} />
-        {/* 눈금 값 */}
-        <span className="absolute top-[66px] -translate-x-1/2 whitespace-nowrap text-[11px] tabular-nums text-[#8A8D93]" style={{ left: x(p10) }}>{manwon(p10)}</span>
-        <span className="absolute top-[66px] -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold tabular-nums" style={{ left: x(median), color: MEDIAN }}>{manwon(median)}</span>
-        <span className="absolute top-[66px] -translate-x-1/2 whitespace-nowrap text-[11px] tabular-nums text-[#8A8D93]" style={{ left: x(p90) }}>{manwon(p90)}</span>
+      <div className="relative mt-9 h-[78px]">
+        {/* 나: 색 있는 세로선 하나 + 위에 작은 글자 */}
+        <div className="absolute top-0 -translate-x-1/2 whitespace-nowrap text-[12px] leading-none" style={{ left: `${Math.min(94, Math.max(6, pos(peer.mine)))}%`, color: ME }}>
+          <span className="font-bold">나</span> <span className="font-semibold tabular-nums">{manwon(peer.mine)}</span>
+        </div>
+        {/* 수염: 최솟값 ~ 최댓값 */}
+        <div className="absolute top-[38px] h-[3px] -translate-y-1/2 rounded-full" style={{ left: x(min), width: `calc(${x(max)} - ${x(min)})`, background: GREEN_LIGHT }} />
+        <div className="absolute top-[30px] h-4 w-[3px] -translate-x-1/2 rounded-full" style={{ left: x(min), background: GREEN }} />
+        <div className="absolute top-[30px] h-4 w-[3px] -translate-x-1/2 rounded-full" style={{ left: x(max), background: GREEN }} />
+        {/* 상자: 1사분위 ~ 3사분위, 중앙값 */}
+        <div
+          className="absolute top-[22px] h-8 rounded-xl shadow-[0_4px_14px_rgba(63,122,100,0.18)]"
+          style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: `linear-gradient(180deg, ${GREEN_LIGHT}, ${GREEN})` }}
+        />
+        <div className="absolute top-[22px] h-8 w-[2px] -translate-x-1/2 bg-white" style={{ left: x(median) }} />
+        {/* 내 위치 */}
+        <div className="absolute top-[16px] h-[44px] w-[2px] -translate-x-1/2 rounded-full" style={{ left: x(peer.mine), background: ME }} />
+        {/* 값 */}
+        <span className="absolute top-[64px] -translate-x-1/2 whitespace-nowrap text-[11px] tabular-nums text-[#8A8D93]" style={{ left: x(min) }}>{manwon(min)}</span>
+        <span className="absolute top-[64px] -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold tabular-nums" style={{ left: x(median), color: GREEN_DARK }}>중앙값 {manwon(median)}</span>
+        <span className="absolute top-[64px] -translate-x-1/2 whitespace-nowrap text-[11px] tabular-nums text-[#8A8D93]" style={{ left: x(max) }}>{manwon(max)}</span>
       </div>
-      <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#8A8D93]">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm border-2" style={{ background: BOX_FILL, borderColor: BOX_LINE }} />가운데 50%</span>
-        <span className="flex items-center gap-1.5"><span className="h-0.5 w-4" style={{ background: BOX_LINE }} />가운데 80%</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-[3px] rounded" style={{ background: MEDIAN }} />중앙값 {manwon(median)}</span>
-        <span className="flex items-center gap-1.5"><span className="size-2 rotate-45 border-2 bg-white" style={{ borderColor: MEDIAN }} />평균 {manwon(mean)}</span>
-      </p>
     </div>
   );
 }
@@ -180,10 +174,20 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
 // 상품 포트폴리오
 // ---------------------------------------------------------------------------
 
+/** 버블 색: [가운데 밝은 색, 기본색, 가장자리 진한 색] — 보라·코랄·노랑 계열의 광택 버블 */
+const BUBBLE_COLORS: [string, string, string][] = [
+  ["#A79BFF", "#6C5CE7", "#4B3BC4"],
+  ["#FFA3B1", "#FF6B81", "#E0485F"],
+  ["#FFE08A", "#F9C74F", "#E0A82E"],
+  ["#C3B8FF", "#8E7CF8", "#6A57E0"],
+  ["#9CC7FF", "#4D96FF", "#2F74D8"],
+  ["#FFC29E", "#FF9F68", "#E57E45"],
+];
+
 export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["portfolio"] }) {
   const info = (
     <>
-      <Tip>가로는 판매율(준비한 것 중 팔린 비율), 세로는 상품 매출에서 차지하는 비중이에요. 동그라미가 클수록 매출이 커요.</Tip>
+      <Tip>가로는 판매율(준비한 것 중 팔린 비율), 세로는 상품 매출에서 차지하는 비중이에요. 버블이 클수록 매출이 커요.</Tip>
       <Tip>점선은 내 상품들의 평균이에요. 오른쪽 위는 잘 팔리고 매출도 큰 상품, 오른쪽 아래는 잘 팔리지만 비중이 작은 상품이에요.</Tip>
     </>
   );
@@ -194,43 +198,87 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
       </Panel>
     );
   }
-  const W = 320, H = 190, PAD = { l: 34, r: 14, t: 18, b: 24 };
-  const maxShare = Math.max(...portfolio.map((p) => p.share)) * 1.15;
+  const items = portfolio.slice(0, BUBBLE_COLORS.length);
+  const W = 560, H = 270, PAD = { l: 40, r: 20, t: 24, b: 30 };
+  const shareTop = Math.min(1, Math.ceil((Math.max(...items.map((p) => p.share)) * 1.25) * 10) / 10);
   const sx = (v: number) => PAD.l + v * (W - PAD.l - PAD.r);
-  const sy = (v: number) => H - PAD.b - (v / maxShare) * (H - PAD.t - PAD.b);
-  const avgSell = portfolio.reduce((a, p) => a + p.sellThrough * p.revenue, 0) / portfolio.reduce((a, p) => a + p.revenue, 0);
+  const sy = (v: number) => H - PAD.b - (v / shareTop) * (H - PAD.t - PAD.b);
+  const avgSell = items.reduce((a, p) => a + p.sellThrough * p.revenue, 0) / items.reduce((a, p) => a + p.revenue, 0);
   const avgShare = 1 / portfolio.length;
-  const maxRev = Math.max(...portfolio.map((p) => p.revenue));
-  const star = portfolio.find((p) => p.sellThrough >= avgSell && p.share >= avgShare);
+  const maxRev = Math.max(...items.map((p) => p.revenue));
+  const radius = (rev: number) => 14 + 36 * Math.sqrt(rev / maxRev);
+  const star = items.find((p) => p.sellThrough >= avgSell && p.share >= avgShare);
+  const yTicks = [0, shareTop / 2, shareTop];
   return (
     <Panel title="상품 포트폴리오" info={info}>
-      {star && (
-        <p className="mb-2 text-[14px] text-neutral-700">
-          <span className="font-bold text-neutral-950">{josa(star.productName, "이", "가")}</span> 잘 팔리고 매출 비중도 커요
-        </p>
-      )}
-      <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block h-auto max-h-[220px] w-full" role="img" aria-label="상품별 판매율과 매출 비중">
-        <line x1={sx(avgSell)} x2={sx(avgSell)} y1={PAD.t} y2={H - PAD.b} stroke="#CBD5DF" strokeDasharray="3 3" />
-        <line x1={PAD.l} x2={W - PAD.r} y1={sy(avgShare)} y2={sy(avgShare)} stroke="#CBD5DF" strokeDasharray="3 3" />
-        <line x1={PAD.l} x2={W - PAD.r} y1={H - PAD.b} y2={H - PAD.b} stroke="#E6EEF5" />
-        {[0, 0.5, 1].map((t) => (
-          <text key={t} x={sx(t)} y={H - 8} textAnchor="middle" fontSize="10" fill="#8A8D93">{Math.round(t * 100)}%</text>
+      <div className="-mt-2 mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        {star ? (
+          <p className="text-[14px] text-neutral-700">
+            <span className="font-bold text-neutral-950">{josa(star.productName, "이", "가")}</span> 잘 팔리고 매출 비중도 커요
+          </p>
+        ) : <span />}
+        <ul className="flex flex-wrap gap-x-3 gap-y-1">
+          {items.map((p, k) => (
+            <li key={p.productName} className="flex items-center gap-1.5 text-xs text-[#6B6E74]">
+              <span className="size-2 rounded-full" style={{ background: BUBBLE_COLORS[k][1] }} />
+              {p.productName}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label="상품별 판매율과 매출 비중">
+        <defs>
+          {BUBBLE_COLORS.map(([light, base, dark], k) => (
+            <radialGradient key={k} id={`bubble-${k}`} cx="35%" cy="30%" r="75%">
+              <stop offset="0%" stopColor={light} />
+              <stop offset="55%" stopColor={base} />
+              <stop offset="100%" stopColor={dark} />
+            </radialGradient>
+          ))}
+          <filter id="bubble-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="10" />
+          </filter>
+        </defs>
+        {/* 옅은 세로 격자 + 가로 기준 */}
+        {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+          <g key={t}>
+            <line x1={sx(t)} x2={sx(t)} y1={PAD.t} y2={H - PAD.b} stroke="#EEF0F6" />
+            <text x={sx(t)} y={H - 10} textAnchor="middle" fontSize="11" fill="#9A9DB0">{Math.round(t * 100)}%</text>
+          </g>
         ))}
-        <text x={PAD.l - 6} y={sy(maxShare / 1.15) + 3} textAnchor="end" fontSize="10" fill="#8A8D93">{Math.round((maxShare / 1.15) * 100)}%</text>
-        <text x={PAD.l - 6} y={H - PAD.b} textAnchor="end" fontSize="10" fill="#8A8D93">0</text>
-        {portfolio.map((p) => {
-          const r = 5 + 9 * Math.sqrt(p.revenue / maxRev);
+        {yTicks.map((t) => (
+          <text key={t} x={PAD.l - 10} y={sy(t) + 4} textAnchor="end" fontSize="11" fill="#9A9DB0">{Math.round(t * 100)}%</text>
+        ))}
+        <line x1={sx(avgSell)} x2={sx(avgSell)} y1={PAD.t} y2={H - PAD.b} stroke="#C9CCDD" strokeDasharray="4 4" />
+        <line x1={PAD.l} x2={W - PAD.r} y1={sy(avgShare)} y2={sy(avgShare)} stroke="#C9CCDD" strokeDasharray="4 4" />
+        {/* 버블: 같은 색의 번진 그림자 위에 광택 그라데이션 */}
+        {items.map((p, k) => {
+          const r = radius(p.revenue);
+          const cx = sx(p.sellThrough), cy = sy(p.share);
+          return <circle key={`glow-${p.productName}`} cx={cx} cy={cy + r * 0.35} r={r * 0.9} fill={BUBBLE_COLORS[k][1]} opacity={0.28} filter="url(#bubble-glow)" />;
+        })}
+        {items.map((p, k) => {
+          const r = radius(p.revenue);
+          const cx = sx(p.sellThrough), cy = sy(p.share);
+          const inside = r >= 28;
           return (
             <g key={p.productName}>
-              <circle cx={sx(p.sellThrough)} cy={sy(p.share)} r={r} fill={p.sellThrough >= avgSell ? SKY : "#F7C1B4"} fillOpacity={0.85} stroke="white" strokeWidth={1.5} />
-              <text x={sx(p.sellThrough)} y={sy(p.share) - r - 3} textAnchor="middle" fontSize="10.5" fontWeight={600} fill="#43464B">{p.productName}</text>
+              <circle cx={cx} cy={cy} r={r} fill={`url(#bubble-${k})`} opacity={0.92} />
+              {inside ? (
+                <>
+                  <text x={cx} y={cy - 1} textAnchor="middle" fontSize="13" fontWeight={700} fill="white">{Math.round(p.share * 100)}%</text>
+                  <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10.5" fill="white" opacity={0.92}>{p.productName}</text>
+                </>
+              ) : (
+                <text x={cx} y={cy - r - 5} textAnchor="middle" fontSize="11" fontWeight={600} fill="#43464B">{p.productName}</text>
+              )}
             </g>
           );
         })}
       </svg>
-      <p className="mt-1 flex justify-between pl-[10%] text-[11px] text-[#8A8D93]">
+      <p className="mt-1 flex justify-between pl-[7%] text-[11px] text-[#9A9DB0]">
         <span>← 많이 남음</span>
-        <span>판매율</span>
+        <span>판매율 · 세로는 매출 비중</span>
         <span>잘 팔림 →</span>
       </p>
     </Panel>
