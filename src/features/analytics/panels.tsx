@@ -156,7 +156,8 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
           />
         ))}
         {/* 수염 */}
-        <div className="absolute top-1/2 h-[1.5px] -translate-y-1/2 rounded-full" style={{ left: x(min), width: `calc(${x(max)} - ${x(min)})`, background: BOX_LINE }} />
+        <div className="absolute top-1/2 h-[1.5px] -translate-y-1/2" style={{ left: x(min), width: `calc(${x(q1)} - ${x(min)})`, background: BOX_LINE }} />
+        <div className="absolute top-1/2 h-[1.5px] -translate-y-1/2" style={{ left: x(q3), width: `calc(${x(max)} - ${x(q3)})`, background: BOX_LINE }} />
         <div className="absolute top-1/2 h-4 w-[1.5px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(min), background: BOX_LINE }} />
         <div className="absolute top-1/2 h-4 w-[1.5px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(max), background: BOX_LINE }} />
         {/* 상자: 점이 비쳐 보이게 반투명 */}
