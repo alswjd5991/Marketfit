@@ -1,8 +1,14 @@
 // 합성 셀러 유저 생성 설정 — 모든 수치에 출처(통계) 또는 "가정" 표시를 단다.
 // 통계 수치는 아래 원문에서 직접 확인한 값만 쓴다. 출처를 바꾸면 SOURCES도 같이 고칠 것.
 
-export const SEED = 20261001; // 같은 시드 → 누가 실행해도 같은 30명
-export const USER_COUNT = 30;
+export const SEED = 20261007; // 같은 시드 → 누가 실행해도 같은 200명
+/**
+ * 셀러 수 200명 — 근거: (1) Maas & Hox(2005) 다층모형 시뮬레이션에서 집단(가게) 수가 100 미만이면
+ * 집단 간 분산의 표준오차가 과소 추정됨(30개 8.9%, 50개 7.3% 비포함) → 가게 효과 축소 추정(①)에 100곳 이상 필요.
+ * (2) 동종 비교(④)는 카테고리마다 기록 3건 이상인 가게 11곳이 필요 — 가장 작은 카테고리 비중 약 11.8% ×
+ * 기록 3건 이상 비율(아래 ACTIVITY로 약 75%) → 150명 이상. 여유를 두고 200명으로 정함(팀 결정).
+ */
+export const USER_COUNT = 200;
 export const EMAIL_DOMAIN = "synthetic.marketfit.test"; // 합성 유저 표시(실제 통계에서 제외할 때 이 도메인으로 거른다)
 
 export const SOURCES = {
@@ -17,6 +23,30 @@ export const SOURCES = {
   gender2018: {
     title: "소상공인실태조사 2018년 기준 (한국외식신문 '소상공인 실태조사 심층 분석' 인용)",
     url: "https://www.kfoodtimes.com/news/articleView.html?idxno=7726",
+  },
+  fm360: {
+    title: "University of Minnesota FM360, Farmers Market Vendor Survey 2022·2023 (신규 셀러 비율 16.3%·27.7%)",
+    url: "https://fm360.umn.edu/2023-vendor-survey-summary-fm360-4",
+  },
+  maasHox: {
+    title: "Maas & Hox (2005), Sufficient Sample Sizes for Multilevel Modeling, Methodology 1(3)",
+    url: "https://doi.org/10.1027/1614-2241.1.3.86",
+  },
+  cassar: {
+    title: "Cassar (2010), Are Individuals Entering Self-Employment Overly Optimistic?, Strategic Management Journal 31(8) — 창업자는 매출을 과대 예상",
+    url: "https://repository.upenn.edu/accounting_papers/48/",
+  },
+  bcCardRain: {
+    title: "BC카드 장마철 서울 요식업 카드결제 분석(서울신문 2013.8.3) — 비 오는 날 아이스크림 −25.0%, 냉면 −30.3%",
+    url: "https://www.seoul.co.kr/news/economy/2013/08/03/20130803011012",
+  },
+  bamdokkaebi: {
+    title: "서울밤도깨비야시장 2018 결과(한국일보 2019.1.7) — 506팀, 267회 개장, 총매출 117억 원",
+    url: "https://www.hankookilbo.com/news/article/201901071724395270",
+  },
+  kmaAsos: {
+    title: "기상청 지상(종관, ASOS) 일자료 조회서비스 — 행사 날짜·지역의 실제 강수량·전운량",
+    url: "https://www.data.go.kr (검색: 기상청_지상(종관, ASOS) 일자료 조회서비스)",
   },
 } as const;
 
@@ -48,7 +78,7 @@ export const INDUSTRY = {
 export const REGION_FROM_EVENTS = true;
 
 /**
- * 30명 중 앞 8명에게 덮어씌우는 경계 사례 시나리오 — 기능이 깨지기 쉬운 상황을 일부러 만든다.
+ * 앞 8명에게 덮어씌우는 경계 사례 시나리오 — 기능이 깨지기 쉬운 상황을 일부러 만든다.
  * 인구통계(성별·연령·업종)는 그대로 통계 쿼터를 따른다.
  */
 export const EDGE_CASES = [
@@ -63,31 +93,57 @@ export const EDGE_CASES = [
 ] as const;
 
 /**
- * [가정] 단골 유저 — 2024년부터 서비스를 써 와서 기록이 많은 셀러(대시보드·AI 매출분석 시연용).
- * 경계 사례(1~8번)와 겹치지 않고 업종이 서로 다른 5명: 디저트·농산물·수공예·패션·음식.
+ * 참가 횟수 분포 — "단골 몇 명"을 정하지 않고, 실제 시장의 신규·재참가 비율을 따르는 분포에서 뽑는다.
+ * 기록이 많은 셀러(단골)는 이 분포의 꼬리에서 자연스럽게 생긴다.
  */
-export const REGULARS = [9, 12, 16, 20, 23];
-export const REGULAR = {
-  since: "2024-01-01", // 이 날짜 이후 행사만 참가(서비스 사용 시작 시점)
-  past: [18, 24] as [number, number], // 지난 행사 참가 수
-  future: [3, 5] as [number, number], // 앞으로 있을 행사(관심·신청·참가 예정)
-  prepared: [15, 40] as [number, number], // 경험이 쌓여 준비 수량이 많음
-  learning: [0.8, 1.2] as [number, number], // 판매율 배수: 첫 참가 → 최근 참가로 갈수록 올라감
-  lodging: [40000, 90000] as [number, number], // 다른 지역 행사에서 1박할 때
-  other: [0, 20000] as [number, number], // 소모품 등 기타 비용
-  hours: ["10:00~18:00", "11:00~19:00", "12:00~20:00", "17:00~22:00"],
-  boothSize: ["2m x 2m", "3m x 3m", "2m x 1m"],
-  memos: [
-    "오전엔 한산하다가 오후 2시 이후 손님 몰림",
-    "입구 쪽 부스라 유동인구 많았음",
-    "구석 자리라 노출이 적었음 — 다음엔 위치 요청",
-    "시식·샘플 반응 좋았음",
-    "카드 단말기 배터리 부족해서 현금만 받은 시간 있음",
-    "재방문 손님이 꽤 있었음",
-    "가족 단위 손님 많음, 저가 상품 위주로 팔림",
-    "주최 측 홍보가 부족해 방문객이 예상보다 적었음",
-  ],
-  customChecklist: ["포토존 소품 챙기기", "SNS 행사 공지 올리기", "단골 손님 쿠폰 준비"],
+export const ACTIVITY = {
+  source: "fm360",
+  /** 신규 셀러 비율: FM360 2022년 16.3%, 2023년 27.7%의 평균 */
+  newShare: (16.3 + 27.7) / 2 / 100,
+  newCount: [1, 2] as [number, number], // 신규 셀러의 지난 참가 수 [가정]
+  /** 재참가 셀러: 3 + 기하분포(평균 extraMean) [가정 — 국내 공개 통계 없음]. 앱 가입 후 열린 행사 수를 넘지 못한다. */
+  returningMin: 3,
+  extraMean: 6,
+  /** 앱 가입일: 2024-01-01 ~ 오늘 60일 전 사이 균등 [가정 — 신생 서비스라 근거 자료 없음] */
+  since: "2024-01-01",
+  localShare: 0.7, // 활동 지역 행사를 고를 확률 [가정]
+  attendRate: 0.9, // 신청한 지난 행사에 실제로 나간 비율 [가정]
+  future: [0, 3] as [number, number], // 앞으로 있을 행사(관심·참가 예정) 수 [가정]
+  /** 이만큼 이상 참가한 셀러는 부스·만족도 등 선택 항목까지 꼼꼼히 기록한다고 가정 */
+  detailedFrom: 10,
+};
+
+/**
+ * 판매 생성 과정(수요 → 판매). 판매량 = min(수요, 준비량) — 품절이 자연스럽게 생기고 준비 수량 진단이 의미를 갖는다.
+ * 숫자는 모두 [가정]이며, 방향·크기의 참고 자료를 옆에 적는다.
+ */
+export const DEMAND = {
+  /** 상품 1개당 하루 기대 판매 수 [가정]. 행사당 매출 중앙값이 약 34만 원이 되도록 맞춤 — 국내 셀러 하루 매출 공개 통계가 없어,
+   *  밤도깨비야시장 2018(506팀·총매출 117억 원 → 팀당 시즌 약 2,312만 원)을 시즌 수십 회 출점으로 나눈 규모를 점검 기준으로 씀 */
+  baseUnits: 6,
+  storeSd: 0.4, // 가게 간 수요 차이(로그 표준편차) [가정]
+  productSd: 0.3, // 상품 간 인기 차이 [가정]
+  eventSd: 0.25, // 행사 공통 충격(그날 방문객 수 등, 같은 행사의 모든 셀러가 공유) [가정]
+  dispersion: 4, // 음이항 분포의 형태모수(작을수록 들쭉날쭉) [가정]
+  /** 날씨별 수요 배수 [가정 — BC카드 분석의 업종별 비 오는 날 −25~−30%를 실외 기준 크기로 참고, 실내는 작게] */
+  weather: {
+    실외: { 맑음: 1, 흐림: 0.9, 비: 0.7, 눈: 0.65 },
+    실내: { 맑음: 1, 흐림: 1, 비: 0.9, 눈: 0.85 },
+  } as Record<"실외" | "실내", Record<string, number>>,
+  /** 날씨 실측이 없을 때만 쓰는 대체 분포 [가정] */
+  weatherFallback: { 맑음: 0.6, 흐림: 0.25, 비: 0.15 } as Record<string, number>,
+  /** 실내외 정보가 없는 행사의 실외 비율 — 시드 행사 중 실내외가 확인된 64건의 실외 비율 54/64 */
+  outdoorShare: 54 / 64,
+  weekend: 1.25, // 주말이 낀 행사의 수요 배수 [가정]
+  durationPower: 0.6, // 행사 일수 d일이면 수요 × d^0.6(하루하루 손님이 줄어듦) [가정]
+  longEventDays: [2, 4] as [number, number], // 7일 넘는 장기 행사에는 이만큼만 나간다고 가정
+  /** 준비 습관: 셀러는 자기 기대 수요(날씨·당일 충격은 모름)의 q 분위수만큼 준비. q ~ 균등(0.35, 0.9) [가정] */
+  stockQuantile: [0.35, 0.9] as [number, number],
+  beliefSd: 0.35, // 셀러가 생각하는 수요 불확실성(로그) [가정]
+  /** 참가 전 예상 매출: 기대 매출 × exp(N(0.15, 0.1²)) — 방향은 Cassar(2010)의 과대 예상, 크기는 [가정] */
+  optimismMean: 0.15,
+  optimismSd: 0.1,
+  expectedRecordShare: 0.6, // 참가 전에 예상 매출을 적어 두는 비율 [가정]
 };
 
 // ---------------------------------------------------------------------------
@@ -106,15 +162,26 @@ export const PRODUCTS: Record<string, { names: string[]; price: [number, number]
   반려동물: { names: ["수제 간식", "반려견 반다나", "고양이 장난감", "펫 쿠션", "산책 가방"], price: [5000, 30000] },
 };
 
-/** [가정] 행사 1회 결과를 만드는 범위. */
+/** [가정] 행사 1회 비용·기록 범위. */
 export const EVENT_RESULT = {
-  prepared: [8, 30] as [number, number], // 상품별 준비 수량(15~60개로 했더니 하루 매출 중앙값이 82만 원·적자 1/64건으로 비현실적이라 낮춤)
-  sellThrough: [0.3, 0.95] as [number, number], // 판매율
-  weather: { 맑음: 0.6, 흐림: 0.25, 비: 0.15 } as Record<string, number>,
-  weatherFactor: { 맑음: 1, 흐림: 0.85, 비: 0.6 } as Record<string, number>,
   feeWhenUnknown: [20000, 80000] as [number, number], // 모집 공고에 참가비가 없을 때
   transport: [5000, 30000] as [number, number],
   parking: [0, 10000] as [number, number],
+  lodging: [40000, 90000] as [number, number], // 다른 지역 행사에서 1박할 때(절반 확률)
+  other: [0, 20000] as [number, number], // 소모품 등 기타 비용
+  hours: ["10:00~18:00", "11:00~19:00", "12:00~20:00", "17:00~22:00"],
+  boothSize: ["2m x 2m", "3m x 3m", "2m x 1m"],
+  memos: [
+    "오전엔 한산하다가 오후 2시 이후 손님 몰림",
+    "입구 쪽 부스라 유동인구 많았음",
+    "구석 자리라 노출이 적었음 — 다음엔 위치 요청",
+    "시식·샘플 반응 좋았음",
+    "카드 단말기 배터리 부족해서 현금만 받은 시간 있음",
+    "재방문 손님이 꽤 있었음",
+    "가족 단위 손님 많음, 저가 상품 위주로 팔림",
+    "주최 측 홍보가 부족해 방문객이 예상보다 적었음",
+  ],
+  customChecklist: ["포토존 소품 챙기기", "SNS 행사 공지 올리기", "단골 손님 쿠폰 준비"],
 };
 
 /** [가정] 참가 예정 행사의 기본 준비 체크리스트. */

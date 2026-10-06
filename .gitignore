@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 합성 데이터 생성용 기상청 응답 캐시
+/scripts/.cache/
