@@ -302,22 +302,20 @@ export function StockPanel({ stock }: { stock: DashboardAnalytics["stock"] }) {
 // 수익성 카드용: 예상 매출 정확도 한 줄과 물음표 설명, "한눈에 보기" 설명
 // ---------------------------------------------------------------------------
 
-/** 예상 매출 정확도 카드의 큰 값과 한 줄 설명 */
-export function planCard(plan: DashboardAnalytics["plan"]): { value: string; line: ReactNode } {
-  if (plan.status !== "ok") {
-    return { value: "기록 부족", line: <span className="text-[13px] text-neutral-400">예상 매출 기록 {plan.n}/{PLAN_RULES.minPairs}번</span> };
-  }
-  if (!plan.biased) return { value: "잘 맞아요", line: <span className="text-[13px] text-neutral-500">예상과 실제 차이가 크지 않아요 · {plan.n}회</span> };
-  return {
-    value: `${plan.pct < 0 ? "−" : "+"}${absPct(plan.pct)}`,
-    line: <span className="text-[13px] text-neutral-500">실제 매출이 예상보다 평균 {absPct(plan.pct)} {plan.pct < 0 ? "적었어요" : "많았어요"} · {plan.n}회</span>,
-  };
+export function PlanLine({ plan }: { plan: DashboardAnalytics["plan"] }) {
+  if (plan.status !== "ok") return null;
+  if (!plan.biased) return <p className="text-[13px] text-neutral-500">참가 전 예상 매출이 대체로 잘 맞았어요</p>;
+  return (
+    <p className="text-[13px] text-neutral-500">
+      실제 매출이 예상보다 평균 <span className="font-semibold text-neutral-800">{absPct(plan.pct)} {plan.pct < 0 ? "적었어요" : "많았어요"}</span>
+    </p>
+  );
 }
 
 export function planInfo(plan: DashboardAnalytics["plan"]): ReactNode {
   return (
     <>
-      <Tip>참가 전에 적은 예상 매출이 실제 매출과 얼마나 맞았는지예요. 목표 매출(바라는 값)과는 따로 봐요.</Tip>
+      <Tip>행사 전에 적은 목표 매출 대비 실제 매출이에요.</Tip>
       <Tip>
         {plan.status === "ok"
           ? `참가 전에 적은 예상 매출과 실제 매출을 ${plan.n}번 비교해, 차이가 우연이라고 보기 어려울 때만 "많았어요/적었어요"로 알려 드려요.`

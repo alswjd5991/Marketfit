@@ -40,78 +40,82 @@ export function RecentPerformance({
   const total = stats.totalParticipations;
   const attendRate = total ? c.attended / total : 0;
   const margin = stats.totalRevenue && stats.totalNetProfit != null ? stats.totalNetProfit / stats.totalRevenue : null;
+  // 대시보드(side) 카드에만 붙는 맥락 표시 — 숫자 아래 빈 공간을 의미 있는 정보로 채운다. (별점은 메인에도 표시)
+  const extra = (node: ReactNode) => (side ? node : undefined);
 
-  const trend = stats.revenueTrend;
-  const trendDiff = trend ? (trend.recentAvg - trend.earlierAvg) / trend.earlierAvg : null;
-  const won = (n: number) => `${Math.round(n).toLocaleString()}원`;
-  const planned = c.planning_to_attend + c.applied + c.planning_to_apply;
-
-  // 대시보드(side): 비슷한 의미의 카드를 합쳐 4개 — 참가(전체·완료·예정·관심) / 매출(총·행사당 평균·최근 추세) /
-  // 순이익(총·행사당 평균·순이익률) / 평균 만족도. 메인(stack)은 아래 5개 그대로.
-  const sideTiles = (
-    <div className="grid grid-cols-2 gap-3 lg:h-full lg:grid-cols-1 lg:grid-rows-4">
+  const tiles = (
+    <div className={side ? "grid grid-cols-2 gap-3 lg:h-full lg:grid-cols-1 lg:grid-rows-5" : "grid grid-cols-2 gap-4 lg:grid-cols-5"}>
       <PerformanceTile
-        large
-        label="참가 행사"
+        large={side}
+        label="총 참가 행사"
         value={`${total}건`}
-        extra={
+        extra={extra(
           <div>
             <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full">
-              <span style={{ flex: c.attended, background: STATUS_FILL.attended.bg }} />
-              <span style={{ flex: planned, background: STATUS_FILL.planning_to_attend.bg }} />
               <span style={{ flex: c.interested + c.cancelled, background: STATUS_FILL.interested.bg }} />
+              <span style={{ flex: c.planning_to_attend + c.applied + c.planning_to_apply, background: STATUS_FILL.planning_to_attend.bg }} />
+              <span style={{ flex: c.attended, background: STATUS_FILL.attended.bg }} />
             </div>
             <p className="mt-1.5 text-xs text-[#8A8D93]">
-              완료 {c.attended} · 예정 {planned} · 관심 {c.interested + c.cancelled} · 참가율 <span className="font-semibold text-[#43464B]">{Math.round(attendRate * 100)}%</span>
+              관심 {c.interested + c.cancelled} · 예정 {c.planning_to_attend + c.applied + c.planning_to_apply} · 완료 {c.attended}
             </p>
           </div>
-        }
+        )}
       />
       <PerformanceTile
-        large
-        label="매출"
-        value={stats.totalRevenue != null ? won(stats.totalRevenue) : "기록 없음"}
-        extra={stats.totalRevenue != null && (
-          <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-[#8A8D93]">
-            행사당 평균 <span className="font-semibold text-[#43464B]">{won(stats.totalRevenue / stats.revenueEntryCount)}</span>
-            {trendDiff != null && Math.abs(trendDiff) >= 0.05 && (
-              <span className={`font-semibold ${trendDiff > 0 ? "text-[#2F5F4B]" : "text-[#BE3A2A]"}`}>
-                · 최근 {trend!.recentCount}회 {trendDiff > 0 ? "▲" : "▼"}{Math.round(Math.abs(trendDiff) * 100)}%
+        large={side}
+        label="참가 완료"
+        value={`${c.attended}건`}
+        extra={extra(
+          <div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-[#E6EEF5]">
+              <div className="h-full rounded-full" style={{ width: `${attendRate * 100}%`, background: "#F2A493" }} />
+            </div>
+            <p className="mt-1.5 text-xs text-[#8A8D93]">참가율 {Math.round(attendRate * 100)}%</p>
+          </div>
+        )}
+      />
+      <PerformanceTile
+        large={side}
+        label="총 매출"
+        value={stats.totalRevenue != null ? `${stats.totalRevenue.toLocaleString()}원` : "기록 없음"}
+        extra={extra(
+          stats.totalRevenue != null && <p className="text-xs text-[#8A8D93]">{stats.revenueEntryCount}회 기록</p>
+        )}
+      />
+      <PerformanceTile
+        large={side}
+        label="총 순이익"
+        value={stats.totalNetProfit != null ? `${stats.totalNetProfit.toLocaleString()}원` : "기록 없음"}
+        extra={extra(
+          margin != null && (
+            <p className="text-xs text-[#8A8D93]">
+              순이익률 <span className="font-semibold text-[#43464B]">{Math.round(margin * 100)}%</span> · 매출 대비
+            </p>
+          )
+        )}
+      />
+      <PerformanceTile
+        large={side}
+        label="평균 만족도"
+        value={stats.averageSatisfaction != null ? `${stats.averageSatisfaction.toFixed(1)} / 5.0` : "기록 없음"}
+        extra={
+          stats.averageSatisfaction != null && (
+            <div className="flex items-center gap-2">
+              <span className="flex gap-0.5" aria-hidden>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    className="size-3.5"
+                    fill={stats.averageSatisfaction! >= n - 0.5 ? "#F5B700" : "none"}
+                    stroke={stats.averageSatisfaction! >= n - 0.5 ? "#F5B700" : "#BEBFC1"}
+                  />
+                ))}
               </span>
-            )}
-          </p>
-        )}
-      />
-      <PerformanceTile
-        large
-        label="순이익"
-        value={stats.totalNetProfit != null ? won(stats.totalNetProfit) : "기록 없음"}
-        extra={stats.totalNetProfit != null && (
-          <p className="text-xs text-[#8A8D93]">
-            행사당 평균 <span className="font-semibold text-[#43464B]">{won(stats.totalNetProfit / stats.netProfitEntryCount)}</span>
-            {margin != null && <> · 순이익률 <span className="font-semibold text-[#43464B]">{Math.round(margin * 100)}%</span></>}
-          </p>
-        )}
-      />
-      <PerformanceTile
-        large
-        label="평균 만족도"
-        value={stats.averageSatisfaction != null ? `${stats.averageSatisfaction.toFixed(1)} / 5.0` : "기록 없음"}
-        extra={stats.averageSatisfaction != null && <Stars value={stats.averageSatisfaction} count={stats.satisfactionEntryCount} />}
-      />
-    </div>
-  );
-
-  const tiles = side ? sideTiles : (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-      <PerformanceTile label="총 참가 행사" value={`${total}건`} />
-      <PerformanceTile label="참가 완료" value={`${c.attended}건`} />
-      <PerformanceTile label="총 매출" value={stats.totalRevenue != null ? `${stats.totalRevenue.toLocaleString()}원` : "기록 없음"} />
-      <PerformanceTile label="총 순이익" value={stats.totalNetProfit != null ? `${stats.totalNetProfit.toLocaleString()}원` : "기록 없음"} />
-      <PerformanceTile
-        label="평균 만족도"
-        value={stats.averageSatisfaction != null ? `${stats.averageSatisfaction.toFixed(1)} / 5.0` : "기록 없음"}
-        extra={stats.averageSatisfaction != null && <Stars value={stats.averageSatisfaction} count={stats.satisfactionEntryCount} />}
+              <span className="text-xs text-[#8A8D93]">{stats.satisfactionEntryCount}회 평가</span>
+            </div>
+          )
+        }
       />
     </div>
   );
@@ -178,19 +182,6 @@ export function ProductRevenueComparison({ stats, height, tone = "teal" }: { sta
 
 function ChartEmpty({ text }: { text: string }) {
   return <p className="flex h-[200px] items-center justify-center text-sm text-[#8A8D93]">{text}</p>;
-}
-
-function Stars({ value, count }: { value: number; count: number }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="flex gap-0.5" aria-hidden>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <Star key={n} className="size-3.5" fill={value >= n - 0.5 ? "#F5B700" : "none"} stroke={value >= n - 0.5 ? "#F5B700" : "#BEBFC1"} />
-        ))}
-      </span>
-      <span className="text-xs text-[#8A8D93]">{count}회 평가</span>
-    </div>
-  );
 }
 
 function PerformanceTile({ label, value, large = false, extra }: { label: string; value: string; large?: boolean; extra?: ReactNode }) {

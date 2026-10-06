@@ -8,12 +8,14 @@ import { ChartPanel, ProductRevenueComparison, RecentPerformance } from "./recen
 import { Empty, Group, Panel } from "./panel";
 import type { DashboardAnalytics } from "@/features/analytics/data";
 import { analyticsInsights } from "@/features/analytics/insights";
-import { EventFitPanel, PeerChart, PortfolioPanel, StockPanel, methodsInfo, peerInfo, planCard, planInfo } from "@/features/analytics/panels";
+import { EventFitPanel, PeerChart, PlanLine, PortfolioPanel, StockPanel, methodsInfo, peerInfo, planInfo } from "@/features/analytics/panels";
 import { InfoTip } from "@/components/ui/info-tip";
 
 const won = (n: number) => `${Math.round(n).toLocaleString()}원`;
 
 export function DashboardView({ stats, analytics }: { stats: DashboardStats; analytics: DashboardAnalytics | null }) {
+  const trend = stats.revenueTrend;
+  const trendDiff = trend ? (trend.recentAvg - trend.earlierAvg) / trend.earlierAvg : null;
   // 준비 수량 진단이 있으면 판매율 문장(단순 비교)은 빼고 진단 문장을 쓴다.
   const superseded = new Set(analytics?.stock.items.length ? ["stock"] : []);
   const insights = [
@@ -71,14 +73,25 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
         <Group title="수익성">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <ProfitCard
-              label="흑자 행사 비율"
-              value={stats.profitableEvents ? `${Math.round((stats.profitableEvents.count / stats.profitableEvents.total) * 100)}%` : "기록 없음"}
-              info="순이익(매출에서 참가비·교통비 같은 비용을 뺀 돈)이 0보다 컸던 행사의 비율이에요."
+              label="행사당 평균 매출"
+              value={stats.totalRevenue != null ? won(stats.totalRevenue / stats.revenueEntryCount) : "기록 없음"}
             >
-              {stats.profitableEvents ? (
-                <span className="text-[13px] text-neutral-500">
-                  {stats.profitableEvents.total}번 중 <span className="font-semibold text-neutral-800">{stats.profitableEvents.count}번</span> 이익이 남았어요
+              {trendDiff != null && Math.abs(trendDiff) >= 0.05 ? ( // 인사이트 문장과 같은 기준
+                <span className={`self-start rounded-full px-2.5 py-1 text-[13px] font-semibold ${trendDiff > 0 ? "bg-[#E0EFE8] text-[#2F5F4B]" : "bg-[#FFE4DE] text-[#BE3A2A]"}`}>
+                  최근 {trend!.recentCount}회 {trendDiff > 0 ? "▲" : "▼"} {Math.round(Math.abs(trendDiff) * 100)}%
                 </span>
+              ) : (
+                stats.revenueEntryCount > 0 && <span className="text-[13px] text-neutral-500">{stats.revenueEntryCount}회 평균</span>
+              )}
+            </ProfitCard>
+
+            <ProfitCard
+              label="행사당 평균 순이익"
+              value={stats.totalNetProfit != null ? won(stats.totalNetProfit / stats.netProfitEntryCount) : "기록 없음"}
+              tone={stats.totalNetProfit != null && stats.totalNetProfit < 0 ? "bad" : undefined}
+            >
+              {stats.totalNetProfit != null ? (
+                <span className="text-[13px] text-neutral-500">{stats.netProfitEntryCount}회 평균</span>
               ) : (
                 <span className="text-[13px] text-neutral-400">비용을 적으면 보여 드려요</span>
               )}
@@ -88,7 +101,6 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
               label="투자 대비 수익률"
               value={stats.returnOnCost ? `${Math.round(stats.returnOnCost.percent).toLocaleString()}%` : "기록 없음"}
               tone={stats.returnOnCost && stats.returnOnCost.percent < 0 ? "bad" : undefined}
-              info="쓴 비용(참가비·교통비·주차비·숙박비 등) 대비 남은 순이익의 비율이에요. 100%면 쓴 만큼 더 벌었다는 뜻이에요."
             >
               {stats.returnOnCost ? (
                 <CostVsProfit cost={stats.returnOnCost.totalCost} net={(stats.returnOnCost.percent / 100) * stats.returnOnCost.totalCost} />
@@ -100,7 +112,7 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
             <ProfitCard
               label="목표 매출 달성률"
               value={stats.targetAchievement ? `${Math.round(stats.targetAchievement.percent)}%` : "기록 없음"}
-              info="행사 전에 적은 목표 매출 대비 실제 매출이에요."
+              info={analytics ? planInfo(analytics.plan) : undefined}
             >
               {stats.targetAchievement ? (
                 <div>
@@ -121,16 +133,8 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
               ) : (
                 <span className="text-[13px] text-neutral-400">목표 매출 입력 시 표시</span>
               )}
+              {analytics && <PlanLine plan={analytics.plan} />}
             </ProfitCard>
-
-            {(() => {
-              const plan = analytics ? planCard(analytics.plan) : null;
-              return (
-                <ProfitCard label="예상 매출 정확도" value={plan?.value ?? "기록 없음"} info={analytics ? planInfo(analytics.plan) : undefined}>
-                  {plan?.line ?? <span className="text-[13px] text-neutral-400">참가 전에 예상 매출을 적으면 보여 드려요</span>}
-                </ProfitCard>
-              );
-            })()}
           </div>
         </Group>
 
