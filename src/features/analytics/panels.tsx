@@ -156,15 +156,15 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
           />
         ))}
         {/* 수염 */}
-        <div className="absolute top-1/2 h-0.5 -translate-y-1/2 rounded-full" style={{ left: x(min), width: `calc(${x(max)} - ${x(min)})`, background: BOX_LINE, opacity: 0.6 }} />
-        <div className="absolute top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(min), background: BOX_LINE }} />
-        <div className="absolute top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(max), background: BOX_LINE }} />
+        <div className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full" style={{ left: x(min), width: `calc(${x(max)} - ${x(min)})`, background: BOX_LINE, opacity: 0.7 }} />
+        <div className="absolute top-1/2 h-4 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(min), background: BOX_LINE }} />
+        <div className="absolute top-1/2 h-4 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(max), background: BOX_LINE }} />
         {/* 상자: 점이 비쳐 보이게 반투명 */}
         <div
-          className="absolute top-1/2 h-9 -translate-y-1/2 rounded-lg border-[1.5px] shadow-[0_6px_16px_rgba(36,104,74,0.15)]"
+          className="absolute top-1/2 h-9 -translate-y-1/2 rounded-lg border-[2.5px] shadow-[0_6px_16px_rgba(36,104,74,0.15)]"
           style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: "rgba(95,185,139,0.18)", borderColor: BOX_LINE }}
         />
-        <div className="absolute top-1/2 h-9 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(median), background: MEDIAN }} />
+        <div className="absolute top-1/2 h-9 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(median), background: MEDIAN }} />
         {/* 내 가게 */}
         <div className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" style={{ left: x(peer.mine), background: ME, boxShadow: "0 0 0 4px rgba(242,131,107,0.22)" }} />
       </div>
@@ -175,7 +175,7 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
       </div>
       <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6B6E74]">
         <li className="flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: DOT, opacity: 0.6 }} />같은 업종 가게</li>
-        <li className="flex items-center gap-1.5"><span className="h-3 w-[3px] rounded-full" style={{ background: MEDIAN }} />중앙값 {manwon(median)}</li>
+        <li className="flex items-center gap-1.5"><span className="h-3 w-1 rounded-full" style={{ background: MEDIAN }} />중앙값 {manwon(median)}</li>
         <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: ME }} />내 가게 {manwon(peer.mine)}</li>
       </ul>
     </div>
@@ -187,22 +187,14 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
 // ---------------------------------------------------------------------------
 
 /**
- * 이름표 겹침 정리: 오른쪽 절반의 점은 이름을 원 왼쪽에 둔다(긴 이름이 차트 밖으로 넘치지 않게).
- * 가로로 겹치는 이름표끼리 세로 간격이 좁으면 아래 것을 밀어 내린다.
+ * 이름표는 차트 오른쪽에 한 줄로 세운다. 원 높이 순서를 지키고, 간격이 좁으면 아래로 밀었다가
+ * 아래 끝을 넘으면 다시 위로 당긴다.
  */
-function placeLabels<T extends { p: { productName: string; sellThrough: number }; cx: number; cy: number; r: number }>(points: T[]) {
-  const GAP = 15;
-  const placed: (T & { ly: number; right: boolean; lx: number; x0: number; x1: number })[] = [];
-  for (const pt of [...points].sort((a, b) => a.cy - b.cy)) {
-    const right = pt.p.sellThrough > 0.6;
-    const width = (pt.p.productName.length + 4) * 7.5;
-    const lx = right ? pt.cx - pt.r - 6 : pt.cx + pt.r + 6;
-    const x0 = right ? lx - width : lx;
-    const x1 = right ? lx : lx + width;
-    let ly = pt.cy;
-    for (const q of placed) if (x0 < q.x1 && q.x0 < x1 && Math.abs(ly - q.ly) < GAP) ly = q.ly + GAP;
-    placed.push({ ...pt, ly, right, lx, x0, x1 });
-  }
+function stackLabels<T extends { cy: number }>(points: T[], top: number, bottom: number) {
+  const GAP = 20;
+  const placed = [...points].sort((a, b) => a.cy - b.cy).map((pt) => ({ ...pt, ly: pt.cy }));
+  placed.forEach((pt, i) => { pt.ly = Math.max(pt.cy, top, i ? placed[i - 1].ly + GAP : top); });
+  for (let i = placed.length - 1; i >= 0; i--) placed[i].ly = Math.min(placed[i].ly, i === placed.length - 1 ? bottom : placed[i + 1].ly - GAP);
   return placed;
 }
 
@@ -231,7 +223,9 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
       </Panel>
     );
   }
-  const W = 560, H = 270, PAD = { l: 44, r: 28, t: 30, b: 34 };
+  const W = 600, H = 270, PAD = { l: 44, r: 150, t: 30, b: 34 };
+  const plotRight = W - PAD.r;
+  const labelX = plotRight + 34;
   const shareTop = Math.min(1, Math.ceil(Math.max(...portfolio.map((p) => p.share)) * 1.3 * 10) / 10);
   const sx = (v: number) => PAD.l + v * (W - PAD.l - PAD.r);
   const sy = (v: number) => H - PAD.b - (v / shareTop) * (H - PAD.t - PAD.b);
@@ -244,7 +238,7 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
     return highs === 2 ? TIER.good : highs === 1 ? TIER.mid : TIER.low;
   };
   const star = portfolio.find((p) => tier(p) === TIER.good);
-  const points = placeLabels(portfolio.map((p) => ({ p, cx: sx(p.sellThrough), cy: sy(p.share), r: rOf(p.revenue) })));
+  const points = stackLabels(portfolio.map((p) => ({ p, cx: sx(p.sellThrough), cy: sy(p.share), r: rOf(p.revenue) })), PAD.t, H - PAD.b);
   return (
     <Panel title="상품 포트폴리오" info={info}>
       {star && (
@@ -255,7 +249,7 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
       <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full overflow-visible" role="img" aria-label="상품별 판매율과 매출 비중">
         {[0, shareTop / 2, shareTop].map((t) => (
           <g key={t}>
-            <line x1={PAD.l} x2={W - PAD.r} y1={sy(t)} y2={sy(t)} stroke="#EEF1F5" />
+            <line x1={PAD.l} x2={plotRight} y1={sy(t)} y2={sy(t)} stroke="#EEF1F5" />
             <text x={PAD.l - 8} y={sy(t) + 4} textAnchor="end" fontSize="11" fill="#9A9DB0">{Math.round(t * 100)}%</text>
           </g>
         ))}
@@ -263,9 +257,9 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
           <text key={t} x={sx(t)} y={H - 12} textAnchor="middle" fontSize="11" fill="#9A9DB0">{Math.round(t * 100)}%</text>
         ))}
         <text x={PAD.l} y={14} fontSize="11" fill="#9A9DB0">매출 비중</text>
-        <text x={W - PAD.r} y={H - 12} textAnchor="end" fontSize="11" fill="#9A9DB0">판매율</text>
+        <text x={plotRight} y={H - 12} textAnchor="end" fontSize="11" fill="#9A9DB0">판매율</text>
         <line x1={sx(avgSell)} x2={sx(avgSell)} y1={PAD.t} y2={H - PAD.b} stroke="#D5D9E3" strokeDasharray="4 4" />
-        <line x1={PAD.l} x2={W - PAD.r} y1={sy(avgShare)} y2={sy(avgShare)} stroke="#D5D9E3" strokeDasharray="4 4" />
+        <line x1={PAD.l} x2={plotRight} y1={sy(avgShare)} y2={sy(avgShare)} stroke="#D5D9E3" strokeDasharray="4 4" />
         {[...points].sort((a, b) => b.r - a.r).map(({ p, cx, cy, r }) => {
           const c = tier(p).color;
           return (
@@ -275,11 +269,23 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
             </g>
           );
         })}
-        {points.map(({ p, ly, right, lx }) => (
-          <text key={`t-${p.productName}`} x={lx} y={ly + 4} textAnchor={right ? "end" : "start"} fontSize="12" fontWeight={600} fill="#1F2023">
-            {p.productName} <tspan fontWeight={400} fill="#8A8D93">{Math.round(p.share * 100)}%</tspan>
-          </text>
-        ))}
+        {points.map(({ p, cx, cy, r, ly }) => {
+          // 원 테두리에서 이름표 쪽으로 나가는 지시선
+          const elbowX = plotRight + 14;
+          const a = Math.atan2(ly - cy, elbowX - cx);
+          return (
+            <g key={`t-${p.productName}`}>
+              <polyline
+                points={`${cx + r * Math.cos(a)},${cy + r * Math.sin(a)} ${elbowX},${ly} ${labelX - 6},${ly}`}
+                fill="none" stroke="#B8BDC8" strokeWidth={1}
+              />
+              <circle cx={labelX - 6} cy={ly} r={2.5} fill={tier(p).color} />
+              <text x={labelX} y={ly + 4} fontSize="12" fontWeight={600} fill="#1F2023">
+                {p.productName} <tspan fontWeight={400} fill="#8A8D93">{Math.round(p.share * 100)}%</tspan>
+              </text>
+            </g>
+          );
+        })}
       </svg>
       <ul className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[#6B6E74]">
         {Object.values(TIER).map((t) => (
