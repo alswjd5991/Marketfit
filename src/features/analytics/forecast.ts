@@ -154,16 +154,20 @@ export function predict(model: ForecastModel, storeId: string, e: EventFeatures,
   };
 }
 
+/** 예측분포에서 매출이 value보다 낮을 확률(보정 분포가 있으면 그 경험적 누적확률). */
+export function probabilityBelow(p: { mu: number; sd: number; df: number }, value: number, calibration?: Calibration): number {
+  const t = (Math.log(value) - p.mu) / p.sd;
+  if (!calibration) return tCdf(t, p.df);
+  return (calibration.filter((z) => z <= t).length + 1) / (calibration.length + 2);
+}
+
 /**
  * 적자 확률 P(매출·(1−원가율) < 고정비). 고정비 ≤ 0이면 0.
  * calibration이 있으면 예측 오차의 실제 분포(경험적 누적분포, 양 끝을 0·1로 단정하지 않도록 (k+1)/(n+2))로 계산한다.
  */
 export function lossProbability(p: { mu: number; sd: number; df: number }, fixedCost: number, cogsRate: number, calibration?: Calibration): number {
   if (fixedCost <= 0) return 0;
-  const t = (Math.log(fixedCost / (1 - cogsRate)) - p.mu) / p.sd;
-  if (!calibration) return tCdf(t, p.df);
-  const below = calibration.filter((z) => z <= t).length;
-  return (below + 1) / (calibration.length + 2);
+  return probabilityBelow(p, fixedCost / (1 - cogsRate), calibration);
 }
 
 export interface ForecastValidation {

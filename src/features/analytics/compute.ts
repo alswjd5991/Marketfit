@@ -8,21 +8,26 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import { getCategoryGroup } from "@/features/events/category-group";
 import { koreaDate } from "@/features/ai/event-search";
 import { analyzeFactors, type FactorAnalysis } from "./factors";
-import { fitForecastModel, lossProbability, predict, validateForecast, type ForecastValidation, type Prediction } from "./forecast";
+import { fitForecastModel, lossProbability, predict, probabilityBelow, validateForecast, type ForecastValidation, type Prediction } from "./forecast";
 import { peerRank, type PeerRank } from "./peer";
 import { planAccuracy, type PlanAccuracy } from "./plan";
-import { includesWeekend, type AttendedRecord } from "./records";
-import type { FactorEffect } from "./factors";
+import type { AttendedRecord } from "./records";
 import { diagnoseStock, isPerishable, leftoverLoss, type StockDiagnosis } from "./stock";
 
 /** 합성 테스트 셀러 이메일 도메인(scripts/synthetic-users.config.ts의 EMAIL_DOMAIN과 같음) */
 const SYNTHETIC_DOMAIN = "@synthetic.marketfit.test";
 const UPCOMING_LIMIT = 5;
+const RECOMMEND_LIMIT = 5;
+const RECOMMEND_DAYS = 90;
 
 export interface ForecastItem {
   eventName: string;
   startDate: string;
+  group: string;
+  region: string | null;
   prediction: Prediction;
+  /** 적합도(0~100) = 이 행사에서 내 평소 매출(지난 행사 매출의 중앙값)보다 더 팔 확률 × 100 */
+  score: number | null;
   /** 적자 확률(0~1). 참가비를 모르면 null */
   lossProbability: number | null;
   /** 손익분기 매출 = 고정비 ÷ (1 − 원가율) */
@@ -34,11 +39,30 @@ export interface DashboardAnalytics {
   data: { records: number; stores: number; syntheticRecords: number };
   factors: FactorAnalysis;
   forecast:
-    | { status: "ok"; validation: ForecastValidation; items: ForecastItem[] }
+    | {
+        status: "ok"; validation: ForecastValidation;
+        /** 내 평소 매출(지난 행사 매출 중앙값) — 적합도 기준 */
+        myMedian: number;
+        /** 내가 관심·참가 예정으로 담은 다가올 행사 */
+        items: ForecastItem[];
+        /** 아직 담지 않은 다가올 행사 중 적합도가 높은 행사(활동 지역이 있으면 그 지역만) */
+        recommended: ForecastItem[];
+        region: string | null;
+      }
     | { status: "hidden"; reason: string };
+  /** 상품 포트폴리오: 상품별 판매율·매출 비중(내 기록) */
+  portfolio: PortfolioItem[];
   stock: { perishable: boolean; lossRate: number; category: string; items: StockDiagnosis[] };
   plan: PlanAccuracy;
   peer: PeerRank;
+}
+
+export interface PortfolioItem {
+  productName: string;
+  revenue: number;
+  share: number; // 상품 매출 비중
+  sellThrough: number; // 판매 수 ÷ 준비 수
+  events: number;
 }
 
 export type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
@@ -61,8 +85,8 @@ export async function loadPooled(db: Admin) {
     readAll((a, b) => db.from("event_participations")
       .select("id, store_id, event_id, status, total_revenue, expected_revenue, fee, weather, indoor_outdoor, transport_cost, parking_cost, lodging_cost, other_cost")
       .order("id").range(a, b)),
-    readAll((a, b) => db.from("events").select("id, name, category, start_date, end_date, event_recruitments(fee)").order("id").range(a, b)),
-    readAll((a, b) => db.from("stores").select("id, category, owner_id").order("id").range(a, b)),
+    readAll((a, b) => db.from("events").select("id, name, category, region, start_date, end_date, event_recruitments(fee)").order("id").range(a, b)),
+    readAll((a, b) => db.from("stores").select("id, category, owner_id, active_region").order("id").range(a, b)),
     readAll((a, b) => db.from("profiles").select("id, email").order("id").range(a, b)),
   ]);
   return { participations, events: events as unknown as EventRow[], stores, profiles };
@@ -72,6 +96,7 @@ interface EventRow {
   id: string;
   name: string;
   category: string | null;
+  region: string | null;
   start_date: string | null;
   end_date: string | null;
   event_recruitments: { fee: number | null }[] | null;
@@ -106,13 +131,8 @@ export async function computeAnalytics(db: Admin, storeId: string, pooled?: Pool
       weather: p.weather, indoorOutdoor: p.indoor_outdoor,
     });
   }
-  const pooled_ = pooledModels(records);
-  const { model, validation } = pooled_;
-  // 조건별 효과는 모든 셀러 기록으로 추정한 공통 경향이다. 가게마다 "내 기록에서는 어땠나"를 단순 평균으로 덧붙인다.
-  const myRecords = records.filter((r) => r.storeId === storeId);
-  const factors = pooled_.factors.status === "ok"
-    ? { ...pooled_.factors, effects: pooled_.factors.effects.map((e) => ({ ...e, mine: ownComparison(myRecords, e) })) }
-    : pooled_.factors;
+  const { factors, model, validation } = pooledModels(records);
+  const myRevenues = records.filter((r) => r.storeId === storeId).map((r) => r.revenue).sort((a, b) => a - b);
 
   const mine = participations.filter((p) => p.store_id === storeId);
   const myAttended = mine.filter((p) => p.status === "attended" && p.total_revenue != null);
@@ -143,30 +163,38 @@ export async function computeAnalytics(db: Admin, storeId: string, pooled?: Pool
   else if (!validation.calibrated) {
     forecast = { status: "hidden", reason: `교차검증에서 80% 예측구간 적중률이 ${Math.round(validation.coverage * 100)}%로 80%와 유의하게 달라 표시하지 않음` };
   } else {
-    const upcoming = mine
+    const myMedian = myRevenues[Math.floor(myRevenues.length / 2)] ?? 0;
+    const rate = cogsRate ?? 0;
+    const evaluate = (e: EventRow, fee: number | null): ForecastItem => {
+      const group = getCategoryGroup(e.category, e.name);
+      const prediction = predict(model, storeId, { startDate: e.start_date!, endDate: e.end_date, group }, validation.calibration);
+      const fixed = fee == null ? null : Number(fee) + avgExtra;
+      return {
+        eventName: e.name, startDate: e.start_date!, group, region: e.region, prediction,
+        score: prediction.ok && myMedian > 0 ? Math.round(100 * (1 - probabilityBelow(prediction, myMedian, validation.calibration))) : null,
+        lossProbability: prediction.ok && fixed != null ? lossProbability(prediction, fixed, rate, validation.calibration) : null,
+        breakEven: fixed != null ? fixed / (1 - rate) : null,
+        costNote: fee == null ? "참가비 정보 없음" : cogsRate == null ? "상품 원가 미입력 — 재료비 제외 기준" : null,
+      };
+    };
+    const myEventIds = new Set(mine.map((p) => p.event_id));
+    const items = mine
       .filter((p) => p.status !== "attended" && p.status !== "cancelled")
       .map((p) => ({ p, e: eventById.get(p.event_id) }))
       .filter(({ e }) => e?.start_date && e.start_date >= today)
       .sort((a, b) => a.e!.start_date!.localeCompare(b.e!.start_date!))
-      .slice(0, UPCOMING_LIMIT);
-    forecast = {
-      status: "ok",
-      validation,
-      items: upcoming.map(({ p, e }) => {
-        const prediction = predict(model, storeId, { startDate: e!.start_date!, endDate: e!.end_date, group: getCategoryGroup(e!.category, e!.name) }, validation.calibration);
-        const fee = p.fee ?? e!.event_recruitments?.[0]?.fee ?? null;
-        const fixed = fee == null ? null : Number(fee) + avgExtra;
-        const rate = cogsRate ?? 0;
-        return {
-          eventName: e!.name,
-          startDate: e!.start_date!,
-          prediction,
-          lossProbability: prediction.ok && fixed != null ? lossProbability(prediction, fixed, rate, validation.calibration) : null,
-          breakEven: fixed != null ? fixed / (1 - rate) : null,
-          costNote: fee == null ? "참가비 정보 없음" : cogsRate == null ? "상품 원가 미입력 — 재료비 제외 기준" : null,
-        };
-      }),
-    };
+      .slice(0, UPCOMING_LIMIT)
+      .map(({ p, e }) => evaluate(e!, p.fee ?? e!.event_recruitments?.[0]?.fee ?? null));
+    // 추천: 아직 담지 않은, 앞으로 90일 안에 열리는 행사(활동 지역이 있으면 그 지역) 중 적합도 높은 순
+    const region = storeById.get(storeId)?.active_region ?? null;
+    const horizon = new Date(Date.parse(`${today}T00:00:00Z`) + RECOMMEND_DAYS * 86_400_000).toISOString().slice(0, 10);
+    const recommended = events
+      .filter((e) => e.start_date && e.start_date >= today && e.start_date <= horizon && !myEventIds.has(e.id) && (!region || e.region === region))
+      .map((e) => evaluate(e, e.event_recruitments?.[0]?.fee ?? null))
+      .filter((it) => it.score != null)
+      .sort((a, b) => b.score! - a.score! || a.startDate.localeCompare(b.startDate))
+      .slice(0, RECOMMEND_LIMIT);
+    forecast = { status: "ok", validation, myMedian, items, recommended, region };
   }
 
   // ⑤ 준비 수량
@@ -177,6 +205,23 @@ export async function computeAnalytics(db: Admin, storeId: string, pooled?: Pool
     items: diagnoseStock(saleRows.map((s) => ({ productName: s.product_name, prepared: s.prepared, sold: s.sold, price: Number(s.price), cost: s.cost })), leftoverLoss(myCategory)),
   };
 
+
+  // 상품 포트폴리오(내 기록): 상품별 매출 비중과 판매율
+  const byProduct = new Map<string, { revenue: number; sold: number; prepared: number; events: number }>();
+  for (const r of saleRows) {
+    const p = byProduct.get(r.product_name) ?? { revenue: 0, sold: 0, prepared: 0, events: 0 };
+    p.revenue += r.sold * Number(r.price);
+    p.sold += Math.min(r.sold, r.prepared);
+    p.prepared += r.prepared;
+    p.events += 1;
+    byProduct.set(r.product_name, p);
+  }
+  const productRevenue = [...byProduct.values()].reduce((a, p) => a + p.revenue, 0);
+  const portfolio: PortfolioItem[] = productRevenue > 0
+    ? [...byProduct].filter(([, p]) => p.prepared > 0).map(([productName, p]) => ({
+        productName, revenue: p.revenue, share: p.revenue / productRevenue, sellThrough: p.sold / p.prepared, events: p.events,
+      })).sort((a, b) => b.revenue - a.revenue)
+    : [];
 
   // ⑦ 계획 정확도
   const plan = planAccuracy(myAttended.filter((p) => p.expected_revenue != null).map((p) => ({ expected: Number(p.expected_revenue), actual: Number(p.total_revenue) })));
@@ -192,23 +237,6 @@ export async function computeAnalytics(db: Admin, storeId: string, pooled?: Pool
       stores: revenuesByStore.size,
       syntheticRecords: records.filter((r) => syntheticOwners.has(storeById.get(r.storeId)?.owner_id ?? "")).length,
     },
-    factors, forecast, stock, plan, peer,
+    factors, forecast, portfolio, stock, plan, peer,
   };
-}
-
-/** 내 기록에서 그 조건이 있었을 때와 비교 기준일 때의 평균 매출(양쪽 2번 이상일 때만). */
-function ownComparison(mine: AttendedRecord[], e: FactorEffect): FactorEffect["mine"] {
-  const [kind, level] = e.key.split(":");
-  const side = (r: AttendedRecord): boolean | null => {
-    if (kind === "weather") return r.weather === level ? true : r.weather === "맑음" ? false : null;
-    if (kind === "outdoor") return r.indoorOutdoor === "실외" ? true : r.indoorOutdoor === "실내" ? false : null;
-    if (kind === "weekend") return includesWeekend(r.startDate, r.endDate);
-    if (kind === "group") return r.group === level ? true : r.group === e.reference ? false : null;
-    return null;
-  };
-  const withR = mine.filter((r) => side(r) === true).map((r) => r.revenue);
-  const withoutR = mine.filter((r) => side(r) === false).map((r) => r.revenue);
-  if (withR.length < 2 || withoutR.length < 2) return null;
-  const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
-  return { withAvg: avg(withR), withN: withR.length, withoutAvg: avg(withoutR), withoutN: withoutR.length };
 }

@@ -62,7 +62,7 @@ export function EventRevenueChart({
             value: e.revenue,
             title: e.eventName,
             meta: e.startDate,
-            sublabel: [e.netProfit != null ? `순이익 ${e.netProfit.toLocaleString()}원` : null, e.group].filter(Boolean).join(" · "),
+            sublabel: e.netProfit != null ? `순이익 ${e.netProfit.toLocaleString()}원` : undefined,
           }))}
         />
       )}

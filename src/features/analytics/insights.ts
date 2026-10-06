@@ -13,11 +13,8 @@ export function analyticsInsights(a: DashboardAnalytics): string[] {
     if (next && next.prediction.ok) {
       out.push(`**${next.eventName}**에서 **${manwon(next.prediction.median)}**쯤 팔 것 같아요 (보통 ${manwon(next.prediction.low)}~${manwon(next.prediction.high)})`);
     }
-  }
-
-  if (a.factors.status === "ok") {
-    const top = a.factors.effects.filter((e) => e.significant).sort((x, y) => Math.abs(Math.log(1 + y.pct)) - Math.abs(Math.log(1 + x.pct))).slice(0, 2);
-    for (const e of top) out.push(`**${e.label}**엔 ${e.reference}보다 **${p100(e.pct)}% ${e.pct < 0 ? "덜" : "더"}** 팔렸어요`);
+    const best = a.forecast.recommended[0];
+    if (best?.score != null) out.push(`아직 담지 않은 행사 중 **${best.eventName}**의 적합도가 가장 높아요 (**${best.score}점**)`);
   }
 
   for (const s of a.stock.items.filter((i) => i.verdict === "under" || i.verdict === "over").slice(0, 2)) {

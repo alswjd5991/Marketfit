@@ -10,7 +10,13 @@ export interface StoreRevenueSummary {
 }
 
 export type PeerRank =
-  | { status: "ok"; peers: number; category: string; /** 내 평균보다 낮은 가게 비율 */ below: number }
+  | {
+      status: "ok"; peers: number; category: string;
+      /** 내 평균보다 낮은 가게 비율 */ below: number;
+      /** 내 행사당 평균 매출 */ mine: number;
+      /** 비교 가게들의 행사당 평균 매출 분포 — 개별 가게가 드러나지 않게 10·25·50·75·90 백분위만 */
+      dist: { p10: number; q1: number; median: number; q3: number; p90: number };
+    }
   | { status: "insufficient"; reason: string };
 
 export function peerRank(stores: StoreRevenueSummary[], storeId: string): PeerRank {
@@ -21,5 +27,13 @@ export function peerRank(stores: StoreRevenueSummary[], storeId: string): PeerRa
   const peers = stores.filter((s) => s.storeId !== storeId && s.category === mine.category && s.revenues.length >= R.minPeerRecords);
   if (peers.length < R.minPeers) return { status: "insufficient", reason: `비교할 ${mine.category} 가게 ${peers.length}곳(최소 ${R.minPeers}곳 필요)` };
   const my = mean(mine.revenues);
-  return { status: "ok", peers: peers.length, category: mine.category, below: peers.filter((p) => mean(p.revenues) < my).length / peers.length };
+  const means = peers.map((p) => mean(p.revenues)).sort((a, b) => a - b);
+  const q = (p: number) => {
+    const h = (means.length - 1) * p;
+    return means[Math.floor(h)] + (h - Math.floor(h)) * ((means[Math.ceil(h)] ?? means[Math.floor(h)]) - means[Math.floor(h)]);
+  };
+  return {
+    status: "ok", peers: peers.length, category: mine.category, below: means.filter((m) => m < my).length / peers.length, mine: my,
+    dist: { p10: q(0.1), q1: q(0.25), median: q(0.5), q3: q(0.75), p90: q(0.9) },
+  };
 }

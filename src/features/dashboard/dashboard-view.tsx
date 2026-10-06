@@ -8,18 +8,16 @@ import { RecentPerformance } from "./recent-performance";
 import { Empty, Group, Panel } from "./panel";
 import type { DashboardAnalytics } from "@/features/analytics/data";
 import { analyticsInsights } from "@/features/analytics/insights";
-import { ForecastAndFactors, MethodsNote, PeerLine, PlanLine, StockPanel } from "@/features/analytics/panels";
+import { EventFitPanel, PeerPanel, PlanLine, PortfolioPanel, StockPanel, methodsInfo, planInfo } from "@/features/analytics/panels";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const won = (n: number) => `${Math.round(n).toLocaleString()}원`;
 
 export function DashboardView({ stats, analytics }: { stats: DashboardStats; analytics: DashboardAnalytics | null }) {
   const trend = stats.revenueTrend;
   const trendDiff = trend ? (trend.recentAvg - trend.earlierAvg) / trend.earlierAvg : null;
-  // 통계 분석 결과가 있으면 같은 주제의 단순 평균 비교 문장은 빼고 분석 문장을 앞에 둔다.
-  const superseded = new Set([
-    ...(analytics?.factors.status === "ok" ? ["factors"] : []),
-    ...(analytics?.stock.items.length ? ["stock"] : []),
-  ]);
+  // 준비 수량 진단이 있으면 판매율 문장(단순 비교)은 빼고 진단 문장을 쓴다.
+  const superseded = new Set(analytics?.stock.items.length ? ["stock"] : []);
   const insights = [
     ...(analytics ? analyticsInsights(analytics) : []),
     ...stats.insights.filter((i) => !i.supersededBy || !superseded.has(i.supersededBy)).map((i) => i.text),
@@ -35,9 +33,10 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
           <section className="rounded-3xl border border-white/80 bg-[#FFF6EE] p-6 shadow-[0_12px_32px_rgba(40,80,120,0.08)] sm:p-7">
             <h2 className="flex items-center gap-2 text-sm font-bold text-brand-dark">
               <Lightbulb className="size-4" /> 한눈에 보기
-              {synthetic > 0 && (
-                <span className="ml-auto rounded-full bg-white/80 px-2.5 py-0.5 text-[11px] font-medium text-neutral-500">
-                  가상 셀러 데이터로 계산했어요
+              {analytics && (
+                <span className="ml-auto flex items-center gap-1.5">
+                  {synthetic > 0 && <span className="rounded-full bg-white/80 px-2.5 py-0.5 text-[11px] font-medium text-neutral-500">가상 셀러 데이터로 계산했어요</span>}
+                  <InfoTip label="분석 안내" align="right">{methodsInfo(analytics)}</InfoTip>
                 </span>
               )}
             </h2>
@@ -53,8 +52,8 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
         )}
 
         {analytics && (
-          <Group title="다가올 행사와 매출 경향" first>
-            <ForecastAndFactors analytics={analytics} />
+          <Group title="다가올 행사" first>
+            <EventFitPanel forecast={analytics.forecast} />
           </Group>
         )}
 
@@ -75,7 +74,6 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
               ) : (
                 stats.revenueEntryCount > 0 && <span className="text-[13px] text-neutral-500">{stats.revenueEntryCount}회 평균</span>
               )}
-              {analytics && <PeerLine peer={analytics.peer} />}
             </ProfitCard>
 
             <ProfitCard
@@ -98,14 +96,7 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
               tone={stats.returnOnCost && stats.returnOnCost.percent < 0 ? "bad" : undefined}
             >
               {stats.returnOnCost ? (
-                <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-neutral-500">
-                  비용 <span className="font-semibold tabular-nums text-neutral-800">{won(stats.returnOnCost.totalCost)}</span>
-                  <span className="text-neutral-300">→</span>
-                  순이익{" "}
-                  <span className="font-semibold tabular-nums text-neutral-800">
-                    {won((stats.returnOnCost.percent / 100) * stats.returnOnCost.totalCost)}
-                  </span>
-                </p>
+                <CostVsProfit cost={stats.returnOnCost.totalCost} net={(stats.returnOnCost.percent / 100) * stats.returnOnCost.totalCost} />
               ) : (
                 <span className="text-[13px] text-neutral-400">비용 입력 시 표시</span>
               )}
@@ -114,6 +105,7 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
             <ProfitCard
               label="목표 매출 달성률"
               value={stats.targetAchievement ? `${Math.round(stats.targetAchievement.percent)}%` : "기록 없음"}
+              info={analytics ? planInfo(analytics.plan) : undefined}
             >
               {stats.targetAchievement ? (
                 <div>
@@ -139,9 +131,18 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
           </div>
         </Group>
 
+        {analytics && (
+          <Group title="내 가게 분석">
+            <div className="grid gap-5 lg:grid-cols-2">
+              <PeerPanel peer={analytics.peer} />
+              <PortfolioPanel portfolio={analytics.portfolio} />
+            </div>
+          </Group>
+        )}
+
         <Group title="상품 판매">
-          <div className={analytics ? "grid gap-5 xl:grid-cols-2" : ""}>
-            {analytics && <StockPanel stock={analytics.stock} />}
+          {/* 판매 수량 추이(넓게) : 준비 수량(좁게) = 7 : 3 */}
+          <div className={analytics ? "grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
             <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"}>
               {stats.productSalesByEvent.series.length === 0 ? (
                 <Empty>상품별 판매 기록 없음</Empty>
@@ -149,10 +150,9 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
                 <ProductTrendChart title="품목별 판매 수량 추이" data={stats.productSalesByEvent} />
               )}
             </Panel>
+            {analytics && <StockPanel stock={analytics.stock} />}
           </div>
         </Group>
-
-        {analytics && <MethodsNote analytics={analytics} />}
       </div>
     </div>
   );
@@ -163,13 +163,27 @@ function bold(text: string): ReactNode[] {
   return text.split("**").map((part, i) => (i % 2 ? <strong key={i} className="font-bold text-neutral-950">{part}</strong> : part));
 }
 
-/** 수익성 카드: 큰 숫자 + 아래 보조 표시(추세 배지·비용 흐름·달성 막대). */
-function ProfitCard({ label, value, tone, children }: { label: string; value: string; tone?: "bad"; children?: ReactNode }) {
+/** 투자 대비 수익률 아래 줄: 비용이 순이익보다 크면 비용을 빨간색, 순이익이 더 크면 순이익을 파란색으로. */
+function CostVsProfit({ cost, net }: { cost: number; net: number }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/85 p-5 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm">
+    <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-neutral-500">
+      비용 <span className={`font-semibold tabular-nums ${cost > net ? "text-[#BE3A2A]" : "text-neutral-800"}`}>{won(cost)}</span>
+      <span className="text-neutral-300">→</span>
+      순이익 <span className={`font-semibold tabular-nums ${net >= cost ? "text-[#2F6FB8]" : "text-neutral-800"}`}>{won(net)}</span>
+    </p>
+  );
+}
+
+/** 수익성 카드: 큰 숫자 + 아래 보조 표시(추세 배지·비용 흐름·달성 막대). info를 주면 제목 옆 물음표에 설명. */
+function ProfitCard({ label, value, tone, info, children }: { label: string; value: string; tone?: "bad"; info?: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2.5 rounded-2xl border border-white/80 bg-white/85 px-5 py-4 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm sm:px-6">
       <div>
-        <p className="text-[14px] font-semibold text-neutral-500">{label}</p>
-        <p className={`mt-1.5 whitespace-nowrap text-[34px] font-extrabold leading-none tracking-[-0.03em] tabular-nums ${tone === "bad" ? "text-[#BE3A2A]" : "text-neutral-950"}`}>
+        <p className="flex items-center gap-1.5 text-sm font-medium text-neutral-500">
+          {label}
+          {info && <InfoTip label={`${label} 설명`}>{info}</InfoTip>}
+        </p>
+        <p className={`mt-1 whitespace-nowrap text-[30px] font-extrabold leading-tight tracking-tight tabular-nums ${tone === "bad" ? "text-[#BE3A2A]" : "text-neutral-950"}`}>
           {value}
         </p>
       </div>
