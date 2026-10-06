@@ -5,7 +5,8 @@ import posterManifest from "@/lib/data/event-poster-manifest.json";
 import { computeRecruitmentStatus, formatDday } from "./status";
 import { CATEGORY_GROUPS, getCategoryGroup, type CategoryGroup } from "./category-group";
 import type { RecruitmentStatus } from "@/types/database";
-import { AUTO_SOURCES, AUTO_SOURCE_FILTER, isNewlyListed, type AutoSourceDataset } from "./weekly-sync";
+import { AUTO_SOURCES, AUTO_SOURCE_FILTER, pickNewlyPosted, type AutoSourceDataset } from "./weekly-sync";
+import { koreaDate } from "@/features/ai/event-search";
 import type { EventDetails } from "@/types/database";
 
 export interface EventListItem {
@@ -31,10 +32,10 @@ export interface EventListItem {
    *  사진. 못 찾았거나 사이트 공용 로고뿐이었던 행사는 null — 화면에서는
    *  EventPoster(카테고리별 생성 그래픽)로 대체한다. poster-manifest.md 참고. */
   posterImage: string | null;
-  /** 이번 주 자동 업데이트에서 새로 등록된 행사 — 카드에 "NEW" 배지, 메인 "최근 등록 행사" */
+  /** 최근 등록된 행사(pickNewlyPosted) — 카드에 "NEW" 배지, 메인 "최근 등록 행사" */
   isNew: boolean;
-  /** 자동 수집 행사가 처음 수집된 시각(정렬용) */
-  collectedAt: string | null;
+  /** 출처에 처음 등록된 날(자동 수집 행사만) */
+  postedAt: string | null;
 }
 
 /** src/lib/data/event-poster-manifest.json에서 행사 id로 실제 포스터 이미지
@@ -74,8 +75,8 @@ function toListItem(e: SeedEvent): EventListItem {
     sourceUrl: e.sourceUrl,
     isSampleData: false, // 전부 실제 공개 자료 — 6번 섹션 참고
     posterImage: e.imageUrl ?? getPosterImage(e.id),
-    isNew: isNewlyListed(e.collectedAt, e.startDate),
-    collectedAt: e.collectedAt ?? null,
+    isNew: false, // getEvents에서 전체를 보고 정한다
+    postedAt: e.details?.postedAt ?? null,
   };
 }
 
@@ -152,6 +153,8 @@ export interface EventFilters {
 
 export async function getEvents(filters: EventFilters = {}): Promise<EventListItem[]> {
   let items = (await getAllEvents()).map(toListItem);
+  const fresh = pickNewlyPosted(items, koreaDate(new Date()));
+  items = items.map((e) => (fresh.has(e) ? { ...e, isNew: true } : e));
 
   if (filters.region) items = items.filter((e) => e.region === filters.region);
   if (filters.category) items = items.filter((e) => e.categoryGroup === filters.category);

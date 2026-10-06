@@ -56,19 +56,18 @@ export function isSellerEvent(name: string): boolean {
   return SELL_WORDS.test(name);
 }
 
-const NEW_BADGE_DAYS = 7;
+/** NEW·"최근 등록 행사": 아직 끝나지 않은 행사 중 출처에 최근 NEW_WINDOW_DAYS일 안에 등록된 행사를 최신순 NEW_COUNT개 */
+export const NEW_COUNT = 3;
+export const NEW_WINDOW_DAYS = 30;
 
-/**
- * "새로 등록된 행사"인지. 매주 월요일 수집은 "수집일 ~ 90일 뒤"에 열리는 행사를 모으므로, 평소라면 그 주에
- * 새로 잡히는 행사는 수집 범위 끝(83~90일 뒤)에 막 들어온 행사다. 처음 수집했을 때 한꺼번에 들어온 과거·근일
- * 행사까지 NEW로 보이지 않도록, 수집 후 7일 이내이면서 시작일이 그 주의 새 범위에 드는 행사만 NEW로 본다.
- */
-export function isNewlyListed(collectedAt: string | null | undefined, startDate: string | null, now = new Date()): boolean {
-  if (!collectedAt || !startDate) return false;
-  const collected = new Date(collectedAt);
-  if (now.getTime() - collected.getTime() >= NEW_BADGE_DAYS * 86_400_000) return false;
-  const day = (offset: number) => new Date(collected.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
-  return startDate > day(LOOKAHEAD_DAYS - NEW_BADGE_DAYS) && startDate <= day(LOOKAHEAD_DAYS);
+export function pickNewlyPosted<T extends { postedAt: string | null; endDate: string | null; startDate: string | null }>(events: T[], today: string): Set<T> {
+  const since = new Date(Date.parse(`${today}T00:00:00Z`) - NEW_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+  return new Set(
+    events
+      .filter((e) => e.postedAt && e.postedAt >= since && e.postedAt <= today && (e.endDate ?? e.startDate ?? "") >= today)
+      .sort((a, b) => b.postedAt!.localeCompare(a.postedAt!))
+      .slice(0, NEW_COUNT)
+  );
 }
 
 export type AutoSourceDataset = "tour" | "seoulfest" | "seoulcult";
@@ -94,6 +93,8 @@ export interface CollectedEvent {
   sourceUrl: string;
   /** 수집 응답에 상세 정보가 함께 오는 출처(서울시 문화행사 정보)는 여기에 담아 바로 저장한다 */
   details?: EventDetails;
+  /** 출처에 처음 등록된 날(TourAPI createdtime, 서울시 문화행사 RGSTDATE) */
+  postedAt?: string;
 }
 
 /** 자동 수집 행사의 source_post_id 조회 조건(PostgREST or 필터) */
@@ -161,6 +162,7 @@ export function parseTourItems(items: unknown[], from: string, to: string): Coll
       imageUrl: text(r.firstimage).replace(/^http:\/\//, "https://") || null, // http 이미지는 https 페이지에서 막힌다
       lat: coord(r.mapy),
       lng: coord(r.mapx),
+      postedAt: /^\d{8}/.test(text(r.createdtime)) ? toIso(text(r.createdtime).slice(0, 8)) : undefined,
       // 대한민국 구석구석 상세 주소는 contentid가 아닌 별도 id를 써서, 행사명 검색 결과로 연결한다(AI 도우미와 같은 방식).
       sourceUrl: `https://korean.visitkorea.or.kr/search/search_list.do?keyword=${encodeURIComponent(name)}`,
     });
@@ -294,6 +296,7 @@ export function parseSeoulCultureRows(rows: unknown[], from: string, to: string)
       lng,
       sourceUrl: text(r.HMPG_ADDR),
       details,
+      postedAt: isIsoDate(text(r.RGSTDATE).slice(0, 10)) ? text(r.RGSTDATE).slice(0, 10) : undefined,
     });
   }
   return out;
@@ -402,11 +405,11 @@ function eventRow(e: CollectedEvent) {
 }
 
 async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string, tourKey?: string) {
-  const existing = new Map<string, { id: string; event_id: string; hasDetails: boolean }>();
+  const existing = new Map<string, { id: string; event_id: string; details: EventDetails | null }>();
   const keys = events.map(sourceKey);
   // details 칸(0003_event_details.sql)이 아직 없으면 상세 정보 없이 기존처럼 저장한다.
   let detailsColumn = true;
-  type Found = { id: string; event_id: string; source_post_id: string | null; events?: { details: unknown } | null };
+  type Found = { id: string; event_id: string; source_post_id: string | null; events?: { details: EventDetails | null } | null };
   for (let i = 0; i < keys.length; i += 100) {
     const chunk = keys.slice(i, i + 100);
     const query = (cols: string) => supabase.from("event_recruitments").select(cols).in("source_post_id", chunk) as unknown as PromiseLike<{ data: Found[] | null; error: { message: string } | null }>;
@@ -417,18 +420,20 @@ async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string
     }
     if (res.error) throw new Error(`기존 행사 조회 실패: ${res.error.message}`);
     for (const r of res.data ?? []) {
-      if (r.source_post_id) existing.set(r.source_post_id, { id: r.id, event_id: r.event_id, hasDetails: Boolean(r.events?.details) });
+      if (r.source_post_id) existing.set(r.source_post_id, { id: r.id, event_id: r.event_id, details: r.events?.details ?? null });
     }
   }
 
   let created = 0, updated = 0, failed = 0, detailed = 0;
   /** 새 행사와 상세 정보가 비어 있는 행사만 상세 조회한다(API 하루 호출 한도를 아끼려고). */
-  const enrich = async (eventId: string, recruitmentId: string, e: CollectedEvent) => {
+  const enrich = async (eventId: string, recruitmentId: string, e: CollectedEvent, current: EventDetails | null) => {
     if (!detailsColumn) return;
-    if (!e.details && (!tourKey || e.sourceDataset !== "tour")) return;
     try {
-      const d = e.details ?? (await fetchTourDetails(tourKey!, e.sourceId));
-      if (!d || !Object.keys(d).length) return;
+      // 상세 정보: 응답에 함께 온 것 > 이미 저장된 것 > (TourAPI) 새로 조회. 등록일은 항상 최신 값으로 덧붙인다.
+      const fetched = e.details ?? current ?? (tourKey && e.sourceDataset === "tour" ? await fetchTourDetails(tourKey, e.sourceId) : null);
+      const d: EventDetails = { ...(fetched ?? {}), ...(e.postedAt ? { postedAt: e.postedAt } : {}) };
+      if (!Object.keys(d).length) return;
+      if (current && JSON.stringify(current) === JSON.stringify(d)) return; // 바뀐 게 없으면 쓰지 않음
       const [ev, rc] = await Promise.all([
         supabase.from("events").update({ details: d, description: d.overview ?? null }).eq("id", eventId),
         supabase.from("event_recruitments").update({ organizer: d.sponsor ?? null, official_site_url: d.homepage ?? null }).eq("id", recruitmentId),
@@ -449,7 +454,7 @@ async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string
       ]);
       if (ev.error || rc.error) failed++;
       else updated++;
-      if (!found.hasDetails) await enrich(found.event_id, found.id, e);
+      await enrich(found.event_id, found.id, e, found.details);
       return;
     }
     const { data: ev, error: evErr } = await supabase.from("events").insert(eventRow(e)).select("id").single();
@@ -473,7 +478,7 @@ async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string
     }
     created++;
     newEvents.push(e.name);
-    await enrich(ev.id, rc.id, e);
+    await enrich(ev.id, rc.id, e, null);
   };
 
   // Supabase 요청을 10개씩 병렬로 — 수백 건이어도 함수 제한 시간 안에 끝난다.

@@ -59,15 +59,14 @@ test("기간 수집은 한 달 단위로 나뉘고 빈틈·겹침이 없다", as
   assert.deepEqual(monthChunks("2024-12-31", "2025-01-01"), [["2024-12-31", "2024-12-31"], ["2025-01-01", "2025-01-01"]]);
 });
 
-test("NEW는 수집 후 7일 안이면서 그 주에 새로 수집 범위(83~90일 뒤)에 들어온 행사만", async () => {
-  const { isNewlyListed } = await import("./weekly-sync");
-  const collected = "2026-10-05T00:00:00Z";
-  const now = new Date("2026-10-07T00:00:00Z");
-  assert.equal(isNewlyListed(collected, "2027-01-01", now), true); // 88일 뒤
-  assert.equal(isNewlyListed(collected, "2026-10-20", now), false); // 처음 수집 때 한꺼번에 들어온 근일 행사
-  assert.equal(isNewlyListed(collected, "2025-05-01", now), false); // 과거 행사
-  assert.equal(isNewlyListed(collected, "2027-01-01", new Date("2026-10-13T00:00:00Z")), false); // 일주일 지남
-  assert.equal(isNewlyListed(null, "2027-01-01", now), false); // 직접 수집한 시드 행사
+test("NEW는 아직 끝나지 않은 행사 중 최근 30일 안에 등록된 행사를 최신순 3개까지", async () => {
+  const { pickNewlyPosted } = await import("./weekly-sync");
+  const ev = (postedAt: string | null, endDate: string) => ({ postedAt, endDate, startDate: endDate });
+  const today = "2026-10-07";
+  const list = [ev("2026-10-05", "2026-11-01"), ev("2026-10-01", "2026-12-01"), ev("2026-09-20", "2026-10-20"), ev("2026-09-30", "2026-10-30"),
+    ev("2026-10-06", "2026-10-01"), ev("2026-08-01", "2026-12-01"), ev(null, "2026-12-01")];
+  const picked = pickNewlyPosted(list, today);
+  assert.deepEqual([...picked].map((e) => e.postedAt), ["2026-10-05", "2026-10-01", "2026-09-30"]); // 끝난 행사·30일 지난 등록·등록일 없음 제외
 });
 
 test("TourAPI 상세 응답에서 HTML을 걷어내고 빈 항목은 저장하지 않는다", async () => {

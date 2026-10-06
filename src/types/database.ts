@@ -92,6 +92,7 @@ export type EventDetails = {
   tel?: string; // 문의처
   admission?: string; // 관람 요금
   homepage?: string; // 행사 홈페이지
+  postedAt?: string; // 출처에 행사가 처음 등록된 날(YYYY-MM-DD) — "최근 등록 행사"·NEW 기준
 };
 
 export type EventRecruitment = {
