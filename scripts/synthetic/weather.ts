@@ -36,7 +36,9 @@ async function fetchYear(key: string, station: number, year: number, yesterday: 
   const file = path.join(CACHE, `asos-${station}-${year}.json`);
   if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8"));
   const start = `${year}0101`;
-  const endIso = `${year}-12-31` < yesterday ? `${year}-12-31` : yesterday;
+  // 전날 자료는 다음 날 오전에야 올라오는 경우가 있어, 올해는 이틀 전까지만 요청한다.
+  const twoDaysAgo = new Date(Date.parse(`${yesterday}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+  const endIso = `${year}-12-31` < yesterday ? `${year}-12-31` : twoDaysAgo;
   const serviceKey = key.includes("%") ? key : encodeURIComponent(key);
   const params = new URLSearchParams({ pageNo: "1", numOfRows: "999", dataType: "JSON", dataCd: "ASOS", dateCd: "DAY", startDt: start, endDt: endIso.replaceAll("-", ""), stnIds: String(station) });
   const res = await fetch(`${API}?serviceKey=${serviceKey}&${params}`, { signal: AbortSignal.timeout(20000) });
@@ -59,15 +61,24 @@ export async function loadWeather(key: string | undefined, regions: string[], ye
   if (!key) return null;
   const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
   const table = new Map<number, Record<string, Weather>>();
-  try {
-    for (const station of new Set(regions.map((r) => REGION_STATION[r]).filter(Boolean))) {
-      const merged: Record<string, Weather> = {};
-      for (const y of years) Object.assign(merged, await fetchYear(key, station, y, yesterday));
-      table.set(station, merged);
+  const failures: string[] = [];
+  let days = 0;
+  // 관측소·연도 하나가 실패해도 나머지는 쓴다(그 행사들만 [가정] 분포로 대체).
+  for (const station of new Set(regions.map((r) => REGION_STATION[r]).filter(Boolean))) {
+    const merged: Record<string, Weather> = {};
+    for (const y of years) {
+      try {
+        const got = await fetchYear(key, station, y, yesterday);
+        Object.assign(merged, got);
+        days += Object.keys(got).length;
+      } catch (err) {
+        failures.push(`${station}번 관측소 ${y}년(${err instanceof Error ? err.message : err})`);
+      }
     }
-  } catch (err) {
-    console.warn(`기상청 ASOS 조회 실패 — [가정] 날씨 분포로 대체합니다: ${err instanceof Error ? err.message : err}`);
-    return null;
+    table.set(station, merged);
   }
+  if (failures.length) console.warn(`기상청 ASOS 일부 실패 — 해당 행사만 [가정] 분포로 대체:\n  ${failures.join("\n  ")}`);
+  if (!days) return null;
+  console.log(`기상청 ASOS 실측 ${days}일치 사용`);
   return (region, date) => (region && REGION_STATION[region] ? table.get(REGION_STATION[region])?.[date] ?? null : null);
 }
