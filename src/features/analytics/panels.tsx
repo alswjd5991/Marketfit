@@ -214,14 +214,14 @@ const TIER = {
 } as const;
 
 /**
- * 상품 포트폴리오 — 바깥 원은 준비한 만큼 다 팔았을 때의 매출, 안쪽 원은 실제 매출(안쪽이 바깥을 채운 정도 = 판매율).
- * 위치는 판매율(가로)과 매출 비중(세로), 색은 두 값이 내 상품 평균보다 높은지에 따라 3단계.
+ * 상품 포트폴리오 — 원 하나가 상품 하나(크기 = 매출). 위치는 판매율(가로)과 매출 비중(세로),
+ * 색은 두 값이 내 상품 평균보다 높은지에 따라 3단계(반투명).
  */
 export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["portfolio"] }) {
   const info = (
     <>
       <Tip>가로는 판매율(준비한 수량 중 팔린 비율), 세로는 상품 매출에서 차지하는 비중이에요. 점선은 내 상품들의 평균이에요.</Tip>
-      <Tip>바깥 원은 준비한 만큼 다 팔았을 때의 매출, 안쪽 원은 실제 매출이에요. 안쪽 원이 바깥 원을 많이 채울수록 많이 팔린 거예요.</Tip>
+      <Tip>원이 클수록 매출이 커요.</Tip>
     </>
   );
   if (portfolio.length < 2) {
@@ -237,14 +237,14 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
   const sy = (v: number) => H - PAD.b - (v / shareTop) * (H - PAD.t - PAD.b);
   const avgSell = portfolio.reduce((a, p) => a + p.sellThrough * p.revenue, 0) / portfolio.reduce((a, p) => a + p.revenue, 0);
   const avgShare = 1 / portfolio.length;
-  const maxPotential = Math.max(...portfolio.map((p) => p.potential));
-  const rOf = (v: number) => 8 + 34 * Math.sqrt(v / maxPotential); // 같은 척도라 안쪽 원은 항상 바깥 원 안에
+  const maxRevenue = Math.max(...portfolio.map((p) => p.revenue));
+  const rOf = (v: number) => 10 + 30 * Math.sqrt(v / maxRevenue);
   const tier = (p: (typeof portfolio)[number]) => {
     const highs = Number(p.sellThrough >= avgSell) + Number(p.share >= avgShare);
     return highs === 2 ? TIER.good : highs === 1 ? TIER.mid : TIER.low;
   };
   const star = portfolio.find((p) => tier(p) === TIER.good);
-  const points = placeLabels(portfolio.map((p) => ({ p, cx: sx(p.sellThrough), cy: sy(p.share), r: rOf(p.potential) })));
+  const points = placeLabels(portfolio.map((p) => ({ p, cx: sx(p.sellThrough), cy: sy(p.share), r: rOf(p.revenue) })));
   return (
     <Panel title="상품 포트폴리오" info={info}>
       {star && (
@@ -271,8 +271,7 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
           return (
             <g key={`c-${p.productName}`}>
               <title>{`${p.productName} · 판매율 ${Math.round(p.sellThrough * 100)}% · 매출 비중 ${Math.round(p.share * 100)}%`}</title>
-              <circle cx={cx} cy={cy} r={r} fill={c} fillOpacity={0.12} stroke={c} strokeOpacity={0.45} strokeWidth={1.5} />
-              <circle cx={cx} cy={cy} r={rOf(p.revenue)} fill={c} fillOpacity={0.72} stroke="white" strokeWidth={1.5} />
+              <circle cx={cx} cy={cy} r={r} fill={c} fillOpacity={0.55} stroke="white" strokeWidth={1.5} />
             </g>
           );
         })}
@@ -284,12 +283,8 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
       </svg>
       <ul className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[#6B6E74]">
         {Object.values(TIER).map((t) => (
-          <li key={t.label} className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: t.color, opacity: 0.8 }} />{t.label}</li>
+          <li key={t.label} className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: t.color, opacity: 0.55 }} />{t.label}</li>
         ))}
-        <li className="flex items-center gap-1.5">
-          <svg viewBox="0 0 16 16" className="size-4" aria-hidden><circle cx="8" cy="8" r="7" fill="#9A9DB0" fillOpacity={0.12} stroke="#9A9DB0" strokeOpacity={0.5} /><circle cx="8" cy="8" r="3.5" fill="#9A9DB0" /></svg>
-          바깥 원 준비량 · 안쪽 원 실제 매출
-        </li>
       </ul>
     </Panel>
   );
