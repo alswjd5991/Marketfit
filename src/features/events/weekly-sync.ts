@@ -28,8 +28,31 @@ const SEOUL_SEARCH = "https://festival.seoul.go.kr/festival/main/searchModal.do"
 /** 매주 이만큼 앞의 행사까지 모은다 — 셀러가 모집 공고를 찾아 신청할 여유. */
 export const LOOKAHEAD_DAYS = 90;
 
-/** 셀러 부스가 들어갈 수 있는 행사인지(행사명 기준). 공연·불꽃놀이·전시 관람형 축제는 제외된다. */
-export const SELLER_EVENT = /마켓|장터|야시장|야행|벼룩|플리|페어|박람회|먹거리|푸드|특산|직거래|공예|크리스마스|김장|로컬/;
+/**
+ * 셀러가 판매 부스를 낼 수 있는 행사인지(행사명 기준). 위에서부터 먼저 맞는 규칙을 따른다.
+ *   1) "부스·입점·참가업체·판매·셀러"처럼 판매 자리를 직접 뜻하는 말 → 포함
+ *   2) 셀러가 물건을 팔 수 없는 행사 → 제외: 공연·콘텐츠 거래 마켓(공연예술마켓 등), 투어·관람, 공연·대회,
+ *      영화제·불꽃축제, 채용·진로·귀농귀촌, 갤러리 중심 아트페어, 공공예술·비엔날레·전시회
+ *   3) 박람회·페어·엑스포·대전 + 식품·공예·리빙·상품 같은 판매 품목 → 포함(회의가 함께 열려도)
+ *   4) 회의·포럼·세미나 → 제외
+ *   5) 마켓·장터·야시장·밤장·벼룩·직거래·특산물·먹거리·푸드트럭·공예 등 판매형 행사 → 포함
+ *      ('공예'는 '공공예술'의 일부로 잘못 잡히지 않게 앞 글자가 '공'이면 제외)
+ * 규칙은 사람이 직접 모은 셀러 모집 공고(시드 73건)와 실제 수집된 행사명으로 점검했다(weekly-sync.test.ts).
+ */
+const BOOTH_WORDS = /부스|입점|참가\s*업체|판매자|셀러|판매/;
+const NOT_SELLING = /공연\s*예술|공연\s*마켓|뮤직\s*마켓|음악\s*마켓|콘텐츠\s*마켓|방송\s*마켓|필름\s*마켓|영화|게임|스타트업|투자|창업\s*경진|채용|취업|일자리|입시|유학|진로|공모전|경연|콘서트|음악회|뮤지컬|연극|오페라|발레|마라톤|불꽃|수출|바이어|B2B|무역|투어|아트\s*페어|공공\s*예술|비엔날레|트리엔날레|전시회|사진전|미술전|귀농|귀촌/i;
+const FAIR_WORDS = /박람회|페어|엑스포|EXPO|식품\s*대전|수산\s*대전|농\S*\s*대전/i;
+const FAIR_GOODS = /공예|핸드\s*메이드|식품|푸드|먹거리|특산|농산|수산|축산|커피|카페|디저트|베이커리|빵|떡|와인|맥주|막걸리|전통주|리빙|생활|캠핑|반려|펫|베이비|육아|웨딩|뷰티|패션|주얼리|굿즈|문구|꽃|화훼|상품|기념품|북\s*페어|도서|사회적\s*경제|사회연대\s*경제/;
+const MEETING = /컨퍼런스|콘퍼런스|포럼|세미나|심포지엄|학술|국제\s*회의|비즈니스/;
+const SELL_WORDS = /마켓|장터|야시장|야시|밤장|벼룩|직거래|특산|로컬\s*푸드|먹거리|푸드\s*트럭|푸드\s*페스티벌|(?<!공)공예|핸드\s*메이드|김장/;
+
+export function isSellerEvent(name: string): boolean {
+  if (BOOTH_WORDS.test(name)) return true;
+  if (NOT_SELLING.test(name)) return false;
+  if (FAIR_WORDS.test(name) && FAIR_GOODS.test(name)) return true;
+  if (MEETING.test(name)) return false;
+  return SELL_WORDS.test(name);
+}
 
 const NEW_BADGE_DAYS = 7;
 
@@ -183,7 +206,7 @@ export function selectSellerEvents(events: CollectedEvent[]): { kept: CollectedE
   const kept: CollectedEvent[] = [];
   let duplicates = 0;
   for (const e of events) {
-    if (!SELLER_EVENT.test(e.name)) continue;
+    if (!isSellerEvent(e.name)) continue;
     const rec = asRecord(e);
     if (kept.some((k) => k.sourceId === e.sourceId || isSameEvent(asRecord(k), rec)) || seeds.some((s) => isSameEvent(s, rec))) {
       duplicates++;
@@ -382,6 +405,39 @@ async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string
   return { created, updated, failed, newEvents, detailed };
 }
 
+/**
+ * 이미 저장된 자동 수집 행사 중 지금 기준(isSellerEvent)에 맞지 않는 행사를 지운다.
+ * 행사를 지우면 그 행사의 모집정보·참가 기록·판매 기록도 함께 지워진다(on delete cascade).
+ */
+export async function pruneNonSellerEvents(supabase: Admin, dryRun: boolean) {
+  const rows: { event_id: string; source_post_id: string | null; events: { name: string } | null }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("event_recruitments")
+      .select("event_id, source_post_id, events(name)")
+      .or("source_post_id.like.tour:*,source_post_id.like.seoulfest:*")
+      .range(from, from + 999);
+    if (error) throw new Error(`자동 수집 행사 조회 실패: ${error.message}`);
+    rows.push(...((data ?? []) as unknown as typeof rows));
+    if (!data || data.length < 1000) break;
+  }
+  const targets = rows.filter((r) => r.events && !isSellerEvent(r.events.name));
+  let participations = 0;
+  const ids = targets.map((t) => t.event_id);
+  for (let i = 0; i < ids.length; i += 100) {
+    const { count, error } = await supabase.from("event_participations").select("id", { count: "exact", head: true }).in("event_id", ids.slice(i, i + 100));
+    if (error) throw new Error(`참가 기록 조회 실패: ${error.message}`);
+    participations += count ?? 0;
+  }
+  if (!dryRun) {
+    for (let i = 0; i < ids.length; i += 100) {
+      const { error } = await supabase.from("events").delete().in("id", ids.slice(i, i + 100));
+      if (error) throw new Error(`행사 삭제 실패: ${error.message}`);
+    }
+  }
+  return { checked: rows.length, removed: targets.map((t) => t.events!.name), participations };
+}
+
 // ---------------------------------------------------------------------------
 // 4) 전체 실행
 // ---------------------------------------------------------------------------
@@ -438,7 +494,7 @@ export async function runWeeklyEventSync(opts: {
       sources.push({ source, fetched: 0, kept: 0, error: r.reason instanceof Error ? r.reason.message : String(r.reason) });
       return;
     }
-    sources.push({ source, fetched: r.value.length, kept: r.value.filter((e) => SELLER_EVENT.test(e.name)).length });
+    sources.push({ source, fetched: r.value.length, kept: r.value.filter((e) => isSellerEvent(e.name)).length });
     all.push(...r.value);
   });
 

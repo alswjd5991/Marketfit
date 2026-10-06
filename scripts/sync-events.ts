@@ -1,6 +1,7 @@
 // 실행: npm run sync:events            (실제 저장)
 //       npm run sync:events -- --dry-run (수집·선별 결과만 출력, DB는 건드리지 않음)
 //       npm run sync:events -- --from 2024-01-01 --to 2026-10-06   (그 기간에 열린 과거 행사를 한 달씩 나눠 수집)
+//       npm run sync:events -- --prune [--dry-run]   (이미 저장된 자동 수집 행사 중 판매 부스를 낼 수 없는 행사 삭제)
 //
 // 매주 월요일 Vercel Cron(/api/cron/weekly-events)이 자동으로 하는 주간 행사 업데이트를
 // 로컬에서 직접 한 번 돌린다. 로직은 src/features/events/weekly-sync.ts 하나를 같이 쓴다.
@@ -10,7 +11,7 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 import { createAdminClient } from "../src/lib/supabase/admin";
-import { runWeeklyEventSync } from "../src/features/events/weekly-sync";
+import { pruneNonSellerEvents, runWeeklyEventSync } from "../src/features/events/weekly-sync";
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
@@ -23,6 +24,14 @@ async function main() {
   const [from, to] = [arg("--from"), arg("--to")];
   if (Boolean(from) !== Boolean(to)) throw new Error("--from과 --to는 함께 지정해야 합니다.");
   const supabase = createAdminClient();
+  if (process.argv.includes("--prune")) {
+    if (!supabase) throw new Error("SUPABASE_SERVICE_ROLE_KEY가 .env.local에 없습니다.");
+    const r = await pruneNonSellerEvents(supabase, dryRun);
+    console.log(`\n자동 수집 행사 ${r.checked}건 중 판매 부스를 낼 수 없는 행사 ${r.removed.length}건 ${dryRun ? "(삭제 예정, dry-run)" : "삭제"}`);
+    for (const name of r.removed) console.log(`  - ${name}`);
+    if (r.participations) console.log(`\n※ 이 행사들에 걸린 참가 기록 ${r.participations}건도 ${dryRun ? "함께 지워집니다" : "함께 지워졌습니다"}. 합성 셀러 데이터는 npm run seed:synthetic으로 다시 만드세요.`);
+    return;
+  }
   if (!dryRun && !supabase) {
     console.error("SUPABASE_SERVICE_ROLE_KEY가 .env.local에 없습니다. (--dry-run으로는 저장 없이 확인 가능)");
     process.exit(1);

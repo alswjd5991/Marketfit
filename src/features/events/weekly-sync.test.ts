@@ -81,3 +81,19 @@ test("TourAPI 상세 응답에서 HTML을 걷어내고 빈 항목은 저장하�
     tel: "031-000-0000", admission: "무료", homepage: "http://www.example.go.kr",
   });
 });
+
+test("셀러 판매 부스를 낼 수 있는 행사만 남긴다", async () => {
+  const { isSellerEvent } = await import("./weekly-sync");
+  const yes = [
+    "2026 수원 행궁동 플리마켓", "광화문 크리스마스마켓", "목포 국가유산 야행 플리마켓", "서울밤도깨비야시장", "OO 농특산물 직거래 장터",
+    "망원 한강공원 벼룩시장", "OO 로컬푸드 축제", "OO 먹거리 한마당", "청주 공예비엔날레 아트마켓".replace("비엔날레 ", ""), "OO 핸드메이드 페어",
+    "대한민국 커피 엑스포", "OO 베이비페어", "OO 수산물 박람회", "김장 문화제", "푸드트럭 페스티벌",
+  ];
+  const no = [
+    "2026 부산국제공연예술마켓(BPAM)", "APAP 작품투어(안양공공예술프로젝트)", "귀농귀촌 박람회", "OO 취업 박람회", "국제 콘텐츠 마켓",
+    "OO 국제 아트페어", "OO 불꽃축제", "OO 국제 영화제", "로컬 크리에이터 포럼", "크리스마스 콘서트", "OO 문화유산 야행",
+    "OO 진로 교육 박람회", "OO 사진전",
+  ];
+  for (const name of yes) assert.equal(isSellerEvent(name), true, name);
+  for (const name of no) assert.equal(isSellerEvent(name), false, name);
+});
