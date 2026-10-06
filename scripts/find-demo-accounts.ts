@@ -18,7 +18,8 @@ async function main() {
   const stores = pooled.stores.filter((s) => emailOf.get(s.owner_id)?.endsWith(`@${EMAIL_DOMAIN}`));
   console.log(`합성 가게 ${stores.length}곳 계산 중…`);
 
-  const rows = [];
+  interface Row { email: string; category: string; attended: number; forecastOk: number; lossShown: number; stock: string; plan: string; peer: string; score: number }
+  const rows: Row[] = [];
   for (const s of stores) {
     const a = await computeAnalytics(db, s.id, pooled);
     const attended = pooled.participations.filter((p) => p.store_id === s.id && p.status === "attended" && p.total_revenue != null).length;
@@ -48,7 +49,7 @@ async function main() {
   for (const r of rows.slice(0, 10)) {
     console.log(`${r.email.padEnd(36)}${r.category.padEnd(6)}${String(r.attended).padStart(4)}  ${String(r.forecastOk).padStart(4)}  ${String(r.lossShown).padStart(4)}  ${r.stock} / ${r.plan} / ${r.peer}`);
   }
-  const best = (label: string, f: (r: (typeof rows)[number]) => boolean) => {
+  const best = (label: string, f: (r: Row) => boolean) => {
     const r = rows.find(f);
     console.log(`  ${label}: ${r ? `${r.email} (${r.category}, 참가 ${r.attended}건)` : "없음"}`);
   };
