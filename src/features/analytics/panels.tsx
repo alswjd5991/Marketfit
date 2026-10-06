@@ -1,160 +1,206 @@
-// 대시보드 분석 패널(서버 컴포넌트). 숫자는 모두 data.ts가 계산한 요약값만 받는다.
+// 대시보드 분석 카드(서버 컴포넌트). 숫자는 모두 compute.ts가 계산한 요약값만 받는다.
+//
+// 글쓰기 기준(토스 UX 라이팅 원칙 참고 — 사용자 입장의 정보, 의미 없는 문장 빼기, 쉬운 말, 일관된 말투):
+//   - 카드마다 결론 한 문장을 맨 위에(해요체), 핵심 숫자는 크게, 보조 설명은 짧게
+//   - 신뢰구간·유의·보정 같은 통계 용어는 화면에 쓰지 않고 "범위", "아직 확실하지 않아요"로
+//   - 계산 방법은 "어떻게 계산했나요?"를 눌러야 보이게 접어 둔다
 
-import { Empty, Panel } from "@/features/dashboard/panel";
+import type { ReactNode } from "react";
 import { STATUS_COLORS } from "@/components/ui/chart-colors";
+import { josa } from "@/lib/josa";
 import type { DashboardAnalytics } from "./data";
-import { FACTOR_RULES } from "./factors";
-import { FORECAST_RULES } from "./forecast";
-import { PEER_RULES } from "./peer";
+import { STOCK_RULES, type StockDiagnosis, type StockVerdict } from "./stock";
 import { PLAN_RULES } from "./plan";
-import { STOCK_RULES, type StockVerdict } from "./stock";
 
-const SKY = "#7DBFE8";
+const SKY = "#9CCFEE";
 const SKY_DARK = "#2F6FB8";
 const CORAL = "#F2836B";
-const MUTED = "#B8C2CC";
+const GOOD = STATUS_COLORS.good;
+const BAD = STATUS_COLORS.critical;
 
 export function manwon(n: number): string {
   const v = n / 10000;
-  return `${Math.abs(v) >= 10 ? Math.round(v).toLocaleString() : v.toFixed(1)}만원`;
+  return `${Math.abs(v) >= 10 ? Math.round(v).toLocaleString() : (Math.round(v * 10) / 10).toString()}만원`;
 }
-const pct = (x: number, digits = 0) => `${(x * 100).toFixed(digits)}%`;
-const signedPct = (x: number) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.round(Math.abs(x) * 100)}%`;
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+const absPct = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
 
-function Footnote({ children }: { children: React.ReactNode }) {
-  return <p className="mt-4 text-xs leading-5 text-neutral-500">{children}</p>;
+// ---------------------------------------------------------------------------
+// 공통 카드
+// ---------------------------------------------------------------------------
+
+function Card({ headline, sub, children, how }: { headline: ReactNode; sub?: ReactNode; children?: ReactNode; how?: string[] }) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/80 bg-white/90 p-6 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm sm:p-7">
+      <h3 className="break-keep text-[19px] font-bold leading-snug tracking-[-0.02em] text-neutral-950">{headline}</h3>
+      {sub && <p className="mt-1.5 break-keep text-[14px] leading-6 text-neutral-500">{sub}</p>}
+      {children && <div className="mt-6">{children}</div>}
+      {how && how.length > 0 && (
+        <details className="group mt-6 border-t border-neutral-100 pt-4">
+          <summary className="flex cursor-pointer list-none items-center gap-1 text-[13px] font-medium text-neutral-500 hover:text-neutral-800">
+            어떻게 계산했나요?
+            <span className="transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <ul className="mt-3 space-y-1.5 text-[13px] leading-6 text-neutral-600">
+            {how.map((line) => (
+              <li key={line} className="flex gap-2">
+                <span className="mt-2.5 size-1 shrink-0 rounded-full bg-neutral-400" />
+                <span className="break-keep">{line}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function Chip({ children, tone }: { children: ReactNode; tone: "good" | "bad" | "warn" | "plain" }) {
+  const style = {
+    good: "bg-[#E0EFE8] text-[#2F5F4B]",
+    bad: "bg-[#FFE4DE] text-[#BE3A2A]",
+    warn: "bg-[#FFEEDD] text-[#B4530A]",
+    plain: "bg-neutral-100 text-neutral-600",
+  }[tone];
+  return <span className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[13px] font-semibold ${style}`}>{children}</span>;
 }
 
 // ---------------------------------------------------------------------------
-// ①② 다가올 행사 예측
+// ①② 다가올 행사
 // ---------------------------------------------------------------------------
 
 export function ForecastPanel({ forecast }: { forecast: DashboardAnalytics["forecast"] }) {
   if (forecast.status === "hidden") {
-    return (
-      <Panel title="다가올 행사 예상 매출">
-        <Empty>예측 보류 — {forecast.reason}</Empty>
-      </Panel>
-    );
+    return <Card headline="아직 예상 매출을 알려 드리기엔 기록이 부족해요" sub="참가 기록이 쌓이면 다가올 행사의 예상 매출을 보여 드릴게요." />;
   }
   const { items, validation } = forecast;
   const shown = items.filter((i) => i.prediction.ok);
+  const first = shown[0];
   const max = Math.max(1, ...shown.map((i) => (i.prediction.ok ? i.prediction.high : 0)), ...shown.map((i) => i.breakEven ?? 0)) * 1.05;
   const x = (v: number) => `${Math.min(100, (v / max) * 100)}%`;
+  const headline = !items.length
+    ? "참가할 행사를 추가하면 예상 매출을 알려 드려요"
+    : first?.prediction.ok
+      ? <>{first.eventName}에서 <span className="text-brand">{manwon(first.prediction.median)}</span>쯤 팔 것 같아요</>
+      : "다가올 행사는 아직 예상하기 어려워요";
 
   return (
-    <Panel title="다가올 행사 예상 매출">
-      {items.length === 0 ? (
-        <Empty>참가 예정 행사 없음 — 내 행사에 추가하면 예상 매출 표시</Empty>
-      ) : (
-        <ul className="flex flex-col gap-5">
+    <Card
+      headline={headline}
+      sub={items.length ? "실제 매출은 보통 막대 범위 안에 들어와요." : undefined}
+      how={[
+        "내 지난 매출과, 비슷한 행사에서 다른 셀러들이 판 매출을 함께 봐요. 내 기록이 적을수록 다른 셀러들의 평균을 더 참고해요.",
+        `지난 기록 ${validation.n.toLocaleString()}건으로 미리 맞혀 봤더니, 실제 매출이 범위 안에 ${pct(validation.coverage)} 들어왔어요.`,
+        "손해 볼 확률은 참가비·평소 교통비 등과 상품 원가를 빼고 남는 돈이 0보다 적을 가능성이에요.",
+      ]}
+    >
+      {items.length > 0 && (
+        <ul className="divide-y divide-neutral-100">
           {items.map((it) => (
-            <li key={`${it.eventName}-${it.startDate}`} className="grid gap-2 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)_88px] sm:items-center sm:gap-4">
-              <div className="min-w-0">
-                <p className="truncate text-[15px] font-semibold text-neutral-900">{it.eventName}</p>
-                <p className="text-xs text-neutral-500">
-                  {it.startDate.slice(5).replace("-", "/")}
-                  {it.prediction.ok && ` · 중앙값 ${manwon(it.prediction.median)} (80% 구간 ${manwon(it.prediction.low)}~${manwon(it.prediction.high)})`}
-                </p>
+            <li key={`${it.eventName}-${it.startDate}`} className="py-4 first:pt-0 last:pb-0">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="truncate text-[15px] font-semibold text-neutral-900">{it.eventName}</p>
+                  <p className="mt-0.5 text-[13px] text-neutral-500">{Number(it.startDate.slice(5, 7))}월 {Number(it.startDate.slice(8))}일</p>
+                </div>
+                {it.prediction.ok ? (
+                  <div className="shrink-0 text-right">
+                    <p className="text-[22px] font-extrabold leading-tight tabular-nums text-neutral-950">{manwon(it.prediction.median)}</p>
+                    <p className="text-[13px] tabular-nums text-neutral-500">보통 {manwon(it.prediction.low)}~{manwon(it.prediction.high)}</p>
+                  </div>
+                ) : (
+                  <p className="shrink-0 text-[13px] text-neutral-400">예상하기 어려워요</p>
+                )}
               </div>
-              {it.prediction.ok ? (
-                <div className="relative h-7" aria-label={`80% 예측구간 ${manwon(it.prediction.low)}에서 ${manwon(it.prediction.high)}`}>
-                  <div className="absolute inset-x-0 top-1/2 h-px bg-neutral-200" />
-                  <div className="absolute top-1/2 h-3 -translate-y-1/2 rounded-full" style={{ left: x(it.prediction.low), width: `calc(${x(it.prediction.high)} - ${x(it.prediction.low)})`, background: SKY }} />
-                  <div className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" style={{ left: x(it.prediction.median), background: SKY_DARK }} />
-                  {it.breakEven != null && (
-                    <div className="absolute inset-y-0 w-0 border-l-2 border-dashed" style={{ left: x(it.breakEven), borderColor: CORAL }} title={`손익분기 ${manwon(it.breakEven)}`} />
+              {it.prediction.ok && (
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="relative h-2 flex-1 rounded-full bg-neutral-100" aria-label={`보통 ${manwon(it.prediction.low)}에서 ${manwon(it.prediction.high)}`}>
+                    <div className="absolute inset-y-0 rounded-full" style={{ left: x(it.prediction.low), width: `calc(${x(it.prediction.high)} - ${x(it.prediction.low)})`, background: SKY }} />
+                    <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" style={{ left: x(it.prediction.median), background: SKY_DARK }} />
+                    {it.breakEven != null && <div className="absolute -inset-y-1 w-0.5 rounded" style={{ left: x(it.breakEven), background: CORAL }} title={`본전 ${manwon(it.breakEven)}`} />}
+                  </div>
+                  {it.lossProbability != null ? (
+                    <Chip tone={it.lossProbability >= 0.3 ? "bad" : it.lossProbability >= 0.1 ? "warn" : "good"}>
+                      손해 볼 확률 {it.lossProbability < 0.01 ? "1% 미만" : pct(it.lossProbability)}
+                    </Chip>
+                  ) : (
+                    <Chip tone="plain">참가비를 적으면 손해 확률도 보여 드려요</Chip>
                   )}
                 </div>
-              ) : (
-                <p className="text-xs text-neutral-400">{it.prediction.reason}</p>
               )}
-              <div className="text-right">
-                {it.lossProbability != null ? (
-                  <>
-                    <p className="text-[11px] text-neutral-500">적자 확률</p>
-                    <p className="text-lg font-bold tabular-nums" style={{ color: it.lossProbability >= 0.3 ? STATUS_COLORS.critical : "#1F2023" }}>
-                      {it.lossProbability < 0.01 ? "1% 미만" : pct(it.lossProbability)}
-                    </p>
-                  </>
-                ) : (
-                  it.prediction.ok && <p className="text-[11px] text-neutral-400">{it.costNote}</p>
-                )}
-                {it.lossProbability != null && it.costNote && <p className="text-[10px] leading-3 text-neutral-400">{it.costNote}</p>}
-              </div>
-              {it.prediction.ok && it.prediction.note && <p className="text-[11px] text-neutral-400 sm:col-span-3">{it.prediction.note}</p>}
             </li>
           ))}
         </ul>
       )}
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-5 rounded-full" style={{ background: SKY }} />80% 예측구간</span>
-        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: SKY_DARK }} />중앙값</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-0 border-l-2 border-dashed" style={{ borderColor: CORAL }} />손익분기 매출</span>
-      </div>
-      <Footnote>
-        내 매출 기록과 비슷한 가게들의 기록을 함께 써서 추정(기록이 적을수록 전체 평균 쪽으로 보정). 날씨는 미리 알 수 없어
-        구간 폭에 포함. 구간은 과거 예측 오차의 실제 분포로 정함. 검증: 과거 기록 {validation.n}건을 하나씩 빼고 예측해, 다른 가게들로 정한
-        80% 구간이 실제 매출을 {pct(validation.coverage)} 포함, 중앙값 오차는 보통 ±{pct(validation.medianAbsPctError)}. 적자 확률은 참가비·평균 부대비용·상품 원가율 기준.
-      </Footnote>
-    </Panel>
+      {shown.some((i) => i.breakEven != null) && (
+        <p className="mt-4 flex items-center gap-1.5 text-[13px] text-neutral-500">
+          <span className="inline-block h-3 w-0.5 rounded" style={{ background: CORAL }} />
+          본전(비용을 메우는 매출)
+        </p>
+      )}
+    </Card>
   );
 }
 
 // ---------------------------------------------------------------------------
-// ③ 매출 요인
+// ③ 매출이 달라진 조건
 // ---------------------------------------------------------------------------
 
 export function FactorPanel({ factors }: { factors: DashboardAnalytics["factors"] }) {
   if (factors.status !== "ok") {
-    return (
-      <Panel title="매출이 달랐던 조건">
-        <Empty>분석 보류 — {factors.reason}</Empty>
-      </Panel>
-    );
+    return <Card headline="어떤 날 더 팔렸는지는 기록이 더 모이면 알려 드려요" sub="셀러들의 참가 기록과 행사 수가 늘어나면 분석할 수 있어요." />;
   }
-  const ln = (p: number) => Math.log(1 + p);
-  const lo = Math.min(ln(-0.2), ...factors.effects.map((e) => ln(e.low))) - 0.05;
-  const hi = Math.max(ln(0.25), ...factors.effects.map((e) => ln(e.high))) + 0.05;
-  const x = (p: number) => `${((ln(p) - lo) / (hi - lo)) * 100}%`;
-  const ticks = [-0.75, -0.5, -0.25, 0, 0.25, 0.5, 1, 2].filter((t) => ln(t) > lo && ln(t) < hi);
+  const sure = factors.effects.filter((e) => e.significant).sort((a, b) => Math.abs(Math.log(1 + b.pct)) - Math.abs(Math.log(1 + a.pct)));
+  const unsure = factors.effects.filter((e) => !e.significant);
+  const top = sure[0];
+  const maxLog = Math.max(Math.log(1.3), ...sure.map((e) => Math.abs(Math.log(1 + e.pct))));
+  const width = (p: number) => `${(Math.abs(Math.log(1 + p)) / maxLog) * 50}%`;
 
   return (
-    <Panel title="매출이 달랐던 조건">
-      <ul className="flex flex-col gap-3">
-        {factors.effects.map((e) => {
-          const color = !e.significant ? MUTED : e.pct > 0 ? STATUS_COLORS.good : STATUS_COLORS.critical;
-          return (
-            <li key={e.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[150px_minmax(0,1fr)_120px]">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-neutral-900">{e.label}</p>
-                <p className="truncate text-[11px] text-neutral-400">{e.reference} 대비 · {e.count}건</p>
+    <Card
+      headline={top ? <>{top.label}엔 {top.reference}보다 <span style={{ color: top.pct > 0 ? GOOD : BAD }}>{absPct(top.pct)} {top.pct > 0 ? "더" : "덜"}</span> 팔렸어요</> : "아직 매출이 확실하게 달라진 조건은 없어요"}
+      sub="같은 가게가 조건만 달랐을 때 매출이 얼마나 달랐는지 봤어요."
+      how={[
+        "가게마다 파는 물건과 가격이 달라서, 같은 가게의 기록끼리만 비교했어요.",
+        `셀러 ${factors.stores}곳이 행사 ${factors.events}곳에 참가한 기록 ${factors.n.toLocaleString()}건을 썼어요.`,
+        "우연히 생겼을 수도 있는 차이는 '아직 확실하지 않아요'로 따로 묶었어요.",
+        "함께 나타난 차이일 뿐, 비가 매출을 줄인 '원인'이라고 단정할 수는 없어요.",
+      ]}
+    >
+      {sure.length > 0 && (
+        <ul className="space-y-4">
+          {sure.map((e) => (
+            <li key={e.key}>
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-[15px] font-semibold text-neutral-900">
+                  {e.label} <span className="text-[13px] font-normal text-neutral-400">· {josa(e.reference, "과", "와")} 비교</span>
+                </p>
+                <p className="shrink-0 text-[17px] font-bold tabular-nums" style={{ color: e.pct > 0 ? GOOD : BAD }}>
+                  {e.pct > 0 ? "+" : "−"}{absPct(e.pct)}
+                </p>
               </div>
-              <div className="relative order-3 col-span-2 h-6 sm:order-none sm:col-span-1">
-                <div className="absolute inset-y-0 w-px bg-neutral-300" style={{ left: x(0) }} />
-                <div className="absolute top-1/2 h-0.5 -translate-y-1/2" style={{ left: x(e.low), width: `calc(${x(e.high)} - ${x(e.low)})`, background: color }} />
-                <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(e.pct), background: color }} />
+              {/* 가운데(0)에서 좌우로 뻗는 막대: 오른쪽 = 더 팔림, 왼쪽 = 덜 팔림 */}
+              <div className="relative mt-2 h-2.5 rounded-full bg-neutral-100">
+                <div className="absolute inset-y-0 left-1/2 w-px bg-neutral-300" />
+                <div
+                  className="absolute inset-y-0 rounded-full"
+                  style={{ [e.pct > 0 ? "left" : "right"]: "50%", width: width(e.pct), background: e.pct > 0 ? GOOD : BAD, opacity: 0.85 }}
+                />
               </div>
-              <p className="text-right text-sm tabular-nums" style={{ color: e.significant ? color : "#8A8D93" }}>
-                <span className="font-bold">{signedPct(e.pct)}</span>
-                <span className="ml-1 text-[11px] text-neutral-400">({signedPct(e.low)}~{signedPct(e.high)})</span>
+              <p className="mt-1 text-[12px] tabular-nums text-neutral-400">
+                대략 {e.low > 0 ? "+" : e.low < 0 ? "−" : ""}{absPct(e.low)} ~ {e.high > 0 ? "+" : e.high < 0 ? "−" : ""}{absPct(e.high)} 사이
               </p>
             </li>
-          );
-        })}
-      </ul>
-      <div className="relative mt-1 h-4 text-[10px] text-neutral-400 sm:ml-[calc(150px+0.75rem)] sm:mr-[calc(120px+0.75rem)]">
-        {ticks.map((t) => (
-          <span key={t} className="absolute -translate-x-1/2" style={{ left: x(t) }}>{signedPct(t)}</span>
-        ))}
-      </div>
-      <Footnote>
-        같은 가게가 조건만 달랐을 때 매출이 평균 몇 % 달랐는지(가게 고정효과 회귀, 점 = 추정값, 선 = 95% 신뢰구간).
-        회색은 여러 조건을 함께 검정한 보정(Holm) 후 우연과 구분되지 않는 차이. 기록 {factors.n}건 · 가게 {factors.stores}곳 · 행사 {factors.events}곳.
-        관찰 자료라 인과관계가 아니라 함께 나타난 차이이며, 셀러가 날씨를 보고 참가를 정하는 등의 선택은 통제하지 못함.
-        {factors.notes.length > 0 && ` ${factors.notes.join(" · ")}.`}
-      </Footnote>
-    </Panel>
+          ))}
+        </ul>
+      )}
+      {unsure.length > 0 && (
+        <p className={`${sure.length ? "mt-5 border-t border-neutral-100 pt-4" : ""} break-keep text-[14px] leading-6 text-neutral-500`}>
+          <span className="font-semibold text-neutral-700">{josa(unsure.map((e) => e.label).join(" · "), "은", "는")}</span>
+          {" 아직 차이가 확실하지 않아요."}
+        </p>
+      )}
+    </Card>
   );
 }
 
@@ -162,133 +208,111 @@ export function FactorPanel({ factors }: { factors: DashboardAnalytics["factors"
 // ⑤ 준비 수량
 // ---------------------------------------------------------------------------
 
-const VERDICT: Record<StockVerdict, { label: string; bg: string; ink: string }> = {
-  under: { label: "부족 신호", bg: "#FFE4DE", ink: "#BE3A2A" },
-  over: { label: "과다 신호", bg: "#FFEEDD", ink: "#B4530A" },
-  ok: { label: "적정 범위", bg: "#E0EFE8", ink: "#2F5F4B" },
-  few: { label: "기록 부족", bg: "#F1F2F4", ink: "#8A8D93" },
-  noCost: { label: "원가 미입력", bg: "#F1F2F4", ink: "#8A8D93" },
+const VERDICT: Record<StockVerdict, { label: string; tone: "good" | "bad" | "warn" | "plain" }> = {
+  under: { label: "조금 더 준비해요", tone: "bad" },
+  over: { label: "조금 줄여도 돼요", tone: "warn" },
+  ok: { label: "큰 차이 없어요", tone: "good" },
+  few: { label: "기록이 더 필요해요", tone: "plain" },
+  noCost: { label: "원가를 적어 주세요", tone: "plain" },
 };
+
+function stockHeadline(items: StockDiagnosis[]): ReactNode {
+  const under = items.find((i) => i.verdict === "under");
+  const over = items.find((i) => i.verdict === "over");
+  if (under) return <>{josa(under.productName, "은", "는")} 자주 다 팔렸어요. 다음엔 <span style={{ color: BAD }}>조금 더</span> 준비해 보세요</>;
+  if (over) return <>{josa(over.productName, "은", "는")} 자주 남았어요. <span style={{ color: "#B4530A" }}>조금 줄여도</span> 괜찮아요</>;
+  if (items.some((i) => i.verdict === "ok")) return "지금 준비하는 양에 큰 문제는 없어 보여요";
+  return "준비 수량은 기록이 더 쌓이면 알려 드려요";
+}
 
 export function StockPanel({ stock }: { stock: DashboardAnalytics["stock"] }) {
   if (!stock.applicable) {
-    return (
-      <Panel title="준비 수량 진단">
-        <Empty>{stock.category || "이 카테고리"} 상품은 남아도 다음 행사에 다시 팔 수 있어 이 진단(당일 소진 상품용) 대상 아님</Empty>
-      </Panel>
-    );
+    return <Card headline="준비 수량 진단은 당일에 팔아야 하는 상품에만 해요" sub={`${stock.category || "이 카테고리"} 상품은 남아도 다음 행사에 다시 팔 수 있어서 진단하지 않아요.`} />;
   }
   if (stock.items.length === 0) {
-    return (
-      <Panel title="준비 수량 진단">
-        <Empty>상품별 준비·판매 수량 기록 없음</Empty>
-      </Panel>
-    );
+    return <Card headline="상품별로 준비한 수량과 판 수량을 적어 주세요" sub="행사가 끝난 뒤 기록하면 다음 행사에 얼마나 준비할지 알려 드려요." />;
   }
   return (
-    <Panel title="준비 수량 진단">
-      <ul className="flex flex-col gap-4">
+    <Card
+      headline={stockHeadline(stock.items)}
+      sub="당일에 못 팔면 버려야 하는 상품이라, 너무 많이도 너무 적게도 준비하지 않는 게 중요해요."
+      how={[
+        "가격에서 원가가 차지하는 비율만큼은 다 팔리는 날이 있어야 가장 이득이에요. 원가가 가격의 30%라면 10번 중 3번쯤 다 팔리는 게 적당해요.",
+        "실제로 다 팔린 횟수가 이보다 많으면 '더 준비', 적으면 '줄여도 돼요'라고 알려 드려요.",
+        `기록이 ${STOCK_RULES.minEvents}번 이상 있고, 차이가 우연이라고 보기 어려울 때만 알려 드려요. 단골이 그냥 돌아가는 손해는 계산에 넣지 않았어요.`,
+      ]}
+    >
+      <ul className="divide-y divide-neutral-100">
         {stock.items.map((it) => {
           const v = VERDICT[it.verdict];
           return (
-            <li key={it.productName} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 sm:grid-cols-[minmax(0,160px)_minmax(0,1fr)_auto]">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-neutral-900">{it.productName}</p>
-                <p className="text-[11px] text-neutral-500">
-                  품절 {it.stockouts}/{it.n}회{it.optimalRate != null && ` · 적정 ${pct(it.optimalRate)}`}
+            <li key={it.productName} className="flex items-center justify-between gap-3 py-3.5 first:pt-0 last:pb-0">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-semibold text-neutral-900">{it.productName}</p>
+                <p className="mt-0.5 text-[13px] tabular-nums text-neutral-500">
+                  {it.stockouts === 0 ? `${it.n}번 모두 남음` : `${it.n}번 중 ${it.stockouts}번 다 팔림`}{(it.verdict === "under" || it.verdict === "over") && it.optimalRate != null && ` · 적당한 건 ${Math.round(it.optimalRate * it.n)}번쯤`}
                 </p>
               </div>
-              <div className="relative order-3 col-span-2 h-5 sm:order-none sm:col-span-1" aria-label={`품절률 ${pct(it.rate)}, 95% 구간 ${pct(it.low)}~${pct(it.high)}`}>
-                <div className="absolute inset-x-0 top-1/2 h-px bg-neutral-200" />
-                <div className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full" style={{ left: pct(it.low, 1), width: pct(it.high - it.low, 1), background: SKY }} />
-                <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" style={{ left: pct(it.rate, 1), background: SKY_DARK }} />
-                {it.optimalRate != null && <div className="absolute inset-y-0 w-0 border-l-2 border-dashed" style={{ left: pct(it.optimalRate, 1), borderColor: CORAL }} />}
-              </div>
-              <span className="whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: v.bg, color: v.ink }}>{v.label}</span>
+              <Chip tone={v.tone}>{v.label}</Chip>
             </li>
           );
         })}
       </ul>
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500">
-        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: SKY_DARK }} />실제 품절률(막대 = 95% 구간)</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-0 border-l-2 border-dashed" style={{ borderColor: CORAL }} />적정 품절률 = 원가 ÷ 가격</span>
-      </div>
-      <Footnote>
-        당일 못 팔면 버리는 상품은 &quot;원가 ÷ 가격&quot; 비율만큼 품절되는 것이 손익상 최적(뉴스벤더 모형). 실제 품절 빈도가 이와
-        통계적으로 다를 때만(정확 이항검정, 상품 간 Holm 보정, 기록 {STOCK_RULES.minEvents}회 이상) 부족·과다 신호를 표시.
-        품절로 잃는 단골·평판 비용은 반영하지 않음.
-      </Footnote>
-    </Panel>
+    </Card>
   );
 }
 
 // ---------------------------------------------------------------------------
-// ⑦ 계획 정확도 · ④ 동종 비교 (수익성 카드 안의 한 줄)
+// ⑦ 예상 매출 정확도 · ④ 같은 업종 비교 (수익성 카드 안의 한 줄)
 // ---------------------------------------------------------------------------
 
 export function PlanLine({ plan }: { plan: DashboardAnalytics["plan"] }) {
   if (plan.status !== "ok") {
-    return <p className="text-xs text-neutral-400">예상 매출 정확도: 예상·실제 매출을 함께 적은 행사 {plan.n}/{PLAN_RULES.minPairs}회</p>;
+    return <p className="text-[13px] text-neutral-400">예상 매출을 {PLAN_RULES.minPairs}번 이상 적으면, 얼마나 잘 맞혔는지 알려 드려요 (지금 {plan.n}번)</p>;
   }
+  if (!plan.biased) return <p className="text-[13px] text-neutral-600">참가 전에 적은 예상 매출이 대체로 잘 맞았어요</p>;
   return (
-    <p className="text-xs leading-5 text-neutral-600">
-      예상 매출 대비 실제{" "}
-      <span className="font-semibold tabular-nums text-neutral-900">{signedPct(plan.pct)}</span>{" "}
-      <span className="text-neutral-400">(95% 구간 {signedPct(plan.low)}~{signedPct(plan.high)}, {plan.n}회)</span>
-      {" — "}
-      {plan.biased ? (plan.pct < 0 ? "예상을 높게 잡는 편" : "예상을 낮게 잡는 편") : "체계적 차이 없음"}
+    <p className="text-[13px] text-neutral-600">
+      실제 매출이 예상보다 평균 <span className="font-bold text-neutral-900">{absPct(plan.pct)} {plan.pct < 0 ? "적었어요" : "많았어요"}</span>
     </p>
   );
 }
 
 export function PeerLine({ peer }: { peer: DashboardAnalytics["peer"] }) {
-  if (peer.status !== "ok") return <p className="text-xs text-neutral-400">동종 비교 보류: {peer.reason}</p>;
+  if (peer.status !== "ok") return null;
   return (
-    <p className="text-xs text-neutral-600">
-      {peer.category} 가게 {peer.peers}곳 중{" "}
-      <span className="font-semibold text-neutral-900">상위 {Math.max(1, Math.round((1 - peer.below) * 100))}%</span>
+    <p className="text-[13px] text-neutral-600">
+      {peer.category} 가게 {peer.peers}곳 중 <span className="font-bold text-neutral-900">상위 {Math.max(1, Math.round((1 - peer.below) * 100))}%</span>예요
     </p>
   );
 }
 
 // ---------------------------------------------------------------------------
-// 분석 방법과 한계
+// 이 분석은 어떻게 만들었나요?
 // ---------------------------------------------------------------------------
 
 export function MethodsNote({ analytics }: { analytics: DashboardAnalytics }) {
   const { data } = analytics;
-  const synth = data.records ? data.syntheticRecords / data.records : 0;
   return (
-    <details className="mt-10 rounded-2xl border border-white/80 bg-white/70 p-5 text-sm text-neutral-600 backdrop-blur-sm">
-      <summary className="cursor-pointer font-semibold text-neutral-800">분석 방법과 한계</summary>
-      <ul className="mt-3 list-disc space-y-2 pl-5 leading-6">
-        <li>
-          분석 데이터: 참가 완료 기록 {data.records}건(가게 {data.stores}곳).{" "}
-          {data.syntheticRecords > 0 && (
-            <strong className="font-semibold text-neutral-800">
-              이 중 {data.syntheticRecords}건({pct(synth)})은 기능 검증용 합성 데이터라, 지금 보이는 결과를 실제 시장 현상으로 해석하면 안 됨.
-            </strong>
-          )}
-        </li>
-        <li>
-          매출이 달랐던 조건: ln(매출) = 가게 고정효과 + 날씨 + 실외 + 주말 + 행사 유형 + ln(행사 일수). 같은 가게 안의 비교만 반영.
-          행사 단위 군집-강건 표준오차(CR3), Holm 보정. 최소 기록 {FACTOR_RULES.minRecords}건·행사 {FACTOR_RULES.minEvents}곳, 조건별 {FACTOR_RULES.minLevelCount}건 이상,
-          그 조건이 있었던 행사·없었던 행사 각 {FACTOR_RULES.minEventsPerLevel}곳 이상(날씨 같은 행사 단위 조건은 행사 수가 실질 표본).
-        </li>
-        <li>
-          예상 매출: 행사 전에 알 수 있는 정보(주말·일수·유형)만 쓰는 별도 모형 + 가게 효과의 경험적 베이즈 축소 추정.
-          구간은 하나씩 빼고 예측한 오차의 실제 분포로 정함(conformal 예측 — 품절로 매출에 상한이 있어 정규분포 가정이 맞지 않음).
-          내 기록 {FORECAST_RULES.minStoreRecords}건 이상일 때만, 가게 단위 10겹 교차검증에서 80% 구간 적중률이 80%와 유의하게 다르지 않을 때만 표시.
-        </li>
-        <li>적자 확률: 보정된 예측분포에서 매출이 손익분기 매출(고정비 ÷ (1 − 원가율))보다 낮을 확률을 직접 계산.</li>
-        <li>준비 수량: 뉴스벤더 최적 조건(최적 품절률 = 원가 ÷ 가격)과 실제 품절 빈도를 정확 이항검정으로 비교. 음식·디저트 상품만.</li>
-        <li>예상 매출 정확도: 같은 행사의 ln(실제 ÷ 예상) 평균의 t 신뢰구간. 목표 매출은 예측이 아니라 쓰지 않음.</li>
-        <li>동종 비교: 같은 카테고리 가게 {PEER_RULES.minPeers}곳 이상(각 {PEER_RULES.minPeerRecords}건 이상)일 때만 순위 표시.</li>
-        <li>
-          구현 검증: 정답을 아는 가상 데이터로 반복 실험해 신뢰구간 포함률, 효과 없는 조건 오탐률, 예측구간 적중률,
-          준비 수량 판정 방향을 확인(npm run test:analytics, npm run evaluate:synthetic).
-        </li>
+    <details className="group mt-10 rounded-2xl border border-white/80 bg-white/70 p-5 backdrop-blur-sm sm:p-6">
+      <summary className="flex cursor-pointer list-none items-center gap-1 text-[15px] font-semibold text-neutral-800">
+        이 분석은 어떻게 만들었나요?
+        <span className="text-neutral-400 transition-transform group-open:rotate-180">⌄</span>
+      </summary>
+      <ul className="mt-4 space-y-2.5 text-[14px] leading-6 text-neutral-600">
+        {data.syntheticRecords > 0 && (
+          <li className="break-keep">
+            <span className="font-semibold text-neutral-800">지금 보이는 숫자는 기능을 시험하려고 만든 가상 셀러의 기록</span>(참가 기록 {data.records.toLocaleString()}건 중{" "}
+            {data.syntheticRecords.toLocaleString()}건)으로 계산했어요. 실제 시장의 모습으로 받아들이면 안 돼요.
+          </li>
+        )}
+        <li className="break-keep">다른 셀러의 기록은 평균 같은 요약값으로만 쓰고, 다른 가게의 기록이 그대로 보이지는 않아요.</li>
+        <li className="break-keep">기록이 부족하거나 우연과 구분되지 않으면, 결과를 보여 드리지 않거나 &quot;아직 확실하지 않아요&quot;라고 표시해요.</li>
+        <li className="break-keep">정답을 알고 있는 가상 데이터로 수백 번 시험해서, 계산이 맞는지 확인했어요.</li>
       </ul>
+      <p className="mt-4 text-[12px] leading-5 text-neutral-400">
+        사용한 방법: 가게 고정효과 회귀(군집-강건 표준오차·다중비교 보정), 경험적 베이즈 축소 추정, conformal 예측구간, 뉴스벤더 최적 조건의 정확 이항검정
+      </p>
     </details>
   );
 }

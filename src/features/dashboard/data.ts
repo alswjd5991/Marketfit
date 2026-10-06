@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { josa } from "@/lib/josa";
 import type { ParticipationStatus } from "@/types/database";
 import { getMyStore } from "@/features/store/data";
 import { toDisplayStatus } from "@/features/participations/status-labels";
@@ -241,38 +242,38 @@ function buildInsights(
   const add = (text: string, supersededBy?: Insight["supersededBy"]) => out.push({ text, supersededBy });
   if (s.totalNetProfit != null) {
     add(
-      `참가 완료 **${s.statusCounts.attended}회**, 누적 순이익 **${won(s.totalNetProfit)}** (행사당 평균 ${won(s.totalNetProfit / s.netProfitEntryCount)})`
+      `지금까지 **${s.statusCounts.attended}번** 참가해서 순이익 **${won(s.totalNetProfit)}**을 남겼어요 (한 번에 평균 ${won(s.totalNetProfit / s.netProfitEntryCount)})`
     );
   }
   if (s.revenueTrend) {
     const { recentAvg, earlierAvg, recentCount } = s.revenueTrend;
     const diff = (recentAvg - earlierAvg) / earlierAvg;
     if (Math.abs(diff) >= 0.05) {
-      add(`최근 ${recentCount}회 평균 매출 ${won(recentAvg)} — 이전보다 **${pct(Math.abs(diff))} ${diff > 0 ? "증가" : "감소"}**`);
+      add(`최근 ${recentCount}번의 평균 매출이 그 전보다 **${pct(Math.abs(diff))} ${diff > 0 ? "늘었어요" : "줄었어요"}** (평균 ${won(recentAvg)})`);
     } else {
-      add(`최근 ${recentCount}회 평균 매출 ${won(recentAvg)} — 이전과 비슷한 수준`);
+      add(`최근 ${recentCount}번의 평균 매출은 그 전과 비슷해요 (평균 ${won(recentAvg)})`);
     }
   }
   const groups = s.groupPerformance.filter((g) => g.profitCount >= 2 && g.avgNetProfit != null);
   if (groups.length >= 2) {
     const best = [...groups].sort((a, b) => b.avgNetProfit! - a.avgNetProfit!)[0];
-    add(`평균 순이익이 가장 높은 유형은 **${best.group}** (${won(best.avgNetProfit!)}, ${best.profitCount}회)`, "factors");
+    add(`순이익이 가장 좋았던 행사 유형은 **${josa(best.group, "이에요", "예요")}** (평균 ${won(best.avgNetProfit!)}, ${best.profitCount}번)`, "factors");
   }
   const sunny = s.weatherPerformance.find((w) => w.label === "맑음");
   const rainy = s.weatherPerformance.find((w) => w.label === "비");
   if (sunny && rainy && sunny.count >= 2 && rainy.avgRevenue < sunny.avgRevenue) {
-    add(`비 오는 날 평균 매출은 맑은 날보다 **${pct(1 - rainy.avgRevenue / sunny.avgRevenue)} 낮음** (${rainy.count}회)`, "factors");
+    add(`비 온 날 평균 매출이 맑은 날보다 **${pct(1 - rainy.avgRevenue / sunny.avgRevenue)} 낮았어요** (${rainy.count}번)`, "factors");
   }
   const productTotal = s.popularProducts.reduce((a, p) => a + p.totalRevenue, 0);
   const top = s.popularProducts[0];
   if (top && productTotal > 0 && s.popularProducts.length >= 2) {
-    add(`매출 1위 상품 **${top.productName}** — 상품 매출의 ${pct(top.totalRevenue / productTotal)}`);
+    add(`가장 많이 팔린 상품은 **${josa(top.productName, "이에요", "예요")}** (상품 매출의 ${pct(top.totalRevenue / productTotal)})`);
   }
   const rated = s.popularProducts.filter((p) => p.sellThrough != null && p.totalPrepared >= 20);
   if (rated.length >= 2) {
     const low = [...rated].sort((a, b) => a.sellThrough! - b.sellThrough!)[0];
     // 판매율만으로 "조절 필요"를 판단할 근거는 없어(상품마다 적정 판매율이 다름) 사실만 적는다. 판단은 준비 수량 진단(뉴스벤더 검정)이 맡는다.
-    if (low.sellThrough! < 0.6) add(`판매율이 가장 낮은 상품 **${low.productName}** (${pct(low.sellThrough!)})`, "stock");
+    if (low.sellThrough! < 0.6) add(`**${josa(low.productName, "은", "는")}** 준비한 것 중 ${pct(low.sellThrough!)}만 팔렸어요`, "stock");
   }
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date());
   const next = participations
@@ -280,7 +281,7 @@ function buildInsights(
     .sort((a, b) => a.event!.start_date!.localeCompare(b.event!.start_date!))[0];
   if (next) {
     const [, m, d] = next.event!.start_date!.split("-").map(Number);
-    add(`다음 참가 예정: **${next.event!.name}** (${m}월 ${d}일)`);
+    add(`다음 참가할 행사는 **${josa(next.event!.name, "이에요", "예요")}** (${m}월 ${d}일)`);
   }
   return out;
 }

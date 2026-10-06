@@ -34,10 +34,10 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
         {insights.length > 0 && (
           <section className="rounded-3xl border border-white/80 bg-[#FFF6EE] p-6 shadow-[0_12px_32px_rgba(40,80,120,0.08)] sm:p-7">
             <h2 className="flex items-center gap-2 text-sm font-bold text-brand-dark">
-              <Lightbulb className="size-4" /> 종합 인사이트
+              <Lightbulb className="size-4" /> 한눈에 보기
               {synthetic > 0 && (
                 <span className="ml-auto rounded-full bg-white/80 px-2.5 py-0.5 text-[11px] font-medium text-neutral-500">
-                  분석 데이터의 {Math.round(synthetic * 100)}%는 검증용 합성 데이터
+                  가상 셀러 데이터로 계산했어요
                 </span>
               )}
             </h2>
@@ -126,7 +126,7 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
         </Group>
 
         {analytics && (
-          <Group title="매출이 달랐던 조건">
+          <Group title="매출이 달라진 조건">
             <FactorPanel factors={analytics.factors} />
           </Group>
         )}
