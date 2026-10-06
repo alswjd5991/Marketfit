@@ -102,3 +102,41 @@ test("① 기록이 적은 가게는 예측하지 않고, ② 적자 확률은 �
   // 80% 구간 아래끝이 손익분기점이면 적자 확률 10%
   assert.ok(Math.abs(lossProbability(p, p.low * 0.6, 0.4) - 0.1) < 1e-6);
 });
+
+test("① 빠른 교차검증(셔먼-모리슨 갱신)이 매번 다시 적합한 결과와 같다", () => {
+  const data = simulate(77, 15, 8);
+  const fast = validateForecast(data)!;
+  const model = fitForecastModel(data);
+  assert.ok(!("insufficient" in model));
+  if ("insufficient" in model) return;
+  let hits = 0;
+  const z: number[] = [];
+  model.rows.forEach((target) => {
+    if (model.storeCount.get(target.storeId)! - 1 < 3 || model.groupCount.get(target.group)! < 2) return;
+    const refit = fitForecastModel(model.rows.filter((r) => r !== target));
+    if ("insufficient" in refit) return;
+    const p = predict(refit, target.storeId, target);
+    if (!p.ok) return;
+    if (target.revenue >= p.low && target.revenue <= p.high) hits++;
+    z.push((Math.log(target.revenue) - p.mu) / p.sd);
+  });
+  z.sort((a, b) => a - b);
+  assert.equal(fast.n, z.length);
+  assert.ok(Math.abs(fast.normalCoverage - hits / z.length) < 1e-12);
+  fast.calibration.forEach((v, i) => assert.ok(Math.abs(v - z[i]) < 1e-9, `z[${i}] ${v} vs ${z[i]}`));
+});
+
+test("① 오차가 한쪽으로 치우쳐도(품절로 매출 상한) 보정된 구간은 80%를 맞힌다", () => {
+  // 매출 = min(수요, 상한) 구조: 로그 오차가 왼쪽으로 길게 치우침
+  const data = simulate(31, 25, 8).map((r, i) => ({ ...r, revenue: Math.min(r.revenue, Math.round(Math.exp(12.6 + 0.3 * Math.sin(i)))) }));
+  const v = validateForecast(data)!;
+  assert.ok(v.coverage > 0.74 && v.coverage < 0.86, `보정 적중률 ${v.coverage}`);
+  // 적자 확률은 보정 분포의 경험적 누적확률과 일치
+  const model = fitForecastModel(data);
+  if ("insufficient" in model) return;
+  const p = predict(model, "s0", { startDate: "2026-11-07", endDate: null, group: "야시장" }, v.calibration);
+  assert.ok(p.ok);
+  if (!p.ok) return;
+  const loss = lossProbability(p, p.median * 0.6, 0.4, v.calibration);
+  assert.ok(Math.abs(loss - 0.5) < 0.05, `중앙값이 손익분기면 적자 확률 약 50%: ${loss}`);
+});

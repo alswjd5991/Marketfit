@@ -94,8 +94,8 @@ export function ForecastPanel({ forecast }: { forecast: DashboardAnalytics["fore
       </div>
       <Footnote>
         내 매출 기록과 비슷한 가게들의 기록을 함께 써서 추정(기록이 적을수록 전체 평균 쪽으로 보정). 날씨는 미리 알 수 없어
-        구간 폭에 포함. 검증: 과거 기록 {validation.n}건을 하나씩 빼고 예측했을 때 80% 구간이 실제 매출을{" "}
-        {pct(validation.coverage)} 포함, 중앙값 오차는 보통 ±{pct(validation.medianAbsPctError)}. 적자 확률은 참가비·평균 부대비용·상품 원가율 기준.
+        구간 폭에 포함. 구간은 과거 예측 오차의 실제 분포로 정함. 검증: 과거 기록 {validation.n}건을 하나씩 빼고 예측해, 다른 가게들로 정한
+        80% 구간이 실제 매출을 {pct(validation.coverage)} 포함, 중앙값 오차는 보통 ±{pct(validation.medianAbsPctError)}. 적자 확률은 참가비·평균 부대비용·상품 원가율 기준.
       </Footnote>
     </Panel>
   );
@@ -272,19 +272,21 @@ export function MethodsNote({ analytics }: { analytics: DashboardAnalytics }) {
         </li>
         <li>
           매출이 달랐던 조건: ln(매출) = 가게 고정효과 + 날씨 + 실외 + 주말 + 행사 유형 + ln(행사 일수). 같은 가게 안의 비교만 반영.
-          행사 단위 군집-강건 표준오차(CR3), Holm 보정. 최소 기록 {FACTOR_RULES.minRecords}건·행사 {FACTOR_RULES.minEvents}곳, 조건별 {FACTOR_RULES.minLevelCount}건 이상.
+          행사 단위 군집-강건 표준오차(CR3), Holm 보정. 최소 기록 {FACTOR_RULES.minRecords}건·행사 {FACTOR_RULES.minEvents}곳, 조건별 {FACTOR_RULES.minLevelCount}건 이상,
+          그 조건이 있었던 행사·없었던 행사 각 {FACTOR_RULES.minEventsPerLevel}곳 이상(날씨 같은 행사 단위 조건은 행사 수가 실질 표본).
         </li>
         <li>
           예상 매출: 행사 전에 알 수 있는 정보(주말·일수·유형)만 쓰는 별도 모형 + 가게 효과의 경험적 베이즈 축소 추정.
-          내 기록 {FORECAST_RULES.minStoreRecords}건 이상일 때만, 하나씩 빼고 예측하는 교차검증에서 80% 구간 적중률이 80%와 유의하게 다르지 않을 때만 표시.
+          구간은 하나씩 빼고 예측한 오차의 실제 분포로 정함(conformal 예측 — 품절로 매출에 상한이 있어 정규분포 가정이 맞지 않음).
+          내 기록 {FORECAST_RULES.minStoreRecords}건 이상일 때만, 가게 단위 10겹 교차검증에서 80% 구간 적중률이 80%와 유의하게 다르지 않을 때만 표시.
         </li>
-        <li>적자 확률: 예측분포(t분포)에서 매출이 손익분기 매출(고정비 ÷ (1 − 원가율))보다 낮을 확률을 직접 계산.</li>
+        <li>적자 확률: 보정된 예측분포에서 매출이 손익분기 매출(고정비 ÷ (1 − 원가율))보다 낮을 확률을 직접 계산.</li>
         <li>준비 수량: 뉴스벤더 최적 조건(최적 품절률 = 원가 ÷ 가격)과 실제 품절 빈도를 정확 이항검정으로 비교. 음식·디저트 상품만.</li>
         <li>예상 매출 정확도: 같은 행사의 ln(실제 ÷ 예상) 평균의 t 신뢰구간. 목표 매출은 예측이 아니라 쓰지 않음.</li>
         <li>동종 비교: 같은 카테고리 가게 {PEER_RULES.minPeers}곳 이상(각 {PEER_RULES.minPeerRecords}건 이상)일 때만 순위 표시.</li>
         <li>
-          구현 검증: 정답을 아는 가상 데이터로 반복 실험해 신뢰구간 포함률(95% 구간 → 96~97%), 효과 없는 조건 오탐률(약 2%),
-          예측구간 적중률(80% 구간 → 79~85%), 준비 수량 판정 오탐률을 확인(npm run test:analytics).
+          구현 검증: 정답을 아는 가상 데이터로 반복 실험해 신뢰구간 포함률, 효과 없는 조건 오탐률, 예측구간 적중률,
+          준비 수량 판정 방향을 확인(npm run test:analytics, npm run evaluate:synthetic).
         </li>
       </ul>
     </details>

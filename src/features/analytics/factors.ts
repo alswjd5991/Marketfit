@@ -26,6 +26,10 @@ export const FACTOR_RULES = {
   minResidualDf: 20,
   minLevelCount: 5, // 범주별 최소 기록 수
   minVaryingStores: 3, // 그 조건이 "있을 때와 없을 때"를 모두 겪은 가게 수
+  /** 그 조건이 있었던 행사·없었던 행사가 각각 이만큼 있어야 한다. 날씨·주말·실내외는 행사 단위로 정해지므로
+   *  실질 표본은 기록 수가 아니라 행사 수다 — 몇 개 행사에서만 관측된 효과는 그 행사들의 특수성과 구분되지 않고,
+   *  군집-강건 표준오차도 처리 군집이 적으면 믿을 수 없다(MacKinnon & Webb 2017). */
+  minEventsPerLevel: 5,
   alpha: 0.05,
 };
 
@@ -92,14 +96,21 @@ export function analyzeFactors(all: AttendedRecord[]): FactorAnalysis {
   const shown = candidates.filter((c) => {
     const ones = rows.filter((r) => c.value(r) === 1).length;
     const varying = [...byStore.values()].filter((rs) => new Set(rs.map(c.value)).size > 1).length;
-    const ok = ones >= R.minLevelCount && rows.length - ones >= R.minLevelCount && varying >= R.minVaryingStores;
-    if (!ok) notes.push(`${c.label}: 비교할 기록이 부족해 추정하지 않음`);
+    const eventsWith = new Set(rows.filter((r) => c.value(r) === 1).map((r) => r.eventId)).size;
+    const eventsWithout = new Set(rows.filter((r) => c.value(r) === 0).map((r) => r.eventId)).size;
+    const ok = ones >= R.minLevelCount && rows.length - ones >= R.minLevelCount && varying >= R.minVaryingStores
+      && eventsWith >= R.minEventsPerLevel && eventsWithout >= R.minEventsPerLevel;
+    if (!ok) notes.push(`${c.label}: ${eventsWith < R.minEventsPerLevel ? `${eventsWith}개 행사에서만 관측돼` : "비교할 기록이 부족해"} 추정하지 않음`);
     return ok;
   });
   // 날씨 범주는 빼면 기준(맑음)에 섞여 버리므로, 추정하지 못하는 날씨는 행 자체를 뺀다.
   const droppedWeather = candidates.filter((c) => c.key.startsWith("weather:") && !shown.includes(c));
-  const usable = rows.filter((r) => !droppedWeather.some((c) => c.value(r) === 1));
-  const hasOtherGroup = usable.some((r) => groups.levelOf(r.group) === "기타 유형");
+  // 행을 뺀 뒤 기록이 1건만 남은 가게는 다시 뺀다(가게 효과가 그 1건에 딱 맞춰져 정보가 없고, 군집 잭나이프도 깨진다).
+  const usable = dropSmallStores(rows.filter((r) => !droppedWeather.some((c) => c.value(r) === 1)), 2).kept;
+  // 따로 추정하지 못한 유형은 기준 유형에 섞이지 않게 "기타 유형"으로 보낸다.
+  const shownGroups = new Set(shown.filter((c) => c.key.startsWith("group:")).map((c) => c.key.slice(6)));
+  const isOther = (r: AttendedRecord) => r.group !== groups.reference && !shownGroups.has(r.group);
+  const hasOtherGroup = usable.some(isOther);
   // 행사 일수 통제: 가게 안에서 일수가 달라진 적이 있을 때만 넣는다(모두 하루짜리면 상수라 추정 불가).
   const lnDays = (r: AttendedRecord) => Math.log(eventDays(r.startDate, r.endDate));
   const daysVary = [...byStore.values()].filter((rs) => new Set(rs.map(lnDays)).size > 1).length >= R.minVaryingStores;
@@ -109,11 +120,11 @@ export function analyzeFactors(all: AttendedRecord[]): FactorAnalysis {
   const X = usable.map((r) => [
     ...shown.map((c) => c.value(r)),
     ...(daysVary ? [lnDays(r)] : []),
-    ...(hasOtherGroup ? [groups.levelOf(r.group) === "기타 유형" ? 1 : 0] : []),
+    ...(hasOtherGroup ? [isOther(r) ? 1 : 0] : []),
     ...stores.map((s) => (r.storeId === s ? 1 : 0)),
   ]);
   const fit = fitOls(X, usable.map((r) => Math.log(r.revenue)), names, usable.map((r) => r.eventId));
-  if (!fit) return { status: "insufficient", reason: "조건끼리 겹쳐(공선성) 따로 추정할 수 없음", n: usable.length };
+  if (!fit) return { status: "insufficient", reason: "조건끼리 겹치거나 한 행사를 빼면 사라지는 조건이 있어 추정할 수 없음", n: usable.length };
   if (fit.dfResidual < R.minResidualDf) return { status: "insufficient", reason: `자유도 ${fit.dfResidual}(최소 ${R.minResidualDf} 필요)`, n: usable.length };
 
   const crit = tQuantile(1 - R.alpha / 2, fit.df);

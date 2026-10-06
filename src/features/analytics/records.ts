@@ -61,16 +61,19 @@ export function dropSmallStores<T extends { storeId: string }>(rows: T[], minPer
  * minStores곳 이상인 유형만 따로 추정한다. 나머지는 "기타 유형" 하나로 묶는다(따로 해석하지 않는 통제용 범주).
  * 기준 범주는 기록이 가장 많은 유형.
  */
-export function groupLevels(rows: AttendedRecord[], minCount = 10, minStores = 3): { reference: CategoryGroup; own: CategoryGroup[]; levelOf: (g: CategoryGroup) => string } {
+export function groupLevels(rows: AttendedRecord[], minCount = 10, minStores = 3, minEvents = 5): { reference: CategoryGroup; own: CategoryGroup[]; levelOf: (g: CategoryGroup) => string } {
   const count = new Map<CategoryGroup, number>();
+  const events = new Map<CategoryGroup, Set<string>>();
   const storeGroups = new Map<string, Set<CategoryGroup>>();
   for (const r of rows) {
     count.set(r.group, (count.get(r.group) ?? 0) + 1);
+    events.set(r.group, (events.get(r.group) ?? new Set()).add(r.eventId));
     storeGroups.set(r.storeId, (storeGroups.get(r.storeId) ?? new Set()).add(r.group));
   }
   const sorted = [...count].sort((a, b) => b[1] - a[1]);
   const reference = sorted[0]?.[0] ?? "플리마켓";
   const mixedStores = (g: CategoryGroup) => [...storeGroups.values()].filter((s) => s.has(g) && s.size > 1).length;
-  const own = sorted.slice(1).filter(([g, c]) => c >= minCount && mixedStores(g) >= minStores).map(([g]) => g);
+  // 유형은 행사 단위 속성이라 행사 수도 따진다(행사 몇 곳뿐인 유형의 차이는 그 행사들의 특수성과 구분되지 않음).
+  const own = sorted.slice(1).filter(([g, c]) => c >= minCount && mixedStores(g) >= minStores && events.get(g)!.size >= minEvents).map(([g]) => g);
   return { reference, own, levelOf: (g) => (g === reference ? "ref" : own.includes(g) ? g : "기타 유형") };
 }

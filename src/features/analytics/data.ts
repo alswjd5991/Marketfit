@@ -157,7 +157,7 @@ async function computeAnalytics(db: Admin, storeId: string): Promise<DashboardAn
       status: "ok",
       validation,
       items: upcoming.map(({ p, e }) => {
-        const prediction = predict(model, storeId, { startDate: e!.start_date!, endDate: e!.end_date, group: getCategoryGroup(e!.category, e!.name) });
+        const prediction = predict(model, storeId, { startDate: e!.start_date!, endDate: e!.end_date, group: getCategoryGroup(e!.category, e!.name) }, validation.calibration);
         const fee = p.fee ?? e!.event_recruitments?.[0]?.fee ?? null;
         const fixed = fee == null ? null : Number(fee) + avgExtra;
         const rate = cogsRate ?? 0;
@@ -165,7 +165,7 @@ async function computeAnalytics(db: Admin, storeId: string): Promise<DashboardAn
           eventName: e!.name,
           startDate: e!.start_date!,
           prediction,
-          lossProbability: prediction.ok && fixed != null ? lossProbability(prediction, fixed, rate) : null,
+          lossProbability: prediction.ok && fixed != null ? lossProbability(prediction, fixed, rate, validation.calibration) : null,
           breakEven: fixed != null ? fixed / (1 - rate) : null,
           costNote: fee == null ? "참가비 정보 없음" : cogsRate == null ? "상품 원가 미입력 — 재료비 제외 기준" : null,
         };

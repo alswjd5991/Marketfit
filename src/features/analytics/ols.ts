@@ -11,6 +11,9 @@ export interface OlsFit {
   vcovClassical: number[][];
   /** 잔차 분산 추정치 s² = RSS / (n − k) */
   sigma2: number;
+  /** (X'X)⁻¹와 잔차 — 한 건 뺀 적합을 다시 계산하지 않고 갱신할 때 쓴다(셔먼-모리슨) */
+  xtxInv: number[][];
+  resid: number[];
   n: number;
   k: number;
   /** 추론에 쓰는 자유도: 고전적이면 n − k, 군집이면 G − 1 */
@@ -72,7 +75,7 @@ export function fitOls(X: number[][], y: number[], names: string[], clusters?: s
   const vcovClassical = inv.map((row) => row.map((v) => v * sigma2));
 
   if (!clusters) {
-    return { names, beta, vcov: vcovClassical, vcovType: "classical", vcovClassical, sigma2, n, k, df: dfResidual, dfResidual, clusters: null };
+    return { names, beta, vcov: vcovClassical, vcovType: "classical", vcovClassical, sigma2, xtxInv: inv, resid, n, k, df: dfResidual, dfResidual, clusters: null };
   }
 
   const members = new Map<string, number[]>();
@@ -95,7 +98,7 @@ export function fitOls(X: number[][], y: number[], names: string[], clusters?: s
   const adj = (G - 1) / G;
   const half = inv.map((row) => meat[0].map((_, b) => row.reduce((s, v, j) => s + v * meat[j][b], 0)));
   const vcov = half.map((row) => inv[0].map((_, b) => adj * row.reduce((s, v, j) => s + v * inv[j][b], 0)));
-  return { names, beta, vcov, vcovType: "cluster", vcovClassical, sigma2, n, k, df: G - 1, dfResidual, clusters: G };
+  return { names, beta, vcov, vcovType: "cluster", vcovClassical, sigma2, xtxInv: inv, resid, n, k, df: G - 1, dfResidual, clusters: G };
 }
 
 /** 선형결합 cᵀβ의 분산 cᵀVc. */
