@@ -13,15 +13,12 @@ export function ProductRevenueAreaChart({
   height = 280,
   color = "#0E9594",
   accent = "text-[#0E7C78]",
-  barColors,
 }: {
   items: RevenueItem[];
   height?: number;
   /** 막대·영역 색(기본 청록 — 메인 페이지), 대시보드는 보라 계열 */
   color?: string;
   accent?: string;
-  /** 품목별 고정 색(대시보드) — 막대를 품목 색으로 */
-  barColors?: string[];
 }) {
   const totalRevenue = items.reduce((sum, item) => sum + item.value, 0);
   const topItem = [...items].sort((a, b) => b.value - a.value)[0];
@@ -30,7 +27,6 @@ export function ProductRevenueAreaChart({
     <div className="w-full">
       <SmoothAreaChart
         bars
-        barColors={barColors}
         height={height}
         formatValue={(v) => `${v.toLocaleString()}원`}
         points={items.map((item) => ({ label: item.label, title: item.label }))}

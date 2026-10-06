@@ -60,6 +60,8 @@ export interface DashboardAnalytics {
 export interface PortfolioItem {
   productName: string;
   revenue: number;
+  /** 준비한 만큼 다 팔았을 때의 매출(준비 수 × 가격 합) */
+  potential: number;
   share: number; // 상품 매출 비중
   sellThrough: number; // 판매 수 ÷ 준비 수
   events: number;
@@ -207,10 +209,11 @@ export async function computeAnalytics(db: Admin, storeId: string, pooled?: Pool
 
 
   // 상품 포트폴리오(내 기록): 상품별 매출 비중과 판매율
-  const byProduct = new Map<string, { revenue: number; sold: number; prepared: number; events: number }>();
+  const byProduct = new Map<string, { revenue: number; potential: number; sold: number; prepared: number; events: number }>();
   for (const r of saleRows) {
-    const p = byProduct.get(r.product_name) ?? { revenue: 0, sold: 0, prepared: 0, events: 0 };
+    const p = byProduct.get(r.product_name) ?? { revenue: 0, potential: 0, sold: 0, prepared: 0, events: 0 };
     p.revenue += r.sold * Number(r.price);
+    p.potential += r.prepared * Number(r.price);
     p.sold += Math.min(r.sold, r.prepared);
     p.prepared += r.prepared;
     p.events += 1;
@@ -219,7 +222,7 @@ export async function computeAnalytics(db: Admin, storeId: string, pooled?: Pool
   const productRevenue = [...byProduct.values()].reduce((a, p) => a + p.revenue, 0);
   const portfolio: PortfolioItem[] = productRevenue > 0
     ? [...byProduct].filter(([, p]) => p.prepared > 0).map(([productName, p]) => ({
-        productName, revenue: p.revenue, share: p.revenue / productRevenue, sellThrough: p.sold / p.prepared, events: p.events,
+        productName, revenue: p.revenue, potential: Math.max(p.potential, p.revenue), share: p.revenue / productRevenue, sellThrough: p.sold / p.prepared, events: p.events,
       })).sort((a, b) => b.revenue - a.revenue)
     : [];
 

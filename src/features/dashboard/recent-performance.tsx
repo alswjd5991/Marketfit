@@ -171,11 +171,11 @@ export function ChartPanel({ title, info, children }: { title: string; info?: Re
   );
 }
 
-/** 품목별 매출 비교 차트(메인·대시보드 공용). 대시보드는 보라 계열 + 막대를 품목 고정 색으로. */
-export function ProductRevenueComparison({ stats, height, colors }: { stats: DashboardStats; height: number; colors?: Record<string, string> }) {
+/** 품목별 매출 비교 차트(메인·대시보드 공용). 대시보드는 보라 계열로. */
+export function ProductRevenueComparison({ stats, height, tone = "teal" }: { stats: DashboardStats; height: number; tone?: "teal" | "purple" }) {
   if (stats.popularProducts.length === 0) return <ChartEmpty text="상품별 판매 실적 없음" />;
-  const dash = colors ? { color: "#8A7FD6", accent: "text-[#5B4FC4]", barColors: stats.popularProducts.map((p) => colors[p.productName] ?? "#B8C2CC") } : {};
-  return <ProductRevenueAreaChart height={height} items={stats.popularProducts.map((p) => ({ label: p.productName, value: p.totalRevenue }))} {...dash} />;
+  const colors = tone === "purple" ? { color: "#8A7FD6", accent: "text-[#5B4FC4]" } : {};
+  return <ProductRevenueAreaChart height={height} items={stats.popularProducts.map((p) => ({ label: p.productName, value: p.totalRevenue }))} {...colors} />;
 }
 
 function ChartEmpty({ text }: { text: string }) {

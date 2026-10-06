@@ -5,7 +5,6 @@ import { Lightbulb } from "lucide-react";
 import { ProductTrendChart } from "./product-trend-chart";
 import type { DashboardStats } from "@/features/dashboard/data";
 import { ChartPanel, ProductRevenueComparison, RecentPerformance } from "./recent-performance";
-import { productColors } from "./product-colors";
 import { Empty, Group, Panel } from "./panel";
 import type { DashboardAnalytics } from "@/features/analytics/data";
 import { analyticsInsights } from "@/features/analytics/insights";
@@ -23,7 +22,6 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
     ...(analytics ? analyticsInsights(analytics) : []),
     ...stats.insights.filter((i) => !i.supersededBy || !superseded.has(i.supersededBy)).map((i) => i.text),
   ];
-  const colors = productColors(stats);
   const synthetic = analytics && analytics.data.records ? analytics.data.syntheticRecords / analytics.data.records : 0;
 
   return (
@@ -128,15 +126,20 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
                       }}
                     />
                   </div>
-                  <p className="mt-1.5 text-[13px] text-neutral-500">
-                    {stats.targetAchievement.percent >= 100 ? "목표 초과 달성" : `목표까지 ${Math.round(100 - stats.targetAchievement.percent)}%`} ·{" "}
-                    {stats.targetAchievement.entryCount}회 기준
-                  </p>
+                  <div className="mt-1.5">
+                    {analytics?.plan.status === "ok" ? (
+                      <PlanLine plan={analytics.plan} />
+                    ) : (
+                      <p className="text-[13px] text-neutral-500">
+                        {stats.targetAchievement.percent >= 100 ? "목표 초과 달성" : `목표까지 ${Math.round(100 - stats.targetAchievement.percent)}%`}{" "}
+                        <span className="text-neutral-400">({stats.targetAchievement.entryCount}회)</span>
+                      </p>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <span className="text-[13px] text-neutral-400">목표 매출 입력 시 표시</span>
               )}
-              {analytics && <PlanLine plan={analytics.plan} />}
             </ProfitCard>
           </div>
         </Group>
@@ -146,9 +149,9 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
           <div className="grid gap-5">
             <div className={analytics ? "grid gap-5 lg:grid-cols-2" : ""}>
               <Panel title="품목별 매출 비교">
-                <ProductRevenueComparison stats={stats} height={230} colors={colors} />
+                <ProductRevenueComparison stats={stats} height={230} tone="purple" />
               </Panel>
-              {analytics && <PortfolioPanel portfolio={analytics.portfolio} colors={colors} />}
+              {analytics && <PortfolioPanel portfolio={analytics.portfolio} />}
             </div>
             <div className={analytics ? "grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
               <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"}>
@@ -158,7 +161,7 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
                   <ProductTrendChart title="품목별 판매 수량 추이" data={stats.productSalesByEvent} />
                 )}
               </Panel>
-              {analytics && <StockPanel stock={analytics.stock} colors={colors} />}
+              {analytics && <StockPanel stock={analytics.stock} />}
             </div>
           </div>
         </Group>

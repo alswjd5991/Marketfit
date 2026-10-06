@@ -108,21 +108,24 @@ export function EventFitPanel({ forecast }: { forecast: DashboardAnalytics["fore
 // 같은 업종 대비 매출
 // ---------------------------------------------------------------------------
 
-// 같은 업종 대비 매출 — 초록 계열 박스플롯(단색). 일반적인 박스플롯 표기처럼 숫자는 아래 축에만, 이름은 범례로 분리하고
-// 내 가게는 코랄 점 하나로만 표시한다.
-const BOX_FILL = "#DCEFE5";
-const BOX_LINE = "#6DBE93";
-const MEDIAN = "#2F7A57";
+// 같은 업종 대비 매출 — 같은 업종 가게들을 반투명 점으로 깔고(가게 이름 없이 값만) 그 위에 박스플롯을 겹친다.
+// 숫자는 아래 축에만, 이름은 범례로 분리하고, 내 가게는 코랄 점으로 표시한다.
+const DOT = "#5FB98B";
+const BOX_LINE = "#3F9A6E";
+const MEDIAN = "#24684A";
 const ME = "#F2836B";
 
 export const peerInfo = (
   <>
-    <Tip>같은 카테고리에서 행사 기록이 3번 이상인 가게들의 행사당 평균 매출이에요.</Tip>
+    <Tip>같은 카테고리에서 행사 기록이 3번 이상인 가게들의 행사당 평균 매출이에요. 점 하나가 가게 하나예요(가게 이름은 보이지 않아요).</Tip>
     <Tip>선은 가장 낮은 가게부터 가장 높은 가게까지, 상자는 가운데 50% 가게가 있는 범위예요.</Tip>
   </>
 );
 
-/** 같은 업종 대비 매출 — 대시보드 "최근 성과" 안에 들어가는 박스플롯(제목·틀은 바깥 ChartPanel). */
+/** 점이 겹치지 않게 세로로 흩뿌리는 고정된 오프셋(새로고침해도 같은 자리). */
+const jitter = (i: number) => (((i * 2654435761) >>> 0) % 1000) / 1000 - 0.5;
+
+/** 같은 업종 대비 매출 — 대시보드 "최근 성과" 안에 들어가는 차트(제목·틀은 바깥 ChartPanel). */
 export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
   if (peer.status !== "ok") {
     return <p className="flex h-[160px] items-center justify-center text-sm text-[#8A8D93]">비교할 가게 부족</p>;
@@ -137,28 +140,42 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
   const pad = (hi - lo) * 0.03;
   const pos = (v: number) => ((v - lo + pad) / (hi - lo + 2 * pad)) * 100;
   const x = (v: number) => `${pos(v)}%`;
-  const showMedianTick = pos(median) - pos(min) > 14 && pos(max) - pos(median) > 14; // 눈금 글자가 겹치면 범례로만
+  const showMedianTick = pos(median) - pos(min) > 14 && pos(max) - pos(median) > 14;
   return (
     <div>
       <p className="text-sm text-[#43464B]">
         {peer.category} 가게 {total}곳 중 <span className="font-bold text-[#1F2023]">{label}</span>예요
       </p>
-      <div className="relative mt-6 h-12">
-        <div className="absolute top-1/2 h-0.5 -translate-y-1/2 rounded-full" style={{ left: x(min), width: `calc(${x(max)} - ${x(min)})`, background: BOX_LINE }} />
-        <div className="absolute top-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(min), background: BOX_LINE }} />
-        <div className="absolute top-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(max), background: BOX_LINE }} />
-        <div className="absolute top-1/2 h-7 -translate-y-1/2 rounded-md border-[1.5px]" style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: BOX_FILL, borderColor: BOX_LINE }} />
-        <div className="absolute top-1/2 h-7 w-0.5 -translate-x-1/2 -translate-y-1/2" style={{ left: x(median), background: MEDIAN }} />
-        <div className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm" style={{ left: x(peer.mine), background: ME }} />
+      <div className="relative mt-5 h-[72px] rounded-xl bg-[#F1F8F4]">
+        {/* 가게들(점) */}
+        {peer.values.map((v, i) => (
+          <span
+            key={i}
+            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{ left: x(v), top: `${50 + jitter(i) * 62}%`, background: DOT, opacity: 0.45 }}
+          />
+        ))}
+        {/* 수염 */}
+        <div className="absolute top-1/2 h-0.5 -translate-y-1/2 rounded-full" style={{ left: x(min), width: `calc(${x(max)} - ${x(min)})`, background: BOX_LINE, opacity: 0.6 }} />
+        <div className="absolute top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(min), background: BOX_LINE }} />
+        <div className="absolute top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(max), background: BOX_LINE }} />
+        {/* 상자: 점이 비쳐 보이게 반투명 */}
+        <div
+          className="absolute top-1/2 h-9 -translate-y-1/2 rounded-lg border-[1.5px] shadow-[0_6px_16px_rgba(36,104,74,0.15)]"
+          style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: "rgba(95,185,139,0.18)", borderColor: BOX_LINE }}
+        />
+        <div className="absolute top-1/2 h-9 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(median), background: MEDIAN }} />
+        {/* 내 가게 */}
+        <div className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" style={{ left: x(peer.mine), background: ME, boxShadow: "0 0 0 4px rgba(242,131,107,0.22)" }} />
       </div>
-      <div className="relative h-4 text-[11px] tabular-nums text-[#8A8D93]">
+      <div className="relative mt-1.5 h-4 text-[11px] tabular-nums text-[#8A8D93]">
         <span className="absolute whitespace-nowrap" style={{ left: x(min) }}>{manwon(min)}</span>
         {showMedianTick && <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: x(median) }}>{manwon(median)}</span>}
         <span className="absolute -translate-x-full whitespace-nowrap" style={{ left: x(max) }}>{manwon(max)}</span>
       </div>
       <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6B6E74]">
-        <li className="flex items-center gap-1.5"><span className="h-2.5 w-3.5 rounded-sm border" style={{ background: BOX_FILL, borderColor: BOX_LINE }} />가운데 50%</li>
-        <li className="flex items-center gap-1.5"><span className="h-3 w-0.5" style={{ background: MEDIAN }} />중앙값 {manwon(median)}</li>
+        <li className="flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: DOT, opacity: 0.6 }} />같은 업종 가게</li>
+        <li className="flex items-center gap-1.5"><span className="h-3 w-[3px] rounded-full" style={{ background: MEDIAN }} />중앙값 {manwon(median)}</li>
         <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: ME }} />내 가게 {manwon(peer.mine)}</li>
       </ul>
     </div>
@@ -170,33 +187,41 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
 // ---------------------------------------------------------------------------
 
 /**
- * 이름표 겹침 정리: 오른쪽 절반의 점은 이름을 점 왼쪽에 둔다(긴 이름이 차트 밖으로 넘치지 않게).
+ * 이름표 겹침 정리: 오른쪽 절반의 점은 이름을 원 왼쪽에 둔다(긴 이름이 차트 밖으로 넘치지 않게).
  * 가로로 겹치는 이름표끼리 세로 간격이 좁으면 아래 것을 밀어 내린다.
  */
-function placeLabels<T extends { p: { productName: string; share: number; sellThrough: number }; cx: number; cy: number }>(points: T[]) {
+function placeLabels<T extends { p: { productName: string; sellThrough: number }; cx: number; cy: number; r: number }>(points: T[]) {
   const GAP = 15;
-  const placed: (T & { ly: number; right: boolean; x0: number; x1: number })[] = [];
+  const placed: (T & { ly: number; right: boolean; lx: number; x0: number; x1: number })[] = [];
   for (const pt of [...points].sort((a, b) => a.cy - b.cy)) {
     const right = pt.p.sellThrough > 0.6;
-    const width = (pt.p.productName.length + 4) * 7.5 + 10;
-    const x0 = right ? pt.cx - width : pt.cx;
-    const x1 = right ? pt.cx : pt.cx + width;
+    const width = (pt.p.productName.length + 4) * 7.5;
+    const lx = right ? pt.cx - pt.r - 6 : pt.cx + pt.r + 6;
+    const x0 = right ? lx - width : lx;
+    const x1 = right ? lx : lx + width;
     let ly = pt.cy;
     for (const q of placed) if (x0 < q.x1 && q.x0 < x1 && Math.abs(ly - q.ly) < GAP) ly = q.ly + GAP;
-    placed.push({ ...pt, ly, right, x0, x1 });
+    placed.push({ ...pt, ly, right, lx, x0, x1 });
   }
   return placed;
 }
 
+/** 판매율·매출 비중이 내 상품 평균보다 높은지로 나눈 3단계 색 */
+const TIER = {
+  good: { color: "#2E9C83", label: "잘 팔리고 매출도 커요" },
+  mid: { color: "#E0A82E", label: "둘 중 하나만 높아요" },
+  low: { color: "#F2836B", label: "둘 다 평균보다 낮아요" },
+} as const;
+
 /**
- * 상품 포트폴리오 — 메인 페이지 배경의 구름 원처럼, 품목 색이 가운데에서 바깥으로 옅어지는 원(크기 = 매출)과
- * 정확한 위치를 찍는 작은 점으로 그린다. 품목 색은 대시보드 공통 색표(product-colors.ts)를 쓴다.
+ * 상품 포트폴리오 — 바깥 원은 준비한 만큼 다 팔았을 때의 매출, 안쪽 원은 실제 매출(안쪽이 바깥을 채운 정도 = 판매율).
+ * 위치는 판매율(가로)과 매출 비중(세로), 색은 두 값이 내 상품 평균보다 높은지에 따라 3단계.
  */
-export function PortfolioPanel({ portfolio, colors = {} }: { portfolio: DashboardAnalytics["portfolio"]; colors?: Record<string, string> }) {
+export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["portfolio"] }) {
   const info = (
     <>
-      <Tip>가로는 판매율(준비한 수량 중 팔린 비율), 세로는 상품 매출에서 차지하는 비중이에요. 원이 클수록 매출이 커요.</Tip>
-      <Tip>점선은 내 상품들의 평균이에요. 오른쪽 위에 있을수록 잘 팔리고 매출에서 차지하는 몫도 커요.</Tip>
+      <Tip>가로는 판매율(준비한 수량 중 팔린 비율), 세로는 상품 매출에서 차지하는 비중이에요. 점선은 내 상품들의 평균이에요.</Tip>
+      <Tip>바깥 원은 준비한 만큼 다 팔았을 때의 매출, 안쪽 원은 실제 매출이에요. 안쪽 원이 바깥 원을 많이 채울수록 많이 팔린 거예요.</Tip>
     </>
   );
   if (portfolio.length < 2) {
@@ -206,15 +231,20 @@ export function PortfolioPanel({ portfolio, colors = {} }: { portfolio: Dashboar
       </Panel>
     );
   }
-  const W = 560, H = 260, PAD = { l: 44, r: 24, t: 26, b: 34 };
+  const W = 560, H = 270, PAD = { l: 44, r: 28, t: 30, b: 34 };
   const shareTop = Math.min(1, Math.ceil(Math.max(...portfolio.map((p) => p.share)) * 1.3 * 10) / 10);
   const sx = (v: number) => PAD.l + v * (W - PAD.l - PAD.r);
   const sy = (v: number) => H - PAD.b - (v / shareTop) * (H - PAD.t - PAD.b);
   const avgSell = portfolio.reduce((a, p) => a + p.sellThrough * p.revenue, 0) / portfolio.reduce((a, p) => a + p.revenue, 0);
   const avgShare = 1 / portfolio.length;
-  const maxRev = Math.max(...portfolio.map((p) => p.revenue));
-  const star = portfolio.find((p) => p.sellThrough >= avgSell && p.share >= avgShare);
-  const color = (name: string) => colors[name] ?? "#B8C2CC";
+  const maxPotential = Math.max(...portfolio.map((p) => p.potential));
+  const rOf = (v: number) => 8 + 34 * Math.sqrt(v / maxPotential); // 같은 척도라 안쪽 원은 항상 바깥 원 안에
+  const tier = (p: (typeof portfolio)[number]) => {
+    const highs = Number(p.sellThrough >= avgSell) + Number(p.share >= avgShare);
+    return highs === 2 ? TIER.good : highs === 1 ? TIER.mid : TIER.low;
+  };
+  const star = portfolio.find((p) => tier(p) === TIER.good);
+  const points = placeLabels(portfolio.map((p) => ({ p, cx: sx(p.sellThrough), cy: sy(p.share), r: rOf(p.potential) })));
   return (
     <Panel title="상품 포트폴리오" info={info}>
       {star && (
@@ -222,16 +252,7 @@ export function PortfolioPanel({ portfolio, colors = {} }: { portfolio: Dashboar
           <span className="font-semibold text-neutral-900">{josa(star.productName, "이", "가")}</span> 잘 팔리고 매출 비중도 커요
         </p>
       )}
-      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label="상품별 판매율과 매출 비중">
-        <defs>
-          {portfolio.map((p, k) => (
-            <radialGradient key={k} id={`cloud-${k}`}>
-              <stop offset="0%" stopColor={color(p.productName)} stopOpacity={0.5} />
-              <stop offset="60%" stopColor={color(p.productName)} stopOpacity={0.18} />
-              <stop offset="100%" stopColor={color(p.productName)} stopOpacity={0} />
-            </radialGradient>
-          ))}
-        </defs>
+      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full overflow-visible" role="img" aria-label="상품별 판매율과 매출 비중">
         {[0, shareTop / 2, shareTop].map((t) => (
           <g key={t}>
             <line x1={PAD.l} x2={W - PAD.r} y1={sy(t)} y2={sy(t)} stroke="#EEF1F5" />
@@ -245,19 +266,31 @@ export function PortfolioPanel({ portfolio, colors = {} }: { portfolio: Dashboar
         <text x={W - PAD.r} y={H - 12} textAnchor="end" fontSize="11" fill="#9A9DB0">판매율</text>
         <line x1={sx(avgSell)} x2={sx(avgSell)} y1={PAD.t} y2={H - PAD.b} stroke="#D5D9E3" strokeDasharray="4 4" />
         <line x1={PAD.l} x2={W - PAD.r} y1={sy(avgShare)} y2={sy(avgShare)} stroke="#D5D9E3" strokeDasharray="4 4" />
-        {portfolio.map((p, k) => (
-          <circle key={`c-${p.productName}`} cx={sx(p.sellThrough)} cy={sy(p.share)} r={22 + 46 * Math.sqrt(p.revenue / maxRev)} fill={`url(#cloud-${k})`} />
-        ))}
-        {placeLabels(portfolio.map((p) => ({ p, cx: sx(p.sellThrough), cy: sy(p.share) }))).map(({ p, cx, cy, ly, right }) => (
-          <g key={p.productName}>
-            <title>{`${p.productName} · 판매율 ${Math.round(p.sellThrough * 100)}% · 매출 비중 ${Math.round(p.share * 100)}%`}</title>
-            <circle cx={cx} cy={cy} r={5.5} fill={color(p.productName)} stroke="white" strokeWidth={2} />
-            <text x={right ? cx - 10 : cx + 10} y={ly + 4} textAnchor={right ? "end" : "start"} fontSize="12" fontWeight={600} fill="#1F2023">
-              {p.productName} <tspan fontWeight={400} fill="#8A8D93">{Math.round(p.share * 100)}%</tspan>
-            </text>
-          </g>
+        {[...points].sort((a, b) => b.r - a.r).map(({ p, cx, cy, r }) => {
+          const c = tier(p).color;
+          return (
+            <g key={`c-${p.productName}`}>
+              <title>{`${p.productName} · 판매율 ${Math.round(p.sellThrough * 100)}% · 매출 비중 ${Math.round(p.share * 100)}%`}</title>
+              <circle cx={cx} cy={cy} r={r} fill={c} fillOpacity={0.12} stroke={c} strokeOpacity={0.45} strokeWidth={1.5} />
+              <circle cx={cx} cy={cy} r={rOf(p.revenue)} fill={c} fillOpacity={0.72} stroke="white" strokeWidth={1.5} />
+            </g>
+          );
+        })}
+        {points.map(({ p, ly, right, lx }) => (
+          <text key={`t-${p.productName}`} x={lx} y={ly + 4} textAnchor={right ? "end" : "start"} fontSize="12" fontWeight={600} fill="#1F2023">
+            {p.productName} <tspan fontWeight={400} fill="#8A8D93">{Math.round(p.share * 100)}%</tspan>
+          </text>
         ))}
       </svg>
+      <ul className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[#6B6E74]">
+        {Object.values(TIER).map((t) => (
+          <li key={t.label} className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: t.color, opacity: 0.8 }} />{t.label}</li>
+        ))}
+        <li className="flex items-center gap-1.5">
+          <svg viewBox="0 0 16 16" className="size-4" aria-hidden><circle cx="8" cy="8" r="7" fill="#9A9DB0" fillOpacity={0.12} stroke="#9A9DB0" strokeOpacity={0.5} /><circle cx="8" cy="8" r="3.5" fill="#9A9DB0" /></svg>
+          바깥 원 준비량 · 안쪽 원 실제 매출
+        </li>
+      </ul>
     </Panel>
   );
 }
@@ -283,7 +316,7 @@ function stockSummary(items: StockDiagnosis[]): ReactNode {
   return "기록 부족";
 }
 
-export function StockPanel({ stock, colors = {} }: { stock: DashboardAnalytics["stock"]; colors?: Record<string, string> }) {
+export function StockPanel({ stock }: { stock: DashboardAnalytics["stock"] }) {
   const info = (
     <>
       <Tip>덜 가져가서 못 판 손해와 더 가져가서 남은 손해를 비교해, 다 팔리는 날이 얼마나 있어야 가장 이득인지 계산해요.</Tip>
@@ -310,12 +343,9 @@ export function StockPanel({ stock, colors = {} }: { stock: DashboardAnalytics["
           const v = VERDICT[it.verdict];
           return (
             <li key={it.productName} className="flex items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0">
-              <div className="flex min-w-0 items-start gap-2">
-                <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: colors[it.productName] ?? "#B8C2CC" }} />
-                <div className="min-w-0">
+              <div className="min-w-0">
                 <p className="truncate text-[13px] font-semibold text-neutral-900">{it.productName}</p>
                 <p className="text-[11px] tabular-nums text-[#8A8D93]">{it.stockouts === 0 ? `${it.n}번 모두 남음` : `${it.n}번 중 ${it.stockouts}번 다 팔림`}</p>
-                </div>
               </div>
               <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${v.className}`}>{v.label}</span>
             </li>
@@ -332,10 +362,11 @@ export function StockPanel({ stock, colors = {} }: { stock: DashboardAnalytics["
 
 export function PlanLine({ plan }: { plan: DashboardAnalytics["plan"] }) {
   if (plan.status !== "ok") return null;
-  if (!plan.biased) return <p className="text-[13px] text-neutral-500">참가 전 예상 매출이 대체로 잘 맞았어요</p>;
+  const count = <span className="text-neutral-400">({plan.n}회)</span>;
+  if (!plan.biased) return <p className="text-[13px] text-neutral-500">참가 전 예상 매출이 대체로 잘 맞았어요 {count}</p>;
   return (
     <p className="text-[13px] text-neutral-500">
-      실제 매출이 예상보다 평균 <span className="font-semibold text-neutral-800">{absPct(plan.pct)} {plan.pct < 0 ? "적었어요" : "많았어요"}</span>
+      참가 전 예상 매출보다 실제 매출이 평균 <span className="font-semibold text-neutral-800">{absPct(plan.pct)} {plan.pct < 0 ? "적었어요" : "많았어요"}</span> {count}
     </p>
   );
 }

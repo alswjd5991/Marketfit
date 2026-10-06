@@ -20,7 +20,7 @@ export function InfoTip({ children, label = "설명 보기", align = "left" }: {
       </button>
       <span
         role="tooltip"
-        className={`pointer-events-none absolute top-full z-30 mt-2 hidden w-72 max-w-[calc(100vw-2rem)] rounded-xl bg-neutral-900/95 px-3.5 py-3 text-left text-[12px] font-normal leading-5 text-white shadow-lg group-hover/tip:block group-focus-within/tip:block ${position}`}
+        className={`pointer-events-none absolute top-full z-30 mt-2 hidden w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-[#CFE6F5] bg-[#F5FAFE] px-3.5 py-3 text-left text-[12px] font-normal leading-5 text-[#2B4A63] shadow-[0_10px_28px_rgba(40,80,120,0.16)] group-hover/tip:block group-focus-within/tip:block ${position}`}
       >
         {children}
       </span>
