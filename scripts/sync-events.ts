@@ -35,7 +35,7 @@ async function main() {
     console.log(`  · ${s.source}: ${s.error ? `실패(${s.error})` : `${s.fetched}건 중 셀러 참여형 ${s.kept}건`}`);
   }
   console.log(`  · 중복 제외 ${report.skippedAsDuplicate}건 → 저장 대상 ${report.candidates}건`);
-  if (!dryRun) console.log(`  · 신규 ${report.created}건 / 갱신 ${report.updated}건 / 실패 ${report.failed}건`);
+  if (!dryRun) console.log(`  · 신규 ${report.created}건 / 갱신 ${report.updated}건 / 실패 ${report.failed}건 / 상세 정보 채움 ${report.detailed}건`);
   if (report.newEvents.length) {
     console.log(dryRun ? "\n저장 대상 예시:" : "\n이번 주 새로 추가된 행사:");
     for (const name of report.newEvents) console.log(`  - ${name}`);

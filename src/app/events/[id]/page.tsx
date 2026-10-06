@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Building2, CalendarDays, ChevronLeft, Clock, ExternalLink, MapPin } from "lucide-react";
+import { Building2, CalendarDays, ChevronLeft, Clock, ExternalLink, MapPin, Phone, Ticket } from "lucide-react";
 import { getEventById, getPosterImage } from "@/features/events/data";
 import { computeRecruitmentStatus, formatDday } from "@/features/events/status";
 import { getMyParticipationStatus } from "@/features/participations/data";
@@ -42,6 +42,11 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
   const place = [event.region, event.gu, event.venue].filter(Boolean).join(" · ");
   const hours = event.hours?.filter(Boolean).join(" ~ ");
   const fee = event.feeKrw === 0 ? "무료" : event.feeKrw != null ? `${event.feeKrw.toLocaleString()}원` : null;
+  // 공공데이터로 자동 수집한 행사: 셀러 모집 공고가 아니라 행사 정보라 모집 마감·참가비가 없다.
+  const isAuto = event.sourceDataset === "tour" || event.sourceDataset === "seoulfest";
+  const details = event.details ?? null;
+  // 모집 정보가 없는 행사는 시작일 기준으로 상태를 보여준다(시작 전 D-n / 진행 중 / 종료).
+  const startBadge = closed ? "종료" : event.startDate && formatDday(event.startDate) && event.startDate > new Date().toISOString().slice(0, 10) ? formatDday(event.startDate) : "진행 중";
 
   const conditions: [string, string | null][] = [
     ["모집 대상", event.eligibility],
@@ -74,7 +79,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
           </div>
 
           <div className="mt-6 flex items-center gap-2">
-            {closed ? <Badge variant="muted">모집 종료</Badge> : dday ? <Badge variant="warning">{dday}</Badge> : null}
+            {closed ? <Badge variant="muted">{isAuto ? "행사 종료" : "모집 종료"}</Badge> : dday ? <Badge variant="warning">{dday}</Badge> : null}
             <Badge variant="secondary">{group}</Badge>
           </div>
           <h1 className="mt-3 break-keep text-[26px] font-extrabold leading-tight tracking-[-0.03em] text-neutral-950 sm:text-[32px]">
@@ -86,7 +91,16 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
             <Fact icon={<Clock />} label="운영 시간" value={hours} />
             <Fact icon={<MapPin />} label="장소" value={place} />
             <Fact icon={<Building2 />} label="주최" value={event.organizer} />
+            <Fact icon={<Phone />} label="문의" value={details?.tel} />
+            <Fact icon={<Ticket />} label="관람 요금" value={details?.admission} />
           </dl>
+
+          {details?.overview && (
+            <section className="mt-10">
+              <h2 className="text-lg font-bold text-neutral-950">행사 소개</h2>
+              <p className="mt-3 whitespace-pre-line break-keep text-[15px] leading-relaxed text-neutral-800">{details.overview}</p>
+            </section>
+          )}
 
           {conditions.some(([, v]) => v) && (
             <section className="mt-10">
@@ -107,22 +121,36 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-3xl bg-white p-6 shadow-[0_1px_3px_rgba(15,23,42,0.06),0_12px_32px_-12px_rgba(15,23,42,0.18)]">
+            {/* 알 수 없는 값은 "공고 확인"으로 채우지 않고 항목 자체를 숨긴다. */}
             <dl className="space-y-4">
-              <div>
-                <dt className="text-sm text-neutral-500">모집 마감</dt>
-                <dd className="mt-1 flex items-baseline gap-2">
-                  <span className="text-2xl font-bold tracking-tight text-neutral-950">{event.recruitEnd ?? "공고 확인"}</span>
-                  {closed ? (
-                    <span className="text-sm font-semibold text-neutral-400">종료</span>
-                  ) : (
-                    event.recruitEnd && dday && <span className="text-sm font-semibold text-amber-600">{dday}</span>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-neutral-500">참가비</dt>
-                <dd className="mt-1 text-2xl font-bold tracking-tight text-neutral-950">{fee ?? "공고 확인"}</dd>
-              </div>
+              {event.recruitEnd && (
+                <div>
+                  <dt className="text-sm text-neutral-500">모집 마감</dt>
+                  <dd className="mt-1 flex items-baseline gap-2">
+                    <span className="text-2xl font-bold tracking-tight text-neutral-950">{event.recruitEnd}</span>
+                    {closed ? (
+                      <span className="text-sm font-semibold text-neutral-400">종료</span>
+                    ) : (
+                      dday && <span className="text-sm font-semibold text-amber-600">{dday}</span>
+                    )}
+                  </dd>
+                </div>
+              )}
+              {fee && (
+                <div>
+                  <dt className="text-sm text-neutral-500">참가비</dt>
+                  <dd className="mt-1 text-2xl font-bold tracking-tight text-neutral-950">{fee}</dd>
+                </div>
+              )}
+              {!event.recruitEnd && !fee && event.startDate && (
+                <div>
+                  <dt className="text-sm text-neutral-500">행사 시작</dt>
+                  <dd className="mt-1 flex items-baseline gap-2">
+                    <span className="text-2xl font-bold tracking-tight text-neutral-950">{event.startDate}</span>
+                    <span className={`text-sm font-semibold ${closed ? "text-neutral-400" : "text-amber-600"}`}>{startBadge}</span>
+                  </dd>
+                </div>
+              )}
             </dl>
 
             <div className="mt-6">
@@ -144,6 +172,16 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
 
             {error && <p className="mt-3 rounded-lg bg-[#FFE4DE] px-3 py-2 text-sm text-[#BE3A2A]">{error}</p>}
 
+            {details?.homepage && (
+              <a
+                href={details.homepage}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 flex items-center justify-center gap-1.5 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900"
+              >
+                행사 홈페이지 <ExternalLink className="size-3.5" />
+              </a>
+            )}
             {event.sourceUrl && (
               <a
                 href={event.sourceUrl}
@@ -151,7 +189,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
                 rel="noreferrer"
                 className="mt-4 flex items-center justify-center gap-1.5 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900"
               >
-                원본 공고 <ExternalLink className="size-3.5" />
+                {isAuto ? "행사 정보 출처" : "원본 공고"} <ExternalLink className="size-3.5" />
               </a>
             )}
           </div>

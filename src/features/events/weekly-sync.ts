@@ -16,11 +16,13 @@
 // collected_at이 최근 7일 안이면 "NEW" 배지를 단다.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
+import type { Database, EventDetails } from "@/types/database";
 import { seedEvents } from "@/lib/data/seed-events";
 import { isSameEvent, koreaDate, regionOfAddress, type EventRecord } from "@/features/ai/event-search";
 
 const TOUR_SEARCH = "https://apis.data.go.kr/B551011/KorService2/searchFestival2";
+const TOUR_COMMON = "https://apis.data.go.kr/B551011/KorService2/detailCommon2";
+const TOUR_INTRO = "https://apis.data.go.kr/B551011/KorService2/detailIntro2";
 const SEOUL_SEARCH = "https://festival.seoul.go.kr/festival/main/searchModal.do";
 
 /** 매주 이만큼 앞의 행사까지 모은다 — 셀러가 모집 공고를 찾아 신청할 여유. */
@@ -28,6 +30,21 @@ export const LOOKAHEAD_DAYS = 90;
 
 /** 셀러 부스가 들어갈 수 있는 행사인지(행사명 기준). 공연·불꽃놀이·전시 관람형 축제는 제외된다. */
 export const SELLER_EVENT = /마켓|장터|야시장|야행|벼룩|플리|페어|박람회|먹거리|푸드|특산|직거래|공예|크리스마스|김장|로컬/;
+
+const NEW_BADGE_DAYS = 7;
+
+/**
+ * "새로 등록된 행사"인지. 매주 월요일 수집은 "수집일 ~ 90일 뒤"에 열리는 행사를 모으므로, 평소라면 그 주에
+ * 새로 잡히는 행사는 수집 범위 끝(83~90일 뒤)에 막 들어온 행사다. 처음 수집했을 때 한꺼번에 들어온 과거·근일
+ * 행사까지 NEW로 보이지 않도록, 수집 후 7일 이내이면서 시작일이 그 주의 새 범위에 드는 행사만 NEW로 본다.
+ */
+export function isNewlyListed(collectedAt: string | null | undefined, startDate: string | null, now = new Date()): boolean {
+  if (!collectedAt || !startDate) return false;
+  const collected = new Date(collectedAt);
+  if (now.getTime() - collected.getTime() >= NEW_BADGE_DAYS * 86_400_000) return false;
+  const day = (offset: number) => new Date(collected.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
+  return startDate > day(LOOKAHEAD_DAYS - NEW_BADGE_DAYS) && startDate <= day(LOOKAHEAD_DAYS);
+}
 
 export type AutoSourceDataset = "tour" | "seoulfest";
 
@@ -69,6 +86,7 @@ export interface WeeklySyncReport {
   updated: number;
   failed: number;
   newEvents: string[]; // 이번 주 새로 추가된 행사명(최대 30건)
+  detailed: number; // 상세 정보(소개·운영 시간 등)를 채운 행사 수
 }
 
 export const sourceKey = (e: Pick<CollectedEvent, "sourceDataset" | "sourceId">) => `${e.sourceDataset}:${e.sourceId}`;
@@ -211,6 +229,59 @@ async function fetchSeoul(from: string, to: string): Promise<CollectedEvent[]> {
   return parseSeoulRows(await res.json(), from, to);
 }
 
+/** TourAPI 응답의 HTML 조각을 글자로: <br>은 줄바꿈, 나머지 태그는 지운다. */
+function htmlText(v: unknown): string {
+  if (typeof v !== "string") return "";
+  return v.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+    .replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+}
+/** homepage 칸은 보통 <a href="...">…</a> 형태 — 주소만 뽑는다. */
+function htmlHref(v: unknown): string {
+  if (typeof v !== "string") return "";
+  const href = v.match(/href=["']([^"']+)["']/i)?.[1] ?? v.match(/https?:\/\/[^\s"'<>]+/)?.[0] ?? "";
+  if (!href) return "";
+  return /^https?:\/\//.test(href) ? href : `https://${href.replace(/^\/+/, "")}`;
+}
+
+async function tourItem(url: string, key: string, params: Record<string, string>): Promise<Record<string, unknown> | null> {
+  const serviceKey = key.includes("%") ? key : encodeURIComponent(key);
+  const q = new URLSearchParams({ MobileOS: "ETC", MobileApp: "Marketfit", _type: "json", ...params });
+  const res = await fetch(`${url}?serviceKey=${serviceKey}&${q}`, { cache: "no-store", signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`TourAPI 상세 HTTP ${res.status}`);
+  const data = await res.json() as { response?: { header?: { resultCode?: string }; body?: { items?: { item?: unknown } | "" } } };
+  if (data.response?.header?.resultCode !== "0000") return null;
+  const items = data.response.body?.items;
+  const item = typeof items === "object" ? items.item : undefined;
+  const first = Array.isArray(item) ? item[0] : item;
+  return first && typeof first === "object" ? (first as Record<string, unknown>) : null;
+}
+
+/** TourAPI 상세 조회(공통정보 + 축제 소개정보)로 관람객용 행사 정보를 모은다. 실패하면 null. */
+export async function fetchTourDetails(key: string, sourceId: string): Promise<EventDetails | null> {
+  const contentId = sourceId.replace(/^T/, "");
+  const [common, intro] = await Promise.all([
+    tourItem(TOUR_COMMON, key, { contentId }),
+    tourItem(TOUR_INTRO, key, { contentId, contentTypeId: "15" }), // 15 = 축제공연행사
+  ]);
+  if (!common && !intro) return null;
+  return parseTourDetails(common ?? {}, intro ?? {});
+}
+
+export function parseTourDetails(common: Record<string, unknown>, intro: Record<string, unknown>): EventDetails {
+  const details: EventDetails = {
+    overview: htmlText(common.overview).slice(0, 1500),
+    playtime: htmlText(intro.playtime),
+    place: htmlText(intro.eventplace),
+    sponsor: htmlText(intro.sponsor1),
+    organizer: htmlText(intro.sponsor2),
+    tel: htmlText(intro.sponsor1tel) || htmlText(common.tel),
+    admission: htmlText(intro.usetimefestival),
+    homepage: htmlHref(intro.eventhomepage) || htmlHref(common.homepage),
+  };
+  // 빈 칸은 저장하지 않는다(화면에 빈 항목을 늘어놓지 않도록).
+  return Object.fromEntries(Object.entries(details).filter(([, v]) => v)) as EventDetails;
+}
+
 // ---------------------------------------------------------------------------
 // 3) 저장 (source_post_id 기준 upsert)
 // ---------------------------------------------------------------------------
@@ -232,19 +303,40 @@ function eventRow(e: CollectedEvent) {
   };
 }
 
-async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string) {
-  const existing = new Map<string, { id: string; event_id: string }>();
+async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string, tourKey?: string) {
+  const existing = new Map<string, { id: string; event_id: string; hasDetails: boolean }>();
   const keys = events.map(sourceKey);
+  // details 칸(0003_event_details.sql)이 아직 없으면 상세 정보 없이 기존처럼 저장한다.
+  let detailsColumn = true;
+  type Found = { id: string; event_id: string; source_post_id: string | null; events?: { details: unknown } | null };
   for (let i = 0; i < keys.length; i += 100) {
-    const { data, error } = await supabase
-      .from("event_recruitments")
-      .select("id, event_id, source_post_id")
-      .in("source_post_id", keys.slice(i, i + 100));
-    if (error) throw new Error(`기존 행사 조회 실패: ${error.message}`);
-    for (const r of data ?? []) if (r.source_post_id) existing.set(r.source_post_id, r);
+    const chunk = keys.slice(i, i + 100);
+    const query = (cols: string) => supabase.from("event_recruitments").select(cols).in("source_post_id", chunk) as unknown as PromiseLike<{ data: Found[] | null; error: { message: string } | null }>;
+    let res = detailsColumn ? await query("id, event_id, source_post_id, events(details)") : null;
+    if (!res || res.error) {
+      detailsColumn = false;
+      res = await query("id, event_id, source_post_id");
+    }
+    if (res.error) throw new Error(`기존 행사 조회 실패: ${res.error.message}`);
+    for (const r of res.data ?? []) {
+      if (r.source_post_id) existing.set(r.source_post_id, { id: r.id, event_id: r.event_id, hasDetails: Boolean(r.events?.details) });
+    }
   }
 
-  let created = 0, updated = 0, failed = 0;
+  let created = 0, updated = 0, failed = 0, detailed = 0;
+  /** 새 행사와 상세 정보가 비어 있는 행사만 상세 조회한다(API 하루 호출 한도를 아끼려고). */
+  const enrich = async (eventId: string, recruitmentId: string, e: CollectedEvent) => {
+    if (!detailsColumn || !tourKey || e.sourceDataset !== "tour") return;
+    try {
+      const d = await fetchTourDetails(tourKey, e.sourceId);
+      if (!d || !Object.keys(d).length) return;
+      const [ev, rc] = await Promise.all([
+        supabase.from("events").update({ details: d, description: d.overview ?? null }).eq("id", eventId),
+        supabase.from("event_recruitments").update({ organizer: d.sponsor ?? null, official_site_url: d.homepage ?? null }).eq("id", recruitmentId),
+      ]);
+      if (!ev.error && !rc.error) detailed++;
+    } catch { /* 상세 정보가 없어도 행사 자체는 저장돼 있다 */ }
+  };
   const newEvents: string[] = [];
 
   const upsertOne = async (e: CollectedEvent) => {
@@ -258,11 +350,12 @@ async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string
       ]);
       if (ev.error || rc.error) failed++;
       else updated++;
+      if (!found.hasDetails) await enrich(found.event_id, found.id, e);
       return;
     }
     const { data: ev, error: evErr } = await supabase.from("events").insert(eventRow(e)).select("id").single();
     if (evErr || !ev) { failed++; return; }
-    const { error: rcErr } = await supabase.from("event_recruitments").insert({
+    const { data: rc, error: rcErr } = await supabase.from("event_recruitments").insert({
       event_id: ev.id,
       source_name: AUTO_SOURCES[e.sourceDataset].name,
       source_url: e.sourceUrl,
@@ -272,8 +365,8 @@ async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string
       collected_at: now,
       last_checked_at: now,
       is_sample_data: false,
-    });
-    if (rcErr) {
+    }).select("id").single();
+    if (rcErr || !rc) {
       // 모집정보 없이 events만 남으면 다음 주에 키로 못 찾아 중복이 생기므로 되돌린다.
       await supabase.from("events").delete().eq("id", ev.id);
       failed++;
@@ -281,11 +374,12 @@ async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string
     }
     created++;
     newEvents.push(e.name);
+    await enrich(ev.id, rc.id, e);
   };
 
   // Supabase 요청을 10개씩 병렬로 — 수백 건이어도 함수 제한 시간 안에 끝난다.
   for (let i = 0; i < events.length; i += 10) await Promise.all(events.slice(i, i + 10).map(upsertOne));
-  return { created, updated, failed, newEvents };
+  return { created, updated, failed, newEvents, detailed };
 }
 
 // ---------------------------------------------------------------------------
@@ -360,6 +454,7 @@ export async function runWeeklyEventSync(opts: {
     updated: 0,
     failed: 0,
     newEvents: [],
+    detailed: 0,
   };
 
   if (dryRun) {
@@ -368,6 +463,6 @@ export async function runWeeklyEventSync(opts: {
   }
   if (!opts.supabase) throw new Error("SUPABASE_SERVICE_ROLE_KEY가 없어 저장할 수 없습니다.");
 
-  const saved = await saveEvents(opts.supabase, kept, now.toISOString());
+  const saved = await saveEvents(opts.supabase, kept, now.toISOString(), opts.tourKey);
   return { ...report, ...saved, newEvents: saved.newEvents.slice(0, 30) };
 }
