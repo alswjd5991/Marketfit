@@ -1,5 +1,6 @@
 // 실행: npm run sync:events            (실제 저장)
 //       npm run sync:events -- --dry-run (수집·선별 결과만 출력, DB는 건드리지 않음)
+//       npm run sync:events -- --from 2024-01-01 --to 2026-10-06   (그 기간에 열린 과거 행사를 한 달씩 나눠 수집)
 //
 // 매주 월요일 Vercel Cron(/api/cron/weekly-events)이 자동으로 하는 주간 행사 업데이트를
 // 로컬에서 직접 한 번 돌린다. 로직은 src/features/events/weekly-sync.ts 하나를 같이 쓴다.
@@ -13,13 +14,21 @@ import { runWeeklyEventSync } from "../src/features/events/weekly-sync";
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
+  const arg = (name: string) => {
+    const i = process.argv.indexOf(name);
+    const v = i >= 0 ? process.argv[i + 1] : undefined;
+    if (v !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error(`${name}는 YYYY-MM-DD 형식이어야 합니다: ${v}`);
+    return v;
+  };
+  const [from, to] = [arg("--from"), arg("--to")];
+  if (Boolean(from) !== Boolean(to)) throw new Error("--from과 --to는 함께 지정해야 합니다.");
   const supabase = createAdminClient();
   if (!dryRun && !supabase) {
     console.error("SUPABASE_SERVICE_ROLE_KEY가 .env.local에 없습니다. (--dry-run으로는 저장 없이 확인 가능)");
     process.exit(1);
   }
 
-  const report = await runWeeklyEventSync({ supabase, dryRun, tourKey: process.env.TOUR_API_KEY?.trim() });
+  const report = await runWeeklyEventSync({ supabase, dryRun, tourKey: process.env.TOUR_API_KEY?.trim(), range: from && to ? { from, to } : undefined });
 
   console.log(`\n주간 행사 업데이트 ${dryRun ? "(dry-run)" : ""} — 대상 기간 ${report.range.from} ~ ${report.range.to}`);
   for (const s of report.sources) {

@@ -292,20 +292,47 @@ async function saveEvents(supabase: Admin, events: CollectedEvent[], now: string
 // 4) 전체 실행
 // ---------------------------------------------------------------------------
 
+/** [from, to]를 한 달 단위 구간으로 나눈다(긴 기간을 한 번에 조회하면 API 응답 한도에 걸린다). */
+export function monthChunks(from: string, to: string): [string, string][] {
+  const out: [string, string][] = [];
+  let start = from;
+  while (start <= to) {
+    const d = new Date(`${start}T00:00:00Z`);
+    const monthEnd = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+    const end = monthEnd < to ? monthEnd : to;
+    out.push([start, end]);
+    start = addDays(end, 1);
+  }
+  return out;
+}
+
+/** 구간별로 차례로 조회해 합치고, 여러 달에 걸친 행사는 한 번만 남긴다. */
+async function fetchChunked(chunks: [string, string][], fetchOne: (from: string, to: string) => Promise<CollectedEvent[]>) {
+  const byId = new Map<string, CollectedEvent>();
+  for (const [a, b] of chunks) for (const e of await fetchOne(a, b)) byId.set(e.sourceId, e);
+  return [...byId.values()];
+}
+
+/**
+ * 기본은 "오늘 ~ 90일 뒤"(매주 월요일 자동 업데이트). range를 주면 그 기간에 열린 행사를 모은다 —
+ * 과거 행사를 기간 단위로 한 번에 채울 때(npm run sync:events -- --from 2024-01-01 --to 2026-10-06).
+ */
 export async function runWeeklyEventSync(opts: {
   supabase: Admin | null; // dryRun이면 null 가능
   dryRun?: boolean;
   now?: Date;
   tourKey?: string;
+  range?: { from: string; to: string };
 }): Promise<WeeklySyncReport> {
   const now = opts.now ?? new Date();
-  const from = koreaDate(now);
-  const to = addDays(from, LOOKAHEAD_DAYS);
+  const from = opts.range?.from ?? koreaDate(now);
+  const to = opts.range?.to ?? addDays(from, LOOKAHEAD_DAYS);
   const dryRun = Boolean(opts.dryRun);
+  const chunks = opts.range ? monthChunks(from, to) : [[from, to] as [string, string]];
 
   const lookups: [string, () => Promise<CollectedEvent[]>][] = [];
-  if (opts.tourKey) lookups.push([AUTO_SOURCES.tour.name, () => fetchTour(opts.tourKey!, from, to)]);
-  lookups.push([AUTO_SOURCES.seoulfest.name, () => fetchSeoul(from, to)]);
+  if (opts.tourKey) lookups.push([AUTO_SOURCES.tour.name, () => fetchChunked(chunks, (a, b) => fetchTour(opts.tourKey!, a, b))]);
+  lookups.push([AUTO_SOURCES.seoulfest.name, () => fetchChunked(chunks, fetchSeoul)]);
 
   // 한 출처가 실패해도 나머지 출처 결과는 저장한다.
   const results = await Promise.allSettled(lookups.map(([, fn]) => fn()));

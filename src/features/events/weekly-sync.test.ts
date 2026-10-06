@@ -52,3 +52,9 @@ test("dry-run은 출처가 실패해도 보고서를 돌려주고 DB 없이 끝�
     globalThis.fetch = realFetch;
   }
 });
+
+test("기간 수집은 한 달 단위로 나뉘고 빈틈·겹침이 없다", async () => {
+  const { monthChunks } = await import("./weekly-sync");
+  assert.deepEqual(monthChunks("2024-01-15", "2024-03-10"), [["2024-01-15", "2024-01-31"], ["2024-02-01", "2024-02-29"], ["2024-03-01", "2024-03-10"]]);
+  assert.deepEqual(monthChunks("2024-12-31", "2025-01-01"), [["2024-12-31", "2024-12-31"], ["2025-01-01", "2025-01-01"]]);
+});
