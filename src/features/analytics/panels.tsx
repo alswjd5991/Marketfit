@@ -138,41 +138,43 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
   const lo = Math.min(min, peer.mine);
   const hi = Math.max(max, peer.mine);
   const pad = (hi - lo) * 0.03;
-  const pos = (v: number) => ((v - lo + pad) / (hi - lo + 2 * pad)) * 100;
-  const x = (v: number) => `${pos(v)}%`;
-  const showMedianTick = pos(median) - pos(min) > 14 && pos(max) - pos(median) > 14;
+  const W = 560, H = 120, PAD = 12, TOP = 8, MID = 46, BASE = 88;
+  const sx = (v: number) => PAD + ((v - lo + pad) / (hi - lo + 2 * pad)) * (W - 2 * PAD);
+  const showMedianTick = sx(median) - sx(min) > 80 && sx(max) - sx(median) > 80;
+  const ticks: { v: number; anchor: "start" | "middle" | "end" }[] = [
+    { v: min, anchor: "start" },
+    ...(showMedianTick ? [{ v: median, anchor: "middle" as const }] : []),
+    { v: max, anchor: "end" },
+  ];
   return (
     <div>
       <p className="text-sm text-[#43464B]">
         {peer.category} 가게 {total}곳 중 <span className="font-bold text-[#1F2023]">{label}</span>예요
       </p>
-      <div className="relative mt-5 h-[72px] rounded-xl bg-[#F1F8F4]">
-        {/* 가게들(점) */}
-        {peer.values.map((v, i) => (
-          <span
-            key={i}
-            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{ left: x(v), top: `${50 + jitter(i) * 62}%`, background: DOT, opacity: 0.45 }}
-          />
+      <svg viewBox={`0 0 ${W} ${H}`} className="mt-4 block h-auto w-full overflow-visible" role="img" aria-label="같은 업종 가게들의 매출 분포와 내 가게 위치">
+        {/* 바닥 눈금 — 포트폴리오 차트와 같은 옅은 격자·회색 숫자 */}
+        <line x1={PAD} x2={W - PAD} y1={BASE} y2={BASE} stroke="#EEF1F5" />
+        {ticks.map(({ v, anchor }) => (
+          <g key={anchor}>
+            <line x1={sx(v)} x2={sx(v)} y1={TOP} y2={BASE} stroke="#EEF1F5" />
+            <text x={sx(v)} y={BASE + 16} textAnchor={anchor} fontSize="11" fill="#9A9DB0">{manwon(v)}</text>
+          </g>
         ))}
-        {/* 수염 */}
-        <div className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full" style={{ left: x(min), width: `calc(${x(max)} - ${x(min)})`, background: BOX_LINE, opacity: 0.7 }} />
-        <div className="absolute top-1/2 h-4 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(min), background: BOX_LINE }} />
-        <div className="absolute top-1/2 h-4 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(max), background: BOX_LINE }} />
-        {/* 상자: 점이 비쳐 보이게 반투명 */}
-        <div
-          className="absolute top-1/2 h-9 -translate-y-1/2 rounded-lg border-[2.5px] shadow-[0_6px_16px_rgba(36,104,74,0.15)]"
-          style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: "rgba(95,185,139,0.18)", borderColor: BOX_LINE }}
-        />
-        <div className="absolute top-1/2 h-9 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(median), background: MEDIAN }} />
+        {/* 가게들(점): 반투명 원 + 흰 테두리 */}
+        {peer.values.map((v, i) => (
+          <circle key={i} cx={sx(v)} cy={MID + jitter(i) * 40} r={5.5} fill={DOT} fillOpacity={0.4} stroke="white" strokeWidth={1} />
+        ))}
+        {/* 수염(최솟값~최댓값) */}
+        <line x1={sx(min)} x2={sx(max)} y1={MID} y2={MID} stroke={BOX_LINE} strokeOpacity={0.6} strokeWidth={2} />
+        <line x1={sx(min)} x2={sx(min)} y1={MID - 8} y2={MID + 8} stroke={BOX_LINE} strokeWidth={2} strokeLinecap="round" />
+        <line x1={sx(max)} x2={sx(max)} y1={MID - 8} y2={MID + 8} stroke={BOX_LINE} strokeWidth={2} strokeLinecap="round" />
+        {/* 상자(가운데 50%): 점이 비쳐 보이게 반투명 */}
+        <rect x={sx(q1)} y={MID - 22} width={Math.max(sx(q3) - sx(q1), 2)} height={44} rx={10} fill={DOT} fillOpacity={0.18} stroke={BOX_LINE} strokeWidth={1.5} />
+        <line x1={sx(median)} x2={sx(median)} y1={MID - 22} y2={MID + 22} stroke={MEDIAN} strokeWidth={3} strokeLinecap="round" />
         {/* 내 가게 */}
-        <div className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" style={{ left: x(peer.mine), background: ME, boxShadow: "0 0 0 4px rgba(242,131,107,0.22)" }} />
-      </div>
-      <div className="relative mt-1.5 h-4 text-[11px] tabular-nums text-[#8A8D93]">
-        <span className="absolute whitespace-nowrap" style={{ left: x(min) }}>{manwon(min)}</span>
-        {showMedianTick && <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: x(median) }}>{manwon(median)}</span>}
-        <span className="absolute -translate-x-full whitespace-nowrap" style={{ left: x(max) }}>{manwon(max)}</span>
-      </div>
+        <circle cx={sx(peer.mine)} cy={MID} r={14} fill={ME} fillOpacity={0.18} />
+        <circle cx={sx(peer.mine)} cy={MID} r={8} fill={ME} fillOpacity={0.85} stroke="white" strokeWidth={2} />
+      </svg>
       <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6B6E74]">
         <li className="flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: DOT, opacity: 0.6 }} />같은 업종 가게</li>
         <li className="flex items-center gap-1.5"><span className="h-3 w-1 rounded-full" style={{ background: MEDIAN }} />중앙값 {manwon(median)}</li>
@@ -223,7 +225,7 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
       </Panel>
     );
   }
-  const W = 600, H = 270, PAD = { l: 44, r: 150, t: 30, b: 34 };
+  const W = 600, H = 284, PAD = { l: 44, r: 150, t: 30, b: 48 };
   const plotRight = W - PAD.r;
   const labelX = plotRight + 34;
   const shareTop = Math.min(1, Math.ceil(Math.max(...portfolio.map((p) => p.share)) * 1.3 * 10) / 10);
@@ -254,10 +256,10 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
           </g>
         ))}
         {[0, 0.5, 1].map((t) => (
-          <text key={t} x={sx(t)} y={H - 12} textAnchor="middle" fontSize="11" fill="#9A9DB0">{Math.round(t * 100)}%</text>
+          <text key={t} x={sx(t)} y={H - PAD.b + 18} textAnchor="middle" fontSize="11" fill="#9A9DB0">{Math.round(t * 100)}%</text>
         ))}
-        <text x={PAD.l} y={14} fontSize="11" fill="#9A9DB0">매출 비중</text>
-        <text x={plotRight} y={H - 12} textAnchor="end" fontSize="11" fill="#9A9DB0">판매율</text>
+        <text x={0} y={14} fontSize="11" fill="#9A9DB0">매출 비중</text>
+        <text x={(PAD.l + plotRight) / 2} y={H - 4} textAnchor="middle" fontSize="11" fill="#9A9DB0">판매율</text>
         <line x1={sx(avgSell)} x2={sx(avgSell)} y1={PAD.t} y2={H - PAD.b} stroke="#D5D9E3" strokeDasharray="4 4" />
         <line x1={PAD.l} x2={plotRight} y1={sy(avgShare)} y2={sy(avgShare)} stroke="#D5D9E3" strokeDasharray="4 4" />
         {[...points].sort((a, b) => b.r - a.r).map(({ p, cx, cy, r }) => {
