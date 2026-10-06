@@ -65,7 +65,7 @@ export default async function EventDetailPage(props: PageProps<"/events/[id]">) 
         <div className="min-w-0">
           <div className="aspect-[16/9] overflow-hidden rounded-3xl shadow-sm">
             <PosterFrame
-              imageUrl={getPosterImage(event.id)}
+              imageUrl={event.imageUrl ?? getPosterImage(event.id)}
               alt={`${event.name} 포스터`}
               category={group}
               seed={event.id}

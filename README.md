@@ -34,7 +34,25 @@ npm run build       # 프로덕션 빌드(배포 전 에러 확인용)
 npm run start        # 빌드된 결과를 로컬에서 실행
 npm run lint          # ESLint 검사
 npm run seed:events   # 시드 행사 데이터(42건)를 Supabase에 적재(최초 1회, 재실행해도 안전)
+npm run sync:events   # 주간 행사 자동 업데이트를 지금 한 번 실행(--dry-run: 저장 없이 결과만)
+npm run test:events   # 주간 업데이트 수집·선별 로직 테스트(네트워크 불필요)
 ```
+
+## 주간 행사 자동 업데이트 (매주 월요일 09:00)
+
+Vercel Cron이 매주 월요일 00:00 UTC(= 한국 시간 09:00)에 `/api/cron/weekly-events`를 호출한다(`vercel.json`의 `crons`).
+로직은 `src/features/events/weekly-sync.ts` 하나이고, 로컬 스크립트(`npm run sync:events`)도 같은 코드를 쓴다.
+
+1. **수집** — 한국관광공사 TourAPI(전국 지자체 축제·행사)와 서울시 공식 축제 찾기에서 오늘부터 90일 안에 열리는 행사를 가져온다.
+2. **선별** — 행사명에 마켓·장터·야시장·먹거리·공예·박람회 등이 들어간 *셀러 참여형* 행사만 남긴다(공연·불꽃놀이 등 관람형 제외).
+3. **중복 제거** — 두 출처 사이, 그리고 직접 수집한 시드 행사와 이름·기간이 겹치면 한 건만 남긴다.
+4. **저장** — `event_recruitments.source_post_id`(`tour:T…`, `seoulfest:F…`) 기준 upsert. 새 행사는 추가하고,
+   있던 행사는 일정·장소만 갱신(`last_checked_at`). 몇 번을 돌려도 중복이 쌓이지 않는다.
+5. **표시** — `/events`는 시드 행사와 자동 수집 행사를 합쳐 보여주고, 최근 7일 안에 들어온 행사에 **NEW** 배지를 단다.
+
+배포 설정: Vercel 프로젝트 환경변수에 `CRON_SECRET`(임의 문자열), `SUPABASE_SERVICE_ROLE_KEY`, `TOUR_API_KEY`를 넣는다.
+Vercel은 Cron 요청에 `Authorization: Bearer <CRON_SECRET>`을 붙여 보내고, 이 값이 없는 요청은 401로 거절한다.
+실행 기록은 Vercel 대시보드 → Settings → Cron Jobs(수동 실행 버튼 포함)와 함수 로그(`[weekly-events]`)에서 확인한다.
 
 ## 현재 상태 (2026-09-26 기준)
 

@@ -9,7 +9,8 @@
 // 적재하는 시드 스크립트(scripts/seed.ts)로 옮기고, 화면은 DB 조회로 전환한다.
 
 export interface SeedEvent {
-  sourceDataset: "seoul" | "pilot";
+  /** seoul·pilot = 직접 수집한 시드, tour·seoulfest = 매주 월요일 자동 수집(features/events/weekly-sync.ts) */
+  sourceDataset: "seoul" | "pilot" | "tour" | "seoulfest";
   id: string;
   name: string;
   series: string | null;
@@ -36,6 +37,10 @@ export interface SeedEvent {
   selection: string | null;
   outcomes: unknown;
   ageDisclosed: unknown;
+  /** 자동 수집 행사만: 공공데이터가 준 대표 이미지(시드는 event-poster-manifest.json을 쓴다) */
+  imageUrl?: string | null;
+  /** 자동 수집 행사만: 처음 수집된 시각 — 최근 7일이면 "NEW" 배지 */
+  collectedAt?: string | null;
 }
 
 export const seedEvents: SeedEvent[] = [

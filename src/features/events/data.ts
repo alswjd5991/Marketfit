@@ -1,8 +1,11 @@
+import { cache } from "react";
 import { seedEvents, type SeedEvent } from "@/lib/data/seed-events";
+import { createClient } from "@/lib/supabase/server";
 import posterManifest from "@/lib/data/event-poster-manifest.json";
 import { computeRecruitmentStatus, formatDday } from "./status";
 import { CATEGORY_GROUPS, getCategoryGroup, type CategoryGroup } from "./category-group";
 import type { RecruitmentStatus } from "@/types/database";
+import { AUTO_SOURCES, type AutoSourceDataset } from "./weekly-sync";
 
 export interface EventListItem {
   id: string;
@@ -27,6 +30,8 @@ export interface EventListItem {
    *  사진. 못 찾았거나 사이트 공용 로고뿐이었던 행사는 null — 화면에서는
    *  EventPoster(카테고리별 생성 그래픽)로 대체한다. poster-manifest.md 참고. */
   posterImage: string | null;
+  /** 주간 자동 업데이트로 최근 7일 안에 새로 들어온 행사 — 카드에 "NEW" 배지 */
+  isNew: boolean;
 }
 
 /** src/lib/data/event-poster-manifest.json에서 행사 id로 실제 포스터 이미지
@@ -65,8 +70,60 @@ function toListItem(e: SeedEvent): EventListItem {
     sourceName: e.organizer,
     sourceUrl: e.sourceUrl,
     isSampleData: false, // 전부 실제 공개 자료 — 6번 섹션 참고
-    posterImage: getPosterImage(e.id),
+    posterImage: e.imageUrl ?? getPosterImage(e.id),
+    isNew: isRecentlyCollected(e.collectedAt),
   };
+}
+
+const NEW_BADGE_DAYS = 7;
+
+function isRecentlyCollected(collectedAt: string | null | undefined, now = new Date()): boolean {
+  if (!collectedAt) return false;
+  return now.getTime() - new Date(collectedAt).getTime() < NEW_BADGE_DAYS * 86_400_000;
+}
+
+interface AutoEventRow {
+  source_post_id: string | null;
+  source_url: string;
+  collected_at: string;
+  events: { name: string; image_url: string | null; region: string | null; venue: string | null; start_date: string | null; end_date: string | null } | null;
+}
+
+/**
+ * 매주 월요일 자동 수집(weekly-sync.ts)으로 DB에 쌓인 공공데이터 행사를 시드 행사와 같은 모양으로
+ * 읽는다. 요청 1번에 1회만 조회(React cache)하고, DB가 안 되면 빈 배열 — 시드 행사만으로 화면은 계속 동작한다.
+ */
+const getAutoEvents = cache(async (): Promise<SeedEvent[]> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("event_recruitments")
+      .select("source_post_id, source_url, collected_at, events(name, image_url, region, venue, start_date, end_date)")
+      .or("source_post_id.like.tour:*,source_post_id.like.seoulfest:*");
+    if (error) throw error;
+    return ((data ?? []) as unknown as AutoEventRow[]).flatMap((r) => {
+      const [dataset, id] = (r.source_post_id ?? "").split(":") as [AutoSourceDataset, string];
+      const e = r.events;
+      if (!e || !id || !(dataset in AUTO_SOURCES)) return [];
+      return [{
+        sourceDataset: dataset, id, name: e.name, series: null, edition: null,
+        organizer: null, orgType: "지자체", region: e.region, gu: null, venue: e.venue, outdoor: null,
+        category: null, // 8종 분류는 행사명으로 자동 결정
+        startDate: e.start_date, endDate: e.end_date, hours: null, recruitEnd: null, capacityTeams: null,
+        feeKrw: null, readable: null, sourceType: AUTO_SOURCES[dataset].name, sourceUrl: r.source_url,
+        eligibility: null, items: null, equipment: null,
+        selection: "셀러 모집 여부·신청 방법은 주최 측 공고에서 확인 필요(공공데이터 주간 자동 수집 행사)",
+        outcomes: null, ageDisclosed: null, imageUrl: e.image_url, collectedAt: r.collected_at,
+      } satisfies SeedEvent];
+    });
+  } catch {
+    return [];
+  }
+});
+
+/** 시드 행사(직접 수집) + 주간 자동 수집 행사 */
+async function getAllEvents(): Promise<SeedEvent[]> {
+  return [...seedEvents, ...(await getAutoEvents())];
 }
 
 export type EventPeriod = "this_week" | "this_month" | "next_month" | "past" | "custom";
@@ -88,7 +145,7 @@ export interface EventFilters {
 }
 
 export async function getEvents(filters: EventFilters = {}): Promise<EventListItem[]> {
-  let items = seedEvents.map(toListItem);
+  let items = (await getAllEvents()).map(toListItem);
 
   if (filters.region) items = items.filter((e) => e.region === filters.region);
   if (filters.category) items = items.filter((e) => e.categoryGroup === filters.category);
@@ -173,11 +230,11 @@ function compareBy(sort: EventSort) {
 }
 
 export async function getEventById(id: string): Promise<SeedEvent | null> {
-  return seedEvents.find((e) => e.id === id) ?? null;
+  return seedEvents.find((e) => e.id === id) ?? (await getAutoEvents()).find((e) => e.id === id) ?? null;
 }
 
 export async function getRegions(): Promise<string[]> {
-  const set = new Set(seedEvents.map((e) => e.region).filter(Boolean) as string[]);
+  const set = new Set((await getAllEvents()).map((e) => e.region).filter(Boolean) as string[]);
   return Array.from(set).sort();
 }
 
