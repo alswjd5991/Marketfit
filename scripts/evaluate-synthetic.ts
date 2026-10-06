@@ -181,7 +181,7 @@ async function main() {
   console.log(`    행사 유형(참 효과 0) 오탐률: ${nullFlags.n ? pct(nullFlags.flagged / nullFlags.n) : "-"} (${nullFlags.n}개 추정)`);
   console.log(`  ① 예측 — 보정 통과 ${forecast.calibrated}/${forecast.n}회 · 80% 구간 적중 평균 ${forecast.n ? pct(mean(forecast.coverage)) : "-"} (범위 ${forecast.n ? `${pct(Math.min(...forecast.coverage))}~${pct(Math.max(...forecast.coverage))}` : "-"}) · 중앙 오차 ±${forecast.n ? pct(mean(forecast.mape)) : "-"}`);
   console.log(`  ⑤ 준비 수량 — 판정한 상품 ${stock.tested}개 중 부족·과다 신호 ${stock.calls}개 · 방향 맞음 ${stock.right} · 방향 틀림 ${stock.wrong}`);
-  console.log(`  ⑦ 계획 정확도 — 판정 가능 가게 ${plan.ok} · "예상을 높게 잡음" ${plan.high} · "낮게 잡음" ${plan.low} (생성 가정: 모든 가게가 평균 +15% 낙관, 실제는 날씨·품절로 더 낮아짐)`);
+  console.log(`  ⑦ 계획 정확도 — 판정 가능 가게 ${plan.ok} · "예상을 높게 잡음" ${plan.high} · "낮게 잡음" ${plan.low} (생성 가정: 가게별 낙관 편향 ~ 평균 +15%·표준편차 10% — 약 7%의 가게는 실제로 낮게 예상함)`);
 }
 
 main().catch((e) => {
