@@ -31,6 +31,7 @@ export function SmoothAreaChart({
   formatValue,
   height = 260,
   bars = false,
+  barColors,
 }: {
   points: SmoothAreaPoint[];
   series: SmoothAreaSeries[];
@@ -38,6 +39,8 @@ export function SmoothAreaChart({
   height?: number;
   /** 첫 번째 곡선 값을 곡선 아래 연한 막대로도 그린다(항목 비교용). */
   bars?: boolean;
+  /** 막대마다 다른 색(품목 고정 색). 주면 막대를 조금 더 진하게 그린다. */
+  barColors?: string[];
 }) {
   // useId 결과의 특수문자는 SVG url(#...) 참조를 깨뜨릴 수 있어 걸러 낸다
   const gradientId = `area-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -179,8 +182,8 @@ export function SmoothAreaChart({
                   width={w}
                   height={Math.max(0, baseline - top)}
                   rx={4}
-                  fill={series[0].color}
-                  opacity={activeIndex === i ? 0.28 : 0.14}
+                  fill={barColors?.[i] ?? series[0].color}
+                  opacity={barColors ? (activeIndex === i ? 0.75 : 0.5) : activeIndex === i ? 0.28 : 0.14}
                   className="transition-opacity duration-150"
                 />
               );

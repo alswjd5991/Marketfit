@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { SmoothAreaChart } from "@/components/ui/smooth-area-chart";
-import { SERIES_COLORS } from "@/components/ui/chart-colors";
+import { SERIES_COLORS } from "@/components/ui/chart-colors"; // 순서는 product-colors.ts와 같아야 한다
 import type { ProductSalesByEvent } from "./data";
 
 const DEFAULT_SELECTED = 5; // 처음엔 판매 수량 상위 5개 — 곡선이 너무 많으면 겹쳐 읽기 어렵다

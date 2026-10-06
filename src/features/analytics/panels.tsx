@@ -60,7 +60,7 @@ function FitRow({ it }: { it: ForecastItem }) {
           <p className="text-[11px] tabular-nums text-[#8A8D93]">{manwon(p.low)}~{manwon(p.high)}</p>
         </div>
       ) : (
-        <p className="shrink-0 text-xs text-neutral-400">예상 어려움</p>
+        <p className="shrink-0 text-xs text-neutral-400">예측 보류</p>
       )}
     </li>
   );
@@ -70,7 +70,7 @@ export function EventFitPanel({ forecast }: { forecast: DashboardAnalytics["fore
   if (forecast.status === "hidden") {
     return (
       <Panel title="행사 적합도">
-        <Empty>참가 기록이 더 쌓이면 행사별 적합도를 보여 드려요</Empty>
+        <Empty>참가 기록 부족</Empty>
       </Panel>
     );
   }
@@ -90,17 +90,15 @@ export function EventFitPanel({ forecast }: { forecast: DashboardAnalytics["fore
       title="행사 적합도"
       info={
         <>
-          <Tip>점수는 그 행사에서 <b>내 평소 매출({manwon(myMedian)})보다 더 팔 확률</b>이에요. 오른쪽은 예상 매출과, 실제 매출이 보통 들어오는 범위예요.</Tip>
-          <Tip>내 지난 매출과 다른 셀러들의 기록을 함께 보고, 행사 유형·기간·주말 여부로 계산해요. 날씨는 미리 알 수 없어 범위에 포함했어요.</Tip>
-          <Tip>지난 기록 {validation.n.toLocaleString()}건으로 미리 맞혀 봤더니 실제 매출이 범위 안에 {pct(validation.coverage)} 들어왔어요.</Tip>
-          <Tip>손해 확률은 참가비·평소 비용·상품 원가를 빼고 남는 돈이 0보다 적을 가능성이에요(10% 이상일 때만 표시).</Tip>
-          <Tip>추천 행사는 아직 담지 않은, 앞으로 90일 안에 열리는 행사예요(활동 지역이 있으면 그 지역).</Tip>
+          <Tip>점수는 그 행사에서 평소 매출({manwon(myMedian)})보다 더 팔 확률이에요. 오른쪽은 예상 매출과 예상 범위예요.</Tip>
+          <Tip>행사 유형·기간·주말 여부와 지난 매출로 계산해요. 지난 기록으로 시험해 보니 실제 매출이 범위 안에 {pct(validation.coverage)} 들어왔어요.</Tip>
+          <Tip>추천 행사는 앞으로 90일 안에 열리는 행사 중 아직 담지 않은 행사예요.</Tip>
         </>
       }
     >
       <div className="grid gap-6 lg:grid-cols-2 lg:gap-0 lg:divide-x lg:divide-neutral-100 lg:[&>*:first-child]:pr-6 lg:[&>*:last-child]:pl-6">
-        {column("내가 담은 행사", items, "관심·참가 예정 행사를 담으면 보여 드려요")}
-        {column(region ? `추천 행사 · ${region}` : "추천 행사", recommended, "앞으로 90일 안에 열리는 행사가 없어요")}
+        {column("내가 담은 행사", items, "담은 행사 없음")}
+        {column(region ? `추천 행사 · ${region}` : "추천 행사", recommended, "추천할 행사 없음")}
       </div>
     </Panel>
   );
@@ -110,24 +108,24 @@ export function EventFitPanel({ forecast }: { forecast: DashboardAnalytics["fore
 // 같은 업종 대비 매출
 // ---------------------------------------------------------------------------
 
-// 같은 업종 대비 매출 — 초록 계열 박스플롯. 내 위치는 벤치마크 도구들처럼 색 있는 세로선 하나로만 표시한다.
-const GREEN_LIGHT = "#CDEBDB";
-const GREEN = "#5FB98B";
-const GREEN_DARK = "#2F7A57";
+// 같은 업종 대비 매출 — 초록 계열 박스플롯(단색). 일반적인 박스플롯 표기처럼 숫자는 아래 축에만, 이름은 범례로 분리하고
+// 내 가게는 코랄 점 하나로만 표시한다.
+const BOX_FILL = "#DCEFE5";
+const BOX_LINE = "#6DBE93";
+const MEDIAN = "#2F7A57";
 const ME = "#F2836B";
 
 export const peerInfo = (
   <>
     <Tip>같은 카테고리에서 행사 기록이 3번 이상인 가게들의 행사당 평균 매출이에요.</Tip>
-    <Tip>양 끝 선은 가장 낮은 가게부터 가장 높은 가게까지, 상자는 가운데 50% 가게가 있는 범위, 상자 안의 선은 한가운데 가게의 매출(중앙값)이에요.</Tip>
-    <Tip>주황 선이 내 가게의 행사당 평균 매출이에요.</Tip>
+    <Tip>선은 가장 낮은 가게부터 가장 높은 가게까지, 상자는 가운데 50% 가게가 있는 범위예요.</Tip>
   </>
 );
 
 /** 같은 업종 대비 매출 — 대시보드 "최근 성과" 안에 들어가는 박스플롯(제목·틀은 바깥 ChartPanel). */
 export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
   if (peer.status !== "ok") {
-    return <p className="flex h-[160px] items-center justify-center text-sm text-[#8A8D93]">비교할 같은 업종 가게가 더 모이면 보여 드려요</p>;
+    return <p className="flex h-[160px] items-center justify-center text-sm text-[#8A8D93]">비교할 가게 부족</p>;
   }
   const total = peer.peers + 1;
   const higher = Math.round(peer.peers * (1 - peer.below));
@@ -136,36 +134,33 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
   const { min, q1, median, q3, max } = peer.dist;
   const lo = Math.min(min, peer.mine);
   const hi = Math.max(max, peer.mine);
-  const pad = (hi - lo) * 0.04;
+  const pad = (hi - lo) * 0.03;
   const pos = (v: number) => ((v - lo + pad) / (hi - lo + 2 * pad)) * 100;
   const x = (v: number) => `${pos(v)}%`;
+  const showMedianTick = pos(median) - pos(min) > 14 && pos(max) - pos(median) > 14; // 눈금 글자가 겹치면 범례로만
   return (
     <div>
       <p className="text-sm text-[#43464B]">
         {peer.category} 가게 {total}곳 중 <span className="font-bold text-[#1F2023]">{label}</span>예요
       </p>
-      <div className="relative mt-9 h-[78px]">
-        {/* 나: 색 있는 세로선 하나 + 위에 작은 글자 */}
-        <div className="absolute top-0 -translate-x-1/2 whitespace-nowrap text-[12px] leading-none" style={{ left: `${Math.min(94, Math.max(6, pos(peer.mine)))}%`, color: ME }}>
-          <span className="font-bold">나</span> <span className="font-semibold tabular-nums">{manwon(peer.mine)}</span>
-        </div>
-        {/* 수염: 최솟값 ~ 최댓값 */}
-        <div className="absolute top-[38px] h-[3px] -translate-y-1/2 rounded-full" style={{ left: x(min), width: `calc(${x(max)} - ${x(min)})`, background: GREEN_LIGHT }} />
-        <div className="absolute top-[30px] h-4 w-[3px] -translate-x-1/2 rounded-full" style={{ left: x(min), background: GREEN }} />
-        <div className="absolute top-[30px] h-4 w-[3px] -translate-x-1/2 rounded-full" style={{ left: x(max), background: GREEN }} />
-        {/* 상자: 1사분위 ~ 3사분위, 중앙값 */}
-        <div
-          className="absolute top-[22px] h-8 rounded-xl shadow-[0_4px_14px_rgba(63,122,100,0.18)]"
-          style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: `linear-gradient(180deg, ${GREEN_LIGHT}, ${GREEN})` }}
-        />
-        <div className="absolute top-[22px] h-8 w-[2px] -translate-x-1/2 bg-white" style={{ left: x(median) }} />
-        {/* 내 위치 */}
-        <div className="absolute top-[16px] h-[44px] w-[2px] -translate-x-1/2 rounded-full" style={{ left: x(peer.mine), background: ME }} />
-        {/* 값 */}
-        <span className="absolute top-[64px] -translate-x-1/2 whitespace-nowrap text-[11px] tabular-nums text-[#8A8D93]" style={{ left: x(min) }}>{manwon(min)}</span>
-        <span className="absolute top-[64px] -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold tabular-nums" style={{ left: x(median), color: GREEN_DARK }}>중앙값 {manwon(median)}</span>
-        <span className="absolute top-[64px] -translate-x-1/2 whitespace-nowrap text-[11px] tabular-nums text-[#8A8D93]" style={{ left: x(max) }}>{manwon(max)}</span>
+      <div className="relative mt-6 h-12">
+        <div className="absolute top-1/2 h-0.5 -translate-y-1/2 rounded-full" style={{ left: x(min), width: `calc(${x(max)} - ${x(min)})`, background: BOX_LINE }} />
+        <div className="absolute top-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(min), background: BOX_LINE }} />
+        <div className="absolute top-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(max), background: BOX_LINE }} />
+        <div className="absolute top-1/2 h-7 -translate-y-1/2 rounded-md border-[1.5px]" style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: BOX_FILL, borderColor: BOX_LINE }} />
+        <div className="absolute top-1/2 h-7 w-0.5 -translate-x-1/2 -translate-y-1/2" style={{ left: x(median), background: MEDIAN }} />
+        <div className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-sm" style={{ left: x(peer.mine), background: ME }} />
       </div>
+      <div className="relative h-4 text-[11px] tabular-nums text-[#8A8D93]">
+        <span className="absolute whitespace-nowrap" style={{ left: x(min) }}>{manwon(min)}</span>
+        {showMedianTick && <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: x(median) }}>{manwon(median)}</span>}
+        <span className="absolute -translate-x-full whitespace-nowrap" style={{ left: x(max) }}>{manwon(max)}</span>
+      </div>
+      <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6B6E74]">
+        <li className="flex items-center gap-1.5"><span className="h-2.5 w-3.5 rounded-sm border" style={{ background: BOX_FILL, borderColor: BOX_LINE }} />가운데 50%</li>
+        <li className="flex items-center gap-1.5"><span className="h-3 w-0.5" style={{ background: MEDIAN }} />중앙값 {manwon(median)}</li>
+        <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: ME }} />내 가게 {manwon(peer.mine)}</li>
+      </ul>
     </div>
   );
 }
@@ -174,113 +169,95 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
 // 상품 포트폴리오
 // ---------------------------------------------------------------------------
 
-/** 버블 색: [가운데 밝은 색, 기본색, 가장자리 진한 색] — 보라·코랄·노랑 계열의 광택 버블 */
-const BUBBLE_COLORS: [string, string, string][] = [
-  ["#A79BFF", "#6C5CE7", "#4B3BC4"],
-  ["#FFA3B1", "#FF6B81", "#E0485F"],
-  ["#FFE08A", "#F9C74F", "#E0A82E"],
-  ["#C3B8FF", "#8E7CF8", "#6A57E0"],
-  ["#9CC7FF", "#4D96FF", "#2F74D8"],
-  ["#FFC29E", "#FF9F68", "#E57E45"],
-];
+/**
+ * 이름표 겹침 정리: 오른쪽 절반의 점은 이름을 점 왼쪽에 둔다(긴 이름이 차트 밖으로 넘치지 않게).
+ * 가로로 겹치는 이름표끼리 세로 간격이 좁으면 아래 것을 밀어 내린다.
+ */
+function placeLabels<T extends { p: { productName: string; share: number; sellThrough: number }; cx: number; cy: number }>(points: T[]) {
+  const GAP = 15;
+  const placed: (T & { ly: number; right: boolean; x0: number; x1: number })[] = [];
+  for (const pt of [...points].sort((a, b) => a.cy - b.cy)) {
+    const right = pt.p.sellThrough > 0.6;
+    const width = (pt.p.productName.length + 4) * 7.5 + 10;
+    const x0 = right ? pt.cx - width : pt.cx;
+    const x1 = right ? pt.cx : pt.cx + width;
+    let ly = pt.cy;
+    for (const q of placed) if (x0 < q.x1 && q.x0 < x1 && Math.abs(ly - q.ly) < GAP) ly = q.ly + GAP;
+    placed.push({ ...pt, ly, right, x0, x1 });
+  }
+  return placed;
+}
 
-export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["portfolio"] }) {
+/**
+ * 상품 포트폴리오 — 메인 페이지 배경의 구름 원처럼, 품목 색이 가운데에서 바깥으로 옅어지는 원(크기 = 매출)과
+ * 정확한 위치를 찍는 작은 점으로 그린다. 품목 색은 대시보드 공통 색표(product-colors.ts)를 쓴다.
+ */
+export function PortfolioPanel({ portfolio, colors = {} }: { portfolio: DashboardAnalytics["portfolio"]; colors?: Record<string, string> }) {
   const info = (
     <>
-      <Tip>가로는 판매율(준비한 것 중 팔린 비율), 세로는 상품 매출에서 차지하는 비중이에요. 버블이 클수록 매출이 커요.</Tip>
-      <Tip>점선은 내 상품들의 평균이에요. 오른쪽 위는 잘 팔리고 매출도 큰 상품, 오른쪽 아래는 잘 팔리지만 비중이 작은 상품이에요.</Tip>
+      <Tip>가로는 판매율(준비한 수량 중 팔린 비율), 세로는 상품 매출에서 차지하는 비중이에요. 원이 클수록 매출이 커요.</Tip>
+      <Tip>점선은 내 상품들의 평균이에요. 오른쪽 위에 있을수록 잘 팔리고 매출에서 차지하는 몫도 커요.</Tip>
     </>
   );
   if (portfolio.length < 2) {
     return (
       <Panel title="상품 포트폴리오" info={info}>
-        <Empty>상품 2개 이상의 판매 기록이 쌓이면 보여 드려요</Empty>
+        <Empty>상품 판매 기록 부족</Empty>
       </Panel>
     );
   }
-  const items = portfolio.slice(0, BUBBLE_COLORS.length);
-  const W = 560, H = 270, PAD = { l: 40, r: 20, t: 24, b: 30 };
-  const shareTop = Math.min(1, Math.ceil((Math.max(...items.map((p) => p.share)) * 1.25) * 10) / 10);
+  const W = 560, H = 260, PAD = { l: 44, r: 24, t: 26, b: 34 };
+  const shareTop = Math.min(1, Math.ceil(Math.max(...portfolio.map((p) => p.share)) * 1.3 * 10) / 10);
   const sx = (v: number) => PAD.l + v * (W - PAD.l - PAD.r);
   const sy = (v: number) => H - PAD.b - (v / shareTop) * (H - PAD.t - PAD.b);
-  const avgSell = items.reduce((a, p) => a + p.sellThrough * p.revenue, 0) / items.reduce((a, p) => a + p.revenue, 0);
+  const avgSell = portfolio.reduce((a, p) => a + p.sellThrough * p.revenue, 0) / portfolio.reduce((a, p) => a + p.revenue, 0);
   const avgShare = 1 / portfolio.length;
-  const maxRev = Math.max(...items.map((p) => p.revenue));
-  const radius = (rev: number) => 14 + 36 * Math.sqrt(rev / maxRev);
-  const star = items.find((p) => p.sellThrough >= avgSell && p.share >= avgShare);
-  const yTicks = [0, shareTop / 2, shareTop];
+  const maxRev = Math.max(...portfolio.map((p) => p.revenue));
+  const star = portfolio.find((p) => p.sellThrough >= avgSell && p.share >= avgShare);
+  const color = (name: string) => colors[name] ?? "#B8C2CC";
   return (
     <Panel title="상품 포트폴리오" info={info}>
-      <div className="-mt-2 mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        {star ? (
-          <p className="text-[14px] text-neutral-700">
-            <span className="font-bold text-neutral-950">{josa(star.productName, "이", "가")}</span> 잘 팔리고 매출 비중도 커요
-          </p>
-        ) : <span />}
-        <ul className="flex flex-wrap gap-x-3 gap-y-1">
-          {items.map((p, k) => (
-            <li key={p.productName} className="flex items-center gap-1.5 text-xs text-[#6B6E74]">
-              <span className="size-2 rounded-full" style={{ background: BUBBLE_COLORS[k][1] }} />
-              {p.productName}
-            </li>
-          ))}
-        </ul>
-      </div>
+      {star && (
+        <p className="-mt-2 mb-2 text-sm text-neutral-600">
+          <span className="font-semibold text-neutral-900">{josa(star.productName, "이", "가")}</span> 잘 팔리고 매출 비중도 커요
+        </p>
+      )}
       <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label="상품별 판매율과 매출 비중">
         <defs>
-          {BUBBLE_COLORS.map(([light, base, dark], k) => (
-            <radialGradient key={k} id={`bubble-${k}`} cx="35%" cy="30%" r="75%">
-              <stop offset="0%" stopColor={light} />
-              <stop offset="55%" stopColor={base} />
-              <stop offset="100%" stopColor={dark} />
+          {portfolio.map((p, k) => (
+            <radialGradient key={k} id={`cloud-${k}`}>
+              <stop offset="0%" stopColor={color(p.productName)} stopOpacity={0.5} />
+              <stop offset="60%" stopColor={color(p.productName)} stopOpacity={0.18} />
+              <stop offset="100%" stopColor={color(p.productName)} stopOpacity={0} />
             </radialGradient>
           ))}
-          <filter id="bubble-glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="10" />
-          </filter>
         </defs>
-        {/* 옅은 세로 격자 + 가로 기준 */}
-        {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+        {[0, shareTop / 2, shareTop].map((t) => (
           <g key={t}>
-            <line x1={sx(t)} x2={sx(t)} y1={PAD.t} y2={H - PAD.b} stroke="#EEF0F6" />
-            <text x={sx(t)} y={H - 10} textAnchor="middle" fontSize="11" fill="#9A9DB0">{Math.round(t * 100)}%</text>
+            <line x1={PAD.l} x2={W - PAD.r} y1={sy(t)} y2={sy(t)} stroke="#EEF1F5" />
+            <text x={PAD.l - 8} y={sy(t) + 4} textAnchor="end" fontSize="11" fill="#9A9DB0">{Math.round(t * 100)}%</text>
           </g>
         ))}
-        {yTicks.map((t) => (
-          <text key={t} x={PAD.l - 10} y={sy(t) + 4} textAnchor="end" fontSize="11" fill="#9A9DB0">{Math.round(t * 100)}%</text>
+        {[0, 0.5, 1].map((t) => (
+          <text key={t} x={sx(t)} y={H - 12} textAnchor="middle" fontSize="11" fill="#9A9DB0">{Math.round(t * 100)}%</text>
         ))}
-        <line x1={sx(avgSell)} x2={sx(avgSell)} y1={PAD.t} y2={H - PAD.b} stroke="#C9CCDD" strokeDasharray="4 4" />
-        <line x1={PAD.l} x2={W - PAD.r} y1={sy(avgShare)} y2={sy(avgShare)} stroke="#C9CCDD" strokeDasharray="4 4" />
-        {/* 버블: 같은 색의 번진 그림자 위에 광택 그라데이션 */}
-        {items.map((p, k) => {
-          const r = radius(p.revenue);
-          const cx = sx(p.sellThrough), cy = sy(p.share);
-          return <circle key={`glow-${p.productName}`} cx={cx} cy={cy + r * 0.35} r={r * 0.9} fill={BUBBLE_COLORS[k][1]} opacity={0.28} filter="url(#bubble-glow)" />;
-        })}
-        {items.map((p, k) => {
-          const r = radius(p.revenue);
-          const cx = sx(p.sellThrough), cy = sy(p.share);
-          const inside = r >= 28;
-          return (
-            <g key={p.productName}>
-              <circle cx={cx} cy={cy} r={r} fill={`url(#bubble-${k})`} opacity={0.92} />
-              {inside ? (
-                <>
-                  <text x={cx} y={cy - 1} textAnchor="middle" fontSize="13" fontWeight={700} fill="white">{Math.round(p.share * 100)}%</text>
-                  <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10.5" fill="white" opacity={0.92}>{p.productName}</text>
-                </>
-              ) : (
-                <text x={cx} y={cy - r - 5} textAnchor="middle" fontSize="11" fontWeight={600} fill="#43464B">{p.productName}</text>
-              )}
-            </g>
-          );
-        })}
+        <text x={PAD.l} y={14} fontSize="11" fill="#9A9DB0">매출 비중</text>
+        <text x={W - PAD.r} y={H - 12} textAnchor="end" fontSize="11" fill="#9A9DB0">판매율</text>
+        <line x1={sx(avgSell)} x2={sx(avgSell)} y1={PAD.t} y2={H - PAD.b} stroke="#D5D9E3" strokeDasharray="4 4" />
+        <line x1={PAD.l} x2={W - PAD.r} y1={sy(avgShare)} y2={sy(avgShare)} stroke="#D5D9E3" strokeDasharray="4 4" />
+        {portfolio.map((p, k) => (
+          <circle key={`c-${p.productName}`} cx={sx(p.sellThrough)} cy={sy(p.share)} r={22 + 46 * Math.sqrt(p.revenue / maxRev)} fill={`url(#cloud-${k})`} />
+        ))}
+        {placeLabels(portfolio.map((p) => ({ p, cx: sx(p.sellThrough), cy: sy(p.share) }))).map(({ p, cx, cy, ly, right }) => (
+          <g key={p.productName}>
+            <title>{`${p.productName} · 판매율 ${Math.round(p.sellThrough * 100)}% · 매출 비중 ${Math.round(p.share * 100)}%`}</title>
+            <circle cx={cx} cy={cy} r={5.5} fill={color(p.productName)} stroke="white" strokeWidth={2} />
+            <text x={right ? cx - 10 : cx + 10} y={ly + 4} textAnchor={right ? "end" : "start"} fontSize="12" fontWeight={600} fill="#1F2023">
+              {p.productName} <tspan fontWeight={400} fill="#8A8D93">{Math.round(p.share * 100)}%</tspan>
+            </text>
+          </g>
+        ))}
       </svg>
-      <p className="mt-1 flex justify-between pl-[7%] text-[11px] text-[#9A9DB0]">
-        <span>← 많이 남음</span>
-        <span>판매율 · 세로는 매출 비중</span>
-        <span>잘 팔림 →</span>
-      </p>
     </Panel>
   );
 }
@@ -290,11 +267,11 @@ export function PortfolioPanel({ portfolio }: { portfolio: DashboardAnalytics["p
 // ---------------------------------------------------------------------------
 
 const VERDICT: Record<StockVerdict, { label: string; className: string }> = {
-  under: { label: "더 준비", className: "bg-[#FFE4DE] text-[#BE3A2A]" },
-  over: { label: "줄여도 돼요", className: "bg-[#FFEEDD] text-[#B4530A]" },
-  ok: { label: "적당", className: "bg-[#E0EFE8] text-[#2F5F4B]" },
+  under: { label: "늘려 보세요", className: "bg-[#FFE4DE] text-[#BE3A2A]" },
+  over: { label: "줄여 보세요", className: "bg-[#FFEEDD] text-[#B4530A]" },
+  ok: { label: "적당해요", className: "bg-[#E0EFE8] text-[#2F5F4B]" },
   few: { label: "기록 부족", className: "bg-neutral-100 text-neutral-500" },
-  noCost: { label: "원가 필요", className: "bg-neutral-100 text-neutral-500" },
+  noCost: { label: "원가 미입력", className: "bg-neutral-100 text-neutral-500" },
 };
 
 function stockSummary(items: StockDiagnosis[]): ReactNode {
@@ -302,14 +279,14 @@ function stockSummary(items: StockDiagnosis[]): ReactNode {
   const over = items.find((i) => i.verdict === "over");
   if (under) return <><b className="text-neutral-950">{josa(under.productName, "은", "는")}</b> 자주 다 팔렸어요. 조금 더 준비해 보세요</>;
   if (over) return <><b className="text-neutral-950">{josa(over.productName, "은", "는")}</b> 자주 남았어요. 조금 줄여도 괜찮아요</>;
-  if (items.some((i) => i.verdict === "ok")) return "지금 준비하는 양에 큰 문제는 없어 보여요";
-  return "기록이 더 쌓이면 알려 드려요";
+  if (items.some((i) => i.verdict === "ok")) return "준비량이 적당해요";
+  return "기록 부족";
 }
 
-export function StockPanel({ stock }: { stock: DashboardAnalytics["stock"] }) {
+export function StockPanel({ stock, colors = {} }: { stock: DashboardAnalytics["stock"]; colors?: Record<string, string> }) {
   const info = (
     <>
-      <Tip>1개 덜 가져가서 못 판 손해(가격 − 원가)와 1개 더 가져가서 남은 손해를 비교해, 다 팔리는 날이 얼마나 있어야 가장 이득인지 계산해요.</Tip>
+      <Tip>덜 가져가서 못 판 손해와 더 가져가서 남은 손해를 비교해, 다 팔리는 날이 얼마나 있어야 가장 이득인지 계산해요.</Tip>
       <Tip>
         {stock.perishable
           ? "남은 상품은 버려야 해서 원가 전부를 손해로 봤어요. 원가가 가격의 30%라면 10번 중 3번쯤 다 팔리는 게 적당해요."
@@ -321,7 +298,7 @@ export function StockPanel({ stock }: { stock: DashboardAnalytics["stock"] }) {
   if (stock.items.length === 0) {
     return (
       <Panel title="준비 수량" info={info} className="h-full">
-        <Empty>상품별 준비·판매 수량을 기록하면 보여 드려요</Empty>
+        <Empty>준비·판매 수량 기록 없음</Empty>
       </Panel>
     );
   }
@@ -333,9 +310,12 @@ export function StockPanel({ stock }: { stock: DashboardAnalytics["stock"] }) {
           const v = VERDICT[it.verdict];
           return (
             <li key={it.productName} className="flex items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0">
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-start gap-2">
+                <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: colors[it.productName] ?? "#B8C2CC" }} />
+                <div className="min-w-0">
                 <p className="truncate text-[13px] font-semibold text-neutral-900">{it.productName}</p>
                 <p className="text-[11px] tabular-nums text-[#8A8D93]">{it.stockouts === 0 ? `${it.n}번 모두 남음` : `${it.n}번 중 ${it.stockouts}번 다 팔림`}</p>
+                </div>
               </div>
               <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${v.className}`}>{v.label}</span>
             </li>

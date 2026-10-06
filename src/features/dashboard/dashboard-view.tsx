@@ -5,6 +5,7 @@ import { Lightbulb } from "lucide-react";
 import { ProductTrendChart } from "./product-trend-chart";
 import type { DashboardStats } from "@/features/dashboard/data";
 import { ChartPanel, ProductRevenueComparison, RecentPerformance } from "./recent-performance";
+import { productColors } from "./product-colors";
 import { Empty, Group, Panel } from "./panel";
 import type { DashboardAnalytics } from "@/features/analytics/data";
 import { analyticsInsights } from "@/features/analytics/insights";
@@ -22,6 +23,7 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
     ...(analytics ? analyticsInsights(analytics) : []),
     ...stats.insights.filter((i) => !i.supersededBy || !superseded.has(i.supersededBy)).map((i) => i.text),
   ];
+  const colors = productColors(stats);
   const synthetic = analytics && analytics.data.records ? analytics.data.syntheticRecords / analytics.data.records : 0;
 
   return (
@@ -93,7 +95,7 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
               {stats.totalNetProfit != null ? (
                 <span className="text-[13px] text-neutral-500">{stats.netProfitEntryCount}회 평균</span>
               ) : (
-                <span className="text-[13px] text-neutral-400">비용을 적으면 보여 드려요</span>
+                <span className="text-[13px] text-neutral-400">비용 입력 시 표시</span>
               )}
             </ProfitCard>
 
@@ -113,6 +115,7 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
               label="목표 매출 달성률"
               value={stats.targetAchievement ? `${Math.round(stats.targetAchievement.percent)}%` : "기록 없음"}
               info={analytics ? planInfo(analytics.plan) : undefined}
+              infoAlign="right"
             >
               {stats.targetAchievement ? (
                 <div>
@@ -143,9 +146,9 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
           <div className="grid gap-5">
             <div className={analytics ? "grid gap-5 lg:grid-cols-2" : ""}>
               <Panel title="품목별 매출 비교">
-                <ProductRevenueComparison stats={stats} height={230} tone="purple" />
+                <ProductRevenueComparison stats={stats} height={230} colors={colors} />
               </Panel>
-              {analytics && <PortfolioPanel portfolio={analytics.portfolio} />}
+              {analytics && <PortfolioPanel portfolio={analytics.portfolio} colors={colors} />}
             </div>
             <div className={analytics ? "grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
               <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"}>
@@ -155,7 +158,7 @@ export function DashboardView({ stats, analytics }: { stats: DashboardStats; ana
                   <ProductTrendChart title="품목별 판매 수량 추이" data={stats.productSalesByEvent} />
                 )}
               </Panel>
-              {analytics && <StockPanel stock={analytics.stock} />}
+              {analytics && <StockPanel stock={analytics.stock} colors={colors} />}
             </div>
           </div>
         </Group>
@@ -171,8 +174,10 @@ function bold(text: string): ReactNode[] {
 
 /** 투자 대비 수익률 아래 줄: 비용이 순이익보다 크면 비용을 빨간색, 순이익이 더 크면 순이익을 파란색으로. */
 function CostVsProfit({ cost, net }: { cost: number; net: number }) {
+  // 카드 폭이 좁아도 한 줄에 들어가게 만원 단위로
+  const won = (n: number) => `${Math.round(n / 10000).toLocaleString()}만원`;
   return (
-    <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-neutral-500">
+    <p className="flex flex-wrap items-center gap-x-1.5 whitespace-nowrap text-[13px] text-neutral-500">
       비용 <span className={`font-semibold tabular-nums ${cost > net ? "text-[#BE3A2A]" : "text-neutral-800"}`}>{won(cost)}</span>
       <span className="font-semibold text-neutral-500">{cost > net ? ">" : cost < net ? "<" : "="}</span>
       순이익 <span className={`font-semibold tabular-nums ${net > cost ? "text-[#2F6FB8]" : "text-neutral-800"}`}>{won(net)}</span>
@@ -181,13 +186,13 @@ function CostVsProfit({ cost, net }: { cost: number; net: number }) {
 }
 
 /** 수익성 카드: 큰 숫자 + 아래 보조 표시(추세 배지·비용 흐름·달성 막대). info를 주면 제목 옆 물음표에 설명. */
-function ProfitCard({ label, value, tone, info, children }: { label: string; value: string; tone?: "bad"; info?: ReactNode; children?: ReactNode }) {
+function ProfitCard({ label, value, tone, info, infoAlign = "left", children }: { label: string; value: string; tone?: "bad"; info?: ReactNode; infoAlign?: "left" | "right"; children?: ReactNode }) {
   return (
     <div className="flex flex-col gap-2.5 rounded-2xl border border-white/80 bg-white/85 px-5 py-4 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm sm:px-6">
       <div>
         <p className="flex items-center gap-1.5 text-sm font-medium text-neutral-500">
           {label}
-          {info && <InfoTip label={`${label} 설명`}>{info}</InfoTip>}
+          {info && <InfoTip label={`${label} 설명`} align={infoAlign}>{info}</InfoTip>}
         </p>
         <p className={`mt-1 whitespace-nowrap text-[30px] font-extrabold leading-tight tracking-tight tabular-nums ${tone === "bad" ? "text-[#BE3A2A]" : "text-neutral-950"}`}>
           {value}

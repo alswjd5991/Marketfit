@@ -43,38 +43,36 @@ export function RecentPerformance({
   // 대시보드(side) 카드에만 붙는 맥락 표시 — 숫자 아래 빈 공간을 의미 있는 정보로 채운다. (별점은 메인에도 표시)
   const extra = (node: ReactNode) => (side ? node : undefined);
 
+  const planned = c.planning_to_attend + c.applied + c.planning_to_apply;
+  // 대시보드(side)는 참가 카드 2개(총 참가·참가 완료)를 하나로 합쳐 4개, 메인(stack)은 5개 그대로.
+  const participationTiles = side ? (
+    <PerformanceTile
+      large
+      label="참가 행사"
+      value={`${total}건`}
+      extra={
+        <div>
+          <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full">
+            <span style={{ flex: c.attended, background: STATUS_FILL.attended.bg }} />
+            <span style={{ flex: planned, background: STATUS_FILL.planning_to_attend.bg }} />
+            <span style={{ flex: c.interested + c.cancelled, background: STATUS_FILL.interested.bg }} />
+          </div>
+          <p className="mt-1.5 text-xs text-[#8A8D93]">
+            완료 {c.attended} · 예정 {planned} · 관심 {c.interested + c.cancelled} · 참가율 {Math.round(attendRate * 100)}%
+          </p>
+        </div>
+      }
+    />
+  ) : (
+    <>
+      <PerformanceTile label="총 참가 행사" value={`${total}건`} />
+      <PerformanceTile label="참가 완료" value={`${c.attended}건`} />
+    </>
+  );
+
   const tiles = (
-    <div className={side ? "grid grid-cols-2 gap-3 lg:h-full lg:grid-cols-1 lg:grid-rows-5" : "grid grid-cols-2 gap-4 lg:grid-cols-5"}>
-      <PerformanceTile
-        large={side}
-        label="총 참가 행사"
-        value={`${total}건`}
-        extra={extra(
-          <div>
-            <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full">
-              <span style={{ flex: c.interested + c.cancelled, background: STATUS_FILL.interested.bg }} />
-              <span style={{ flex: c.planning_to_attend + c.applied + c.planning_to_apply, background: STATUS_FILL.planning_to_attend.bg }} />
-              <span style={{ flex: c.attended, background: STATUS_FILL.attended.bg }} />
-            </div>
-            <p className="mt-1.5 text-xs text-[#8A8D93]">
-              관심 {c.interested + c.cancelled} · 예정 {c.planning_to_attend + c.applied + c.planning_to_apply} · 완료 {c.attended}
-            </p>
-          </div>
-        )}
-      />
-      <PerformanceTile
-        large={side}
-        label="참가 완료"
-        value={`${c.attended}건`}
-        extra={extra(
-          <div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-[#E6EEF5]">
-              <div className="h-full rounded-full" style={{ width: `${attendRate * 100}%`, background: "#F2A493" }} />
-            </div>
-            <p className="mt-1.5 text-xs text-[#8A8D93]">참가율 {Math.round(attendRate * 100)}%</p>
-          </div>
-        )}
-      />
+    <div className={side ? "grid grid-cols-2 gap-3 lg:h-full lg:grid-cols-1 lg:grid-rows-4" : "grid grid-cols-2 gap-4 lg:grid-cols-5"}>
+      {participationTiles}
       <PerformanceTile
         large={side}
         label="총 매출"
@@ -173,11 +171,11 @@ export function ChartPanel({ title, info, children }: { title: string; info?: Re
   );
 }
 
-/** 품목별 매출 비교 차트(메인·대시보드 공용). 대시보드는 보라 계열로. */
-export function ProductRevenueComparison({ stats, height, tone = "teal" }: { stats: DashboardStats; height: number; tone?: "teal" | "purple" }) {
+/** 품목별 매출 비교 차트(메인·대시보드 공용). 대시보드는 보라 계열 + 막대를 품목 고정 색으로. */
+export function ProductRevenueComparison({ stats, height, colors }: { stats: DashboardStats; height: number; colors?: Record<string, string> }) {
   if (stats.popularProducts.length === 0) return <ChartEmpty text="상품별 판매 실적 없음" />;
-  const colors = tone === "purple" ? { color: "#8A7FD6", accent: "text-[#5B4FC4]" } : {};
-  return <ProductRevenueAreaChart height={height} items={stats.popularProducts.map((p) => ({ label: p.productName, value: p.totalRevenue }))} {...colors} />;
+  const dash = colors ? { color: "#8A7FD6", accent: "text-[#5B4FC4]", barColors: stats.popularProducts.map((p) => colors[p.productName] ?? "#B8C2CC") } : {};
+  return <ProductRevenueAreaChart height={height} items={stats.popularProducts.map((p) => ({ label: p.productName, value: p.totalRevenue }))} {...dash} />;
 }
 
 function ChartEmpty({ text }: { text: string }) {
