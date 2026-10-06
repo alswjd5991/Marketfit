@@ -138,46 +138,44 @@ export function PeerChart({ peer }: { peer: DashboardAnalytics["peer"] }) {
   const lo = Math.min(min, peer.mine);
   const hi = Math.max(max, peer.mine);
   const pad = (hi - lo) * 0.03;
-  const W = 560, H = 120, PAD = 12, TOP = 8, MID = 46, BASE = 88;
-  const sx = (v: number) => PAD + ((v - lo + pad) / (hi - lo + 2 * pad)) * (W - 2 * PAD);
-  const showMedianTick = sx(median) - sx(min) > 80 && sx(max) - sx(median) > 80;
-  const ticks: { v: number; anchor: "start" | "middle" | "end" }[] = [
-    { v: min, anchor: "start" },
-    ...(showMedianTick ? [{ v: median, anchor: "middle" as const }] : []),
-    { v: max, anchor: "end" },
-  ];
+  const pos = (v: number) => ((v - lo + pad) / (hi - lo + 2 * pad)) * 100;
+  const x = (v: number) => `${pos(v)}%`;
+  const showMedianTick = pos(median) - pos(min) > 14 && pos(max) - pos(median) > 14;
   return (
     <div>
       <p className="text-sm text-[#43464B]">
         {peer.category} 가게 {total}곳 중 <span className="font-bold text-[#1F2023]">{label}</span>예요
       </p>
-      <svg viewBox={`0 0 ${W} ${H}`} className="mt-4 block h-auto w-full overflow-visible" role="img" aria-label="같은 업종 가게들의 매출 분포와 내 가게 위치">
-        {/* 바닥 눈금 — 포트폴리오 차트와 같은 옅은 격자·회색 숫자 */}
-        <line x1={PAD} x2={W - PAD} y1={BASE} y2={BASE} stroke="#EEF1F5" />
-        {ticks.map(({ v, anchor }) => (
-          <g key={anchor}>
-            <line x1={sx(v)} x2={sx(v)} y1={TOP} y2={BASE} stroke="#EEF1F5" />
-            <text x={sx(v)} y={BASE + 16} textAnchor={anchor} fontSize="11" fill="#9A9DB0">{manwon(v)}</text>
-          </g>
-        ))}
-        {/* 가게들(점): 반투명 원 + 흰 테두리 */}
+      <div className="relative mt-5 h-[72px] rounded-xl bg-[#F1F8F4]">
+        {/* 가게들(점) */}
         {peer.values.map((v, i) => (
-          <circle key={i} cx={sx(v)} cy={MID + jitter(i) * 40} r={5.5} fill={DOT} fillOpacity={0.4} stroke="white" strokeWidth={1} />
+          <span
+            key={i}
+            className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{ left: x(v), top: `${50 + jitter(i) * 62}%`, background: DOT, opacity: 0.45 }}
+          />
         ))}
-        {/* 수염(최솟값~최댓값) */}
-        <line x1={sx(min)} x2={sx(max)} y1={MID} y2={MID} stroke={BOX_LINE} strokeOpacity={0.6} strokeWidth={2} />
-        <line x1={sx(min)} x2={sx(min)} y1={MID - 8} y2={MID + 8} stroke={BOX_LINE} strokeWidth={2} strokeLinecap="round" />
-        <line x1={sx(max)} x2={sx(max)} y1={MID - 8} y2={MID + 8} stroke={BOX_LINE} strokeWidth={2} strokeLinecap="round" />
-        {/* 상자(가운데 50%): 점이 비쳐 보이게 반투명 */}
-        <rect x={sx(q1)} y={MID - 22} width={Math.max(sx(q3) - sx(q1), 2)} height={44} rx={10} fill={DOT} fillOpacity={0.18} stroke={BOX_LINE} strokeWidth={1.5} />
-        <line x1={sx(median)} x2={sx(median)} y1={MID - 22} y2={MID + 22} stroke={MEDIAN} strokeWidth={3} strokeLinecap="round" />
+        {/* 수염 */}
+        <div className="absolute top-1/2 h-0.5 -translate-y-1/2 rounded-full" style={{ left: x(min), width: `calc(${x(max)} - ${x(min)})`, background: BOX_LINE, opacity: 0.6 }} />
+        <div className="absolute top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(min), background: BOX_LINE }} />
+        <div className="absolute top-1/2 h-4 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(max), background: BOX_LINE }} />
+        {/* 상자: 점이 비쳐 보이게 반투명 */}
+        <div
+          className="absolute top-1/2 h-9 -translate-y-1/2 rounded-lg border-[1.5px] shadow-[0_6px_16px_rgba(36,104,74,0.15)]"
+          style={{ left: x(q1), width: `calc(${x(q3)} - ${x(q1)})`, background: "rgba(95,185,139,0.18)", borderColor: BOX_LINE }}
+        />
+        <div className="absolute top-1/2 h-9 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: x(median), background: MEDIAN }} />
         {/* 내 가게 */}
-        <circle cx={sx(peer.mine)} cy={MID} r={14} fill={ME} fillOpacity={0.18} />
-        <circle cx={sx(peer.mine)} cy={MID} r={8} fill={ME} fillOpacity={0.85} stroke="white" strokeWidth={2} />
-      </svg>
+        <div className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" style={{ left: x(peer.mine), background: ME }} />
+      </div>
+      <div className="relative mt-1.5 h-4 text-[11px] tabular-nums text-[#8A8D93]">
+        <span className="absolute whitespace-nowrap" style={{ left: x(min) }}>{manwon(min)}</span>
+        {showMedianTick && <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: x(median) }}>{manwon(median)}</span>}
+        <span className="absolute -translate-x-full whitespace-nowrap" style={{ left: x(max) }}>{manwon(max)}</span>
+      </div>
       <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6B6E74]">
         <li className="flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: DOT, opacity: 0.6 }} />같은 업종 가게</li>
-        <li className="flex items-center gap-1.5"><span className="h-3 w-1 rounded-full" style={{ background: MEDIAN }} />중앙값 {manwon(median)}</li>
+        <li className="flex items-center gap-1.5"><span className="h-3 w-[3px] rounded-full" style={{ background: MEDIAN }} />중앙값 {manwon(median)}</li>
         <li className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: ME }} />내 가게 {manwon(peer.mine)}</li>
       </ul>
     </div>
