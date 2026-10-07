@@ -76,8 +76,23 @@ export type Event = {
   start_date: string | null;
   end_date: string | null;
   description: string | null;
+  /** 자동 수집 행사의 상세 정보(0003_event_details.sql) */
+  details: EventDetails | null;
   recurring_of_event_id: string | null;
   created_at: string;
+};
+
+/** TourAPI 상세 조회로 받은 행사 정보 — 관람객 기준 정보이며 셀러 모집 조건은 아니다. */
+export type EventDetails = {
+  overview?: string; // 행사 소개
+  playtime?: string; // 운영 시간
+  place?: string; // 행사 장소(시설·광장 이름)
+  sponsor?: string; // 주최
+  organizer?: string; // 주관
+  tel?: string; // 문의처
+  admission?: string; // 관람 요금
+  homepage?: string; // 행사 홈페이지
+  postedAt?: string; // 출처에 행사가 처음 등록된 날(YYYY-MM-DD) — "최근 등록 행사"·NEW 기준
 };
 
 export type EventRecruitment = {

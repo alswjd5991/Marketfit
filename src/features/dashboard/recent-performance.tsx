@@ -4,22 +4,26 @@ import { InteractiveLineChart } from "@/components/ui/interactive-line-chart";
 import { ProductRevenueAreaChart } from "@/components/ui/product-revenue-area-chart";
 import type { DashboardStats } from "./data";
 import { EventRevenueChart } from "./event-revenue-chart";
-import { STATUS_FILL } from "@/features/participations/status-labels";
+import { InfoTip } from "@/components/ui/info-tip";
 
 /**
  * "최근 성과" — 메인 페이지와 대시보드가 같이 쓰는 성과 요약(숫자 5개 + 행사별 매출 추이 + 품목별 매출 비교).
  * 데이터·내용은 두 곳이 같고 배치만 다르다:
  * - stack(메인): 위에 숫자 5개 가로 한 줄, 아래 차트 2개 나란히
  * - side(대시보드): 왼쪽에 차트 2개를 위아래로 넓게, 오른쪽에 숫자 카드를 세로로. 행사별 매출 추이에 유형 드롭다운.
+ * secondChart를 주면 두 번째 차트(품목별 매출 비교) 자리에 그 차트를 넣는다 — 대시보드는 여기에 같은 업종 대비 매출을
+ * 넣고 품목별 매출 비교는 "상품" 묶음으로 옮긴다. 메인 페이지는 secondChart 없이 그대로 쓴다.
  */
 export function RecentPerformance({
   stats,
   withTypeFilter = false,
   layout = "stack",
+  secondChart,
 }: {
   stats: DashboardStats;
   withTypeFilter?: boolean;
   layout?: "stack" | "side";
+  secondChart?: ReactNode;
 }) {
   const side = layout === "side";
   const chartHeight = side ? 230 : 200;
@@ -38,48 +42,42 @@ export function RecentPerformance({
   // 대시보드(side) 카드에만 붙는 맥락 표시 — 숫자 아래 빈 공간을 의미 있는 정보로 채운다. (별점은 메인에도 표시)
   const extra = (node: ReactNode) => (side ? node : undefined);
 
+  const planned = c.planning_to_attend + c.applied + c.planning_to_apply;
+  // 대시보드(side)는 참가 카드 2개(총 참가·참가 완료)를 하나로 합쳐 4개, 메인(stack)은 5개 그대로.
+  const participationTiles = side ? (
+    <PerformanceTile
+      large
+      label="참가 행사"
+      value={`${total}건`}
+      extra={
+        <div>
+          <div className="flex h-2 gap-0.5 overflow-hidden rounded-full">
+            <span style={{ flex: c.attended, background: "#F4917F" }} />
+            <span style={{ flex: planned, background: "#8FD3AE" }} />
+            <span style={{ flex: c.interested + c.cancelled, background: "#FFE58A" }} />
+          </div>
+          <p className="mt-1.5 text-xs text-[#8A8D93]">
+            완료 {c.attended} · 예정 {planned} · 관심 {c.interested + c.cancelled} · 참가율 {Math.round(attendRate * 100)}%
+          </p>
+        </div>
+      }
+    />
+  ) : (
+    <>
+      <PerformanceTile label="총 참가 행사" value={`${total}건`} />
+      <PerformanceTile label="참가 완료" value={`${c.attended}건`} />
+    </>
+  );
+
   const tiles = (
-    <div className={side ? "grid grid-cols-2 gap-3 lg:h-full lg:grid-cols-1 lg:grid-rows-5" : "grid grid-cols-2 gap-4 lg:grid-cols-5"}>
-      <PerformanceTile
-        large={side}
-        label="총 참가 행사"
-        value={`${total}건`}
-        extra={extra(
-          <div>
-            <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full">
-              <span style={{ flex: c.interested + c.cancelled, background: STATUS_FILL.interested.bg }} />
-              <span style={{ flex: c.planning_to_attend + c.applied + c.planning_to_apply, background: STATUS_FILL.planning_to_attend.bg }} />
-              <span style={{ flex: c.attended, background: STATUS_FILL.attended.bg }} />
-            </div>
-            <p className="mt-1.5 text-xs text-[#8A8D93]">
-              관심 {c.interested + c.cancelled} · 예정 {c.planning_to_attend + c.applied + c.planning_to_apply} · 완료 {c.attended}
-            </p>
-          </div>
-        )}
-      />
-      <PerformanceTile
-        large={side}
-        label="참가 완료"
-        value={`${c.attended}건`}
-        extra={extra(
-          <div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-[#E6EEF5]">
-              <div className="h-full rounded-full" style={{ width: `${attendRate * 100}%`, background: "#F2A493" }} />
-            </div>
-            <p className="mt-1.5 text-xs text-[#8A8D93]">참가율 {Math.round(attendRate * 100)}%</p>
-          </div>
-        )}
-      />
+    <div className={side ? "grid grid-cols-2 gap-3 lg:h-full lg:grid-cols-1 lg:grid-rows-4" : "grid grid-cols-2 gap-4 lg:grid-cols-5"}>
+      {participationTiles}
       <PerformanceTile
         large={side}
         label="총 매출"
         value={stats.totalRevenue != null ? `${stats.totalRevenue.toLocaleString()}원` : "기록 없음"}
         extra={extra(
-          stats.totalRevenue != null && (
-            <p className="text-xs text-[#8A8D93]">
-              행사당 평균 <span className="font-semibold text-[#43464B]">{Math.round(stats.totalRevenue / stats.revenueEntryCount).toLocaleString()}원</span>
-            </p>
-          )
+          stats.totalRevenue != null && <p className="text-xs text-[#8A8D93]">{stats.revenueEntryCount}회 기록</p>
         )}
       />
       <PerformanceTile
@@ -135,13 +133,11 @@ export function RecentPerformance({
         </ChartPanel>
       )}
 
-      <ChartPanel title="품목별 매출 비교">
-        {stats.popularProducts.length === 0 ? (
-          <ChartEmpty text="상품별 판매 실적 없음" />
-        ) : (
-          <ProductRevenueAreaChart height={chartHeight} items={stats.popularProducts.map((p) => ({ label: p.productName, value: p.totalRevenue }))} />
-        )}
-      </ChartPanel>
+      {secondChart ?? (
+        <ChartPanel title="품목별 매출 비교">
+          <ProductRevenueComparison stats={stats} height={chartHeight} />
+        </ChartPanel>
+      )}
     </div>
   );
 
@@ -162,13 +158,23 @@ export function RecentPerformance({
   );
 }
 
-function ChartPanel({ title, children }: { title: string; children: ReactNode }) {
+export function ChartPanel({ title, info, children }: { title: string; info?: ReactNode; children: ReactNode }) {
   return (
-    <div className="min-w-0 overflow-hidden rounded-2xl bg-[#F8FBFD] p-4">
-      <p className="mb-3 text-sm font-semibold text-[#1F2023]">{title}</p>
+    <div className="min-w-0 rounded-2xl bg-[#F8FBFD] p-4">
+      <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-[#1F2023]">
+        {title}
+        {info && <InfoTip label={`${title} 설명`}>{info}</InfoTip>}
+      </p>
       {children}
     </div>
   );
+}
+
+/** 품목별 매출 비교 차트(메인·대시보드 공용). 대시보드는 보라 계열로. */
+export function ProductRevenueComparison({ stats, height, tone = "teal" }: { stats: DashboardStats; height: number; tone?: "teal" | "purple" }) {
+  if (stats.popularProducts.length === 0) return <ChartEmpty text="상품별 판매 실적 없음" />;
+  const colors = tone === "purple" ? { color: "#8A7FD6", accent: "text-[#5B4FC4]" } : {};
+  return <ProductRevenueAreaChart height={height} items={stats.popularProducts.map((p) => ({ label: p.productName, value: p.totalRevenue }))} {...colors} />;
 }
 
 function ChartEmpty({ text }: { text: string }) {

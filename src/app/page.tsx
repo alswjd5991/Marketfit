@@ -31,8 +31,10 @@ export default async function HomePage() {
     .filter((e) => e.status === "open")
     .slice(0, 4);
 
-  const recentlyAdded = [...events]
-    .reverse()
+  // 최근 등록된 행사(NEW)만, 최근에 등록된 순
+  const recentlyAdded = events
+    .filter((e) => e.isNew)
+    .sort((a, b) => (b.postedAt ?? "").localeCompare(a.postedAt ?? ""))
     .slice(0, 4);
 
   // 현재 모집 중인 행사
@@ -275,12 +277,16 @@ export default async function HomePage() {
                 title="최근 등록 행사"
                 href="/events"
               >
-                {recentlyAdded.map((event) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                  />
-                ))}
+                {recentlyAdded.length === 0 ? (
+                  <p className="col-span-full py-10 text-center text-sm text-neutral-400">최근 등록된 행사 없음</p>
+                ) : (
+                  recentlyAdded.map((event) => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                    />
+                  ))
+                )}
               </HomeSection>
             </div>
           </section>

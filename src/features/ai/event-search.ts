@@ -81,6 +81,12 @@ export function regionOf(text: string): string | null | undefined {
   return found.length > 1 ? null : found[0];
 }
 
+/** 주소("경기도 수원시 …") 또는 법정동 시도 코드로 시·도 짧은 이름을 찾는다. 못 찾으면 null. */
+export function regionOfAddress(addr: string, lDongRegnCd?: string): string | null {
+  const byAddr = addr ? REGIONS.find(([, , prefixes]) => prefixes.some((p) => addr.startsWith(p))) : undefined;
+  return (byAddr ?? REGIONS.find(([, , , code]) => code === lDongRegnCd))?.[0] ?? null;
+}
+
 /** 한국 날짜 기준 기간. 기간 표현이 없으면 undefined. */
 function rangeOf(text: string, today: string): [string, string] | undefined {
   const [year, month, day] = today.split("-").map(Number);

@@ -1,8 +1,13 @@
+import { cache } from "react";
 import { seedEvents, type SeedEvent } from "@/lib/data/seed-events";
+import { createClient } from "@/lib/supabase/server";
 import posterManifest from "@/lib/data/event-poster-manifest.json";
 import { computeRecruitmentStatus, formatDday } from "./status";
 import { CATEGORY_GROUPS, getCategoryGroup, type CategoryGroup } from "./category-group";
 import type { RecruitmentStatus } from "@/types/database";
+import { AUTO_SOURCES, AUTO_SOURCE_FILTER, pickNewlyPosted, type AutoSourceDataset } from "./weekly-sync";
+import { koreaDate } from "@/features/ai/event-search";
+import type { EventDetails } from "@/types/database";
 
 export interface EventListItem {
   id: string;
@@ -27,6 +32,10 @@ export interface EventListItem {
    *  사진. 못 찾았거나 사이트 공용 로고뿐이었던 행사는 null — 화면에서는
    *  EventPoster(카테고리별 생성 그래픽)로 대체한다. poster-manifest.md 참고. */
   posterImage: string | null;
+  /** 최근 등록된 행사(pickNewlyPosted) — 카드에 "NEW" 배지, 메인 "최근 등록 행사" */
+  isNew: boolean;
+  /** 출처에 처음 등록된 날(자동 수집 행사만) */
+  postedAt: string | null;
 }
 
 /** src/lib/data/event-poster-manifest.json에서 행사 id로 실제 포스터 이미지
@@ -65,8 +74,63 @@ function toListItem(e: SeedEvent): EventListItem {
     sourceName: e.organizer,
     sourceUrl: e.sourceUrl,
     isSampleData: false, // 전부 실제 공개 자료 — 6번 섹션 참고
-    posterImage: getPosterImage(e.id),
+    posterImage: e.imageUrl ?? getPosterImage(e.id),
+    isNew: false, // getEvents에서 전체를 보고 정한다
+    postedAt: e.details?.postedAt ?? null,
   };
+}
+
+interface AutoEventRow {
+  source_post_id: string | null;
+  source_url: string;
+  collected_at: string;
+  organizer: string | null;
+  events: { name: string; image_url: string | null; region: string | null; venue: string | null; start_date: string | null; end_date: string | null; details?: EventDetails | null } | null;
+}
+
+const AUTO_COLUMNS = "source_post_id, source_url, collected_at, organizer, events(name, image_url, region, venue, start_date, end_date%s)";
+
+/**
+ * 매주 월요일 자동 수집(weekly-sync.ts)으로 DB에 쌓인 공공데이터 행사를 시드 행사와 같은 모양으로
+ * 읽는다. 요청 1번에 1회만 조회(React cache)하고, DB가 안 되면 빈 배열 — 시드 행사만으로 화면은 계속 동작한다.
+ */
+const getAutoEvents = cache(async (): Promise<SeedEvent[]> => {
+  try {
+    const supabase = await createClient();
+    const query = (withDetails: boolean) => supabase
+      .from("event_recruitments")
+      .select(AUTO_COLUMNS.replace("%s", withDetails ? ", details" : ""))
+      .or(AUTO_SOURCE_FILTER);
+    // details 칸(0003_event_details.sql)을 아직 적용하지 않은 DB에서도 행사 목록은 보이게 한다.
+    let { data, error } = await query(true);
+    if (error) ({ data, error } = await query(false));
+    if (error) throw error;
+    return ((data ?? []) as unknown as AutoEventRow[]).flatMap((r) => {
+      const [dataset, id] = (r.source_post_id ?? "").split(":") as [AutoSourceDataset, string];
+      const e = r.events;
+      if (!e || !id || !(dataset in AUTO_SOURCES)) return [];
+      const d = e.details ?? null;
+      return [{
+        sourceDataset: dataset, id, name: e.name, series: null, edition: null,
+        organizer: [d?.sponsor ?? r.organizer, d?.organizer && d.organizer !== d.sponsor ? `주관 ${d.organizer}` : null].filter(Boolean).join(" · ") || null,
+        orgType: "지자체", region: e.region, gu: null,
+        venue: [d?.place, e.venue].filter(Boolean).join(" · ") || null, outdoor: null,
+        category: null, // 8종 분류는 행사명으로 자동 결정
+        startDate: e.start_date, endDate: e.end_date, hours: d?.playtime ? [d.playtime] : null, recruitEnd: null, capacityTeams: null,
+        feeKrw: null, readable: null, sourceType: AUTO_SOURCES[dataset].name, sourceUrl: r.source_url,
+        // 셀러 모집 조건은 공공 행사 정보에 없다 — 지어내지 않고 비워 둔다(상세 화면은 빈 항목을 숨김).
+        eligibility: null, items: null, equipment: null, selection: null,
+        outcomes: null, ageDisclosed: null, imageUrl: e.image_url, collectedAt: r.collected_at, details: d,
+      } satisfies SeedEvent];
+    });
+  } catch {
+    return [];
+  }
+});
+
+/** 시드 행사(직접 수집) + 주간 자동 수집 행사 */
+async function getAllEvents(): Promise<SeedEvent[]> {
+  return [...seedEvents, ...(await getAutoEvents())];
 }
 
 export type EventPeriod = "this_week" | "this_month" | "next_month" | "past" | "custom";
@@ -88,7 +152,9 @@ export interface EventFilters {
 }
 
 export async function getEvents(filters: EventFilters = {}): Promise<EventListItem[]> {
-  let items = seedEvents.map(toListItem);
+  let items = (await getAllEvents()).map(toListItem);
+  const fresh = pickNewlyPosted(items, koreaDate(new Date()));
+  items = items.map((e) => (fresh.has(e) ? { ...e, isNew: true } : e));
 
   if (filters.region) items = items.filter((e) => e.region === filters.region);
   if (filters.category) items = items.filter((e) => e.categoryGroup === filters.category);
@@ -173,11 +239,11 @@ function compareBy(sort: EventSort) {
 }
 
 export async function getEventById(id: string): Promise<SeedEvent | null> {
-  return seedEvents.find((e) => e.id === id) ?? null;
+  return seedEvents.find((e) => e.id === id) ?? (await getAutoEvents()).find((e) => e.id === id) ?? null;
 }
 
 export async function getRegions(): Promise<string[]> {
-  const set = new Set(seedEvents.map((e) => e.region).filter(Boolean) as string[]);
+  const set = new Set((await getAllEvents()).map((e) => e.region).filter(Boolean) as string[]);
   return Array.from(set).sort();
 }
 

@@ -39,6 +39,7 @@ export function EventCard({ event }: { event: EventListItem }) {
 
           {/* 배지 */}
           <div className="flex flex-wrap items-center gap-2">
+            {event.isNew && <Badge title="최근 등록된 행사">NEW</Badge>}
             {closed ? (
               <Badge variant="muted">모집 종료</Badge>
             ) : event.dday ? (

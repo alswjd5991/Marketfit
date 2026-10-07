@@ -2,34 +2,46 @@ import type { ReactNode } from "react";
 import { skyGradient } from "@/components/sky-page";
 import { PageHeader } from "@/components/page-header";
 import { Lightbulb } from "lucide-react";
-import { ColumnChart } from "@/components/ui/column-chart";
 import { ProductTrendChart } from "./product-trend-chart";
-import { COUNT_BAR_COLOR, COUNT_LINE_COLOR } from "@/components/ui/chart-colors";
 import type { DashboardStats } from "@/features/dashboard/data";
-import { RecentPerformance } from "./recent-performance";
-import { STATUS_FILL } from "@/features/participations/status-labels";
-
-// 퍼널 색 = 상태 고유 색(관심 노랑·참가 예정 초록·참가 완료 빨강)의 파스텔 톤.
-const FUNNEL = STATUS_FILL;
+import { ChartPanel, ProductRevenueComparison, RecentPerformance } from "./recent-performance";
+import { Empty, Group, Panel } from "./panel";
+import type { DashboardAnalytics } from "@/features/analytics/data";
+import { analyticsInsights } from "@/features/analytics/insights";
+import { EventFitPanel, PeerChart, PlanLine, PortfolioPanel, StockPanel, methodsInfo, peerInfo, planInfo } from "@/features/analytics/panels";
+import { InfoTip } from "@/components/ui/info-tip";
 
 const won = (n: number) => `${Math.round(n).toLocaleString()}원`;
 
-export function DashboardView({ stats }: { stats: DashboardStats }) {
+export function DashboardView({ stats, analytics }: { stats: DashboardStats; analytics: DashboardAnalytics | null }) {
   const trend = stats.revenueTrend;
   const trendDiff = trend ? (trend.recentAvg - trend.earlierAvg) / trend.earlierAvg : null;
+  // 준비 수량 진단이 있으면 판매율 문장(단순 비교)은 빼고 진단 문장을 쓴다.
+  const superseded = new Set(analytics?.stock.items.length ? ["stock"] : []);
+  const insights = [
+    ...(analytics ? analyticsInsights(analytics) : []),
+    ...stats.insights.filter((i) => !i.supersededBy || !superseded.has(i.supersededBy)).map((i) => i.text),
+  ];
+  const synthetic = analytics && analytics.data.records ? analytics.data.syntheticRecords / analytics.data.records : 0;
 
   return (
     <div className="min-h-screen" style={{ background: skyGradient(2) }}>
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <PageHeader title="대시보드" />
 
-        {stats.insights.length > 0 && (
+        {insights.length > 0 && (
           <section className="rounded-3xl border border-white/80 bg-[#FFF6EE] p-6 shadow-[0_12px_32px_rgba(40,80,120,0.08)] sm:p-7">
             <h2 className="flex items-center gap-2 text-sm font-bold text-brand-dark">
-              <Lightbulb className="size-4" /> 종합 인사이트
+              <Lightbulb className="size-4" /> 한눈에 보기
+              {analytics && (
+                <span className="ml-auto flex items-center gap-1.5">
+                  {synthetic > 0 && <span className="rounded-full bg-white/80 px-2.5 py-0.5 text-[11px] font-medium text-neutral-500">가상 셀러 데이터로 계산했어요</span>}
+                  <InfoTip label="분석 안내" align="right">{methodsInfo(analytics)}</InfoTip>
+                </span>
+              )}
             </h2>
             <ul className="mt-4 grid gap-x-8 gap-y-2.5 text-[15px] leading-6 md:grid-cols-2">
-              {stats.insights.map((line) => (
+              {insights.map((line) => (
                 <li key={line} className="flex gap-2.5">
                   <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-[#F2836B]" />
                   <span className="text-neutral-700">{bold(line)}</span>
@@ -39,12 +51,27 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
           </section>
         )}
 
-        <Group title="최근 성과" first>
-          <RecentPerformance stats={stats} withTypeFilter layout="side" />
+        {analytics && (
+          <Group title="다가올 행사" first>
+            <EventFitPanel forecast={analytics.forecast} />
+          </Group>
+        )}
+
+        <Group title="최근 성과" first={!analytics}>
+          <RecentPerformance
+            stats={stats}
+            withTypeFilter
+            layout="side"
+            secondChart={analytics ? (
+              <ChartPanel title="같은 업종 대비 매출" info={peerInfo}>
+                <PeerChart peer={analytics.peer} />
+              </ChartPanel>
+            ) : undefined}
+          />
         </Group>
 
         <Group title="수익성">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <ProfitCard
               label="행사당 평균 매출"
               value={stats.totalRevenue != null ? won(stats.totalRevenue / stats.revenueEntryCount) : "기록 없음"}
@@ -59,19 +86,24 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
             </ProfitCard>
 
             <ProfitCard
+              label="행사당 평균 순이익"
+              value={stats.totalNetProfit != null ? won(stats.totalNetProfit / stats.netProfitEntryCount) : "기록 없음"}
+              tone={stats.totalNetProfit != null && stats.totalNetProfit < 0 ? "bad" : undefined}
+            >
+              {stats.totalNetProfit != null ? (
+                <span className="text-[13px] text-neutral-500">{stats.netProfitEntryCount}회 평균</span>
+              ) : (
+                <span className="text-[13px] text-neutral-400">비용 입력 시 표시</span>
+              )}
+            </ProfitCard>
+
+            <ProfitCard
               label="투자 대비 수익률"
               value={stats.returnOnCost ? `${Math.round(stats.returnOnCost.percent).toLocaleString()}%` : "기록 없음"}
               tone={stats.returnOnCost && stats.returnOnCost.percent < 0 ? "bad" : undefined}
             >
               {stats.returnOnCost ? (
-                <p className="flex flex-wrap items-center gap-1.5 text-[13px] text-neutral-500">
-                  비용 <span className="font-semibold tabular-nums text-neutral-800">{won(stats.returnOnCost.totalCost)}</span>
-                  <span className="text-neutral-300">→</span>
-                  순이익{" "}
-                  <span className="font-semibold tabular-nums text-neutral-800">
-                    {won((stats.returnOnCost.percent / 100) * stats.returnOnCost.totalCost)}
-                  </span>
-                </p>
+                <CostVsProfit cost={stats.returnOnCost.totalCost} net={(stats.returnOnCost.percent / 100) * stats.returnOnCost.totalCost} />
               ) : (
                 <span className="text-[13px] text-neutral-400">비용 입력 시 표시</span>
               )}
@@ -80,6 +112,8 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
             <ProfitCard
               label="목표 매출 달성률"
               value={stats.targetAchievement ? `${Math.round(stats.targetAchievement.percent)}%` : "기록 없음"}
+              info={analytics ? planInfo(analytics.plan) : undefined}
+              infoAlign="right"
             >
               {stats.targetAchievement ? (
                 <div>
@@ -92,10 +126,16 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
                       }}
                     />
                   </div>
-                  <p className="mt-1.5 text-[13px] text-neutral-500">
-                    {stats.targetAchievement.percent >= 100 ? "목표 초과 달성" : `목표까지 ${Math.round(100 - stats.targetAchievement.percent)}%`} ·{" "}
-                    {stats.targetAchievement.entryCount}회 기준
-                  </p>
+                  <div className="mt-1.5">
+                    {analytics?.plan.status === "ok" ? (
+                      <PlanLine plan={analytics.plan} />
+                    ) : (
+                      <p className="text-[13px] text-neutral-500">
+                        {stats.targetAchievement.percent >= 100 ? "목표 초과 달성" : `목표까지 ${Math.round(100 - stats.targetAchievement.percent)}%`}{" "}
+                        <span className="text-neutral-400">({stats.targetAchievement.entryCount}회)</span>
+                      </p>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <span className="text-[13px] text-neutral-400">목표 매출 입력 시 표시</span>
@@ -104,37 +144,26 @@ export function DashboardView({ stats }: { stats: DashboardStats }) {
           </div>
         </Group>
 
-        <Group title="참가 활동">
-          <div className="grid gap-5 lg:grid-cols-3">
-            <Panel title="참가 전환 흐름">
-              <Funnel stats={stats} />
-            </Panel>
-            <Panel title="월별 참가" className="lg:col-span-2">
-              <ColumnChart
-                unit="건"
-                barName="참가 행사 수"
-                barColor={COUNT_BAR_COLOR}
-                lineName="추이"
-                lineColor={COUNT_LINE_COLOR}
-                lineInTooltip={false}
-                height={290}
-                points={stats.monthlyParticipationCounts.map((m) => {
-                  const [y, mo] = m.monthKey.split("-");
-                  return { label: `${y.slice(2)}.${Number(mo)}`, value: m.count, line: m.count, title: `${y}년 ${Number(mo)}월` };
-                })}
-              />
-            </Panel>
+        {/* 상품: 1행 품목별 매출 비교 | 상품 포트폴리오(1:1), 2행 품목별 판매 수량 추이 | 준비 수량(7:3) */}
+        <Group title="상품">
+          <div className="grid gap-5">
+            <div className={analytics ? "grid gap-5 lg:grid-cols-2" : ""}>
+              <Panel title="품목별 매출 비교">
+                <ProductRevenueComparison stats={stats} height={230} tone="purple" />
+              </Panel>
+              {analytics && <PortfolioPanel portfolio={analytics.portfolio} />}
+            </div>
+            <div className={analytics ? "grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]" : ""}>
+              <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"}>
+                {stats.productSalesByEvent.series.length === 0 ? (
+                  <Empty>상품별 판매 기록 없음</Empty>
+                ) : (
+                  <ProductTrendChart title="품목별 판매 수량 추이" data={stats.productSalesByEvent} />
+                )}
+              </Panel>
+              {analytics && <StockPanel stock={analytics.stock} />}
+            </div>
           </div>
-        </Group>
-
-        <Group title="상품 판매">
-          <Panel title={stats.productSalesByEvent.series.length ? undefined : "품목별 판매 수량 추이"}>
-            {stats.productSalesByEvent.series.length === 0 ? (
-              <Empty>상품별 판매 기록 없음</Empty>
-            ) : (
-              <ProductTrendChart title="품목별 판매 수량 추이" data={stats.productSalesByEvent} />
-            )}
-          </Panel>
         </Group>
       </div>
     </div>
@@ -146,96 +175,33 @@ function bold(text: string): ReactNode[] {
   return text.split("**").map((part, i) => (i % 2 ? <strong key={i} className="font-bold text-neutral-950">{part}</strong> : part));
 }
 
-/** 목적이 같은 차트 묶음. 묶음이 바뀔 때마다 구분선 + 소제목으로 나눈다. */
-function Group({ title, first = false, children }: { title: string; first?: boolean; children: ReactNode }) {
+/** 투자 대비 수익률 아래 줄: 비용이 순이익보다 크면 비용을 빨간색, 순이익이 더 크면 순이익을 파란색으로. */
+function CostVsProfit({ cost, net }: { cost: number; net: number }) {
+  // 카드 폭이 좁아도 한 줄에 들어가게 만원 단위로
+  const won = (n: number) => `${Math.round(n / 10000).toLocaleString()}만원`;
   return (
-    <section className={first ? "mt-8" : "mt-10 border-t border-neutral-300/60 pt-8"}>
-      <h2 className="mb-4 text-lg font-bold text-neutral-950">{title}</h2>
-      {children}
-    </section>
+    <p className="flex flex-wrap items-center gap-x-1.5 whitespace-nowrap text-[13px] text-neutral-500">
+      비용 <span className={`font-semibold tabular-nums ${cost > net ? "text-[#BE3A2A]" : "text-neutral-800"}`}>{won(cost)}</span>
+      <span className="font-semibold text-neutral-500">{cost > net ? ">" : cost < net ? "<" : "="}</span>
+      순이익 <span className={`font-semibold tabular-nums ${net > cost ? "text-[#2F6FB8]" : "text-neutral-800"}`}>{won(net)}</span>
+    </p>
   );
 }
 
-/** title을 비우면 제목 줄을 자식(드롭다운이 붙은 차트)이 직접 그린다. */
-function Panel({ title, className = "", children }: { title?: string; className?: string; children: ReactNode }) {
+/** 수익성 카드: 큰 숫자 + 아래 보조 표시(추세 배지·비용 흐름·달성 막대). info를 주면 제목 옆 물음표에 설명. */
+function ProfitCard({ label, value, tone, info, infoAlign = "left", children }: { label: string; value: string; tone?: "bad"; info?: ReactNode; infoAlign?: "left" | "right"; children?: ReactNode }) {
   return (
-    <div className={`min-w-0 rounded-2xl border border-white/80 bg-white/85 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm p-5 sm:p-6 ${className}`}>
-      {title && <h2 className="mb-5 text-[15px] font-semibold text-neutral-900">{title}</h2>}
-      {children}
-    </div>
-  );
-}
-
-function Empty({ children }: { children: ReactNode }) {
-  return <p className="py-8 text-center text-sm text-neutral-400">{children}</p>;
-}
-
-/** 수익성 카드: 큰 숫자 + 아래 보조 표시(추세 배지·비용 흐름·달성 막대). */
-function ProfitCard({ label, value, tone, children }: { label: string; value: string; tone?: "bad"; children?: ReactNode }) {
-  return (
-    <div className="flex flex-col justify-between gap-4 rounded-2xl border border-white/80 bg-white/85 p-5 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm sm:p-6">
+    <div className="flex flex-col gap-2.5 rounded-2xl border border-white/80 bg-white/85 px-5 py-4 shadow-[0_8px_24px_rgba(40,80,120,0.06)] backdrop-blur-sm sm:px-6">
       <div>
-        <p className="text-sm font-medium text-neutral-500">{label}</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium text-neutral-500">
+          {label}
+          {info && <InfoTip label={`${label} 설명`} align={infoAlign}>{info}</InfoTip>}
+        </p>
         <p className={`mt-1 whitespace-nowrap text-[30px] font-extrabold leading-tight tracking-tight tabular-nums ${tone === "bad" ? "text-[#BE3A2A]" : "text-neutral-950"}`}>
           {value}
         </p>
       </div>
       {children}
-    </div>
-  );
-}
-
-/**
- * 참가 전환 퍼널(인포그래픽형): 사다리꼴 층이 쌓여 깔때기를 이루고, 층 안에 건수,
- * 오른쪽엔 점선 연결선 + 단계 이름·전환율. 층 너비는 값이 아니라 고정 비율로 좁아진다(모양 유지용).
- * 각 단계는 지금 그 단계 이상인 기록 수.
- */
-function Funnel({ stats }: { stats: DashboardStats }) {
-  const c = stats.statusCounts;
-  const steps = [
-    { label: "관심", count: stats.totalParticipations, color: FUNNEL.interested.bg, ink: FUNNEL.interested.ink },
-    { label: "참가 예정", count: c.planning_to_attend + c.attended, color: FUNNEL.planning_to_attend.bg, ink: FUNNEL.planning_to_attend.ink },
-    { label: "참가 완료", count: c.attended, color: FUNNEL.attended.bg, ink: FUNNEL.attended.ink },
-  ];
-  const top = Math.max(steps[0].count, 1);
-  const edges = [100, 74, 50, 28]; // 층 경계의 너비(%) — 위에서 아래로 좁아진다
-  const trapezoid = (i: number) => {
-    const [a, b] = [edges[i], edges[i + 1]];
-    return `polygon(${(100 - a) / 2}% 0, ${(100 + a) / 2}% 0, ${(100 + b) / 2}% 100%, ${(100 - b) / 2}% 100%)`;
-  };
-
-  return (
-    <div>
-      <ol className="mt-2 flex flex-col gap-2">
-        {steps.map((step, i) => {
-          const prev = steps[i - 1];
-          const rate = prev ? (prev.count > 0 ? `${Math.round((step.count / prev.count) * 100)}%` : "-") : null;
-          return (
-            <li key={step.label} className="flex items-center">
-              <div
-                className="flex h-[78px] w-[56%] shrink-0 items-center justify-center text-xl font-bold tabular-nums"
-                style={{ background: step.color, color: step.ink, clipPath: trapezoid(i) }}
-                title={`${step.label} ${step.count}건`}
-              >
-                {step.count}
-              </div>
-              <span className="mx-2 h-px flex-1 border-t border-dashed border-neutral-300" />
-              <span className="size-2 shrink-0 rounded-full" style={{ background: step.color }} />
-              <div className="ml-2.5 w-[76px] shrink-0">
-                <p className="text-sm font-bold text-neutral-900">{step.label}</p>
-                <p className="text-xs tabular-nums text-neutral-500">{rate ? `전환 ${rate}` : "전체"}</p>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-      {/* 깔때기 꼭지 */}
-      <div className="w-[56%]">
-        <div className="mx-auto h-4 w-[12%] rounded-b-md opacity-60" style={{ background: steps[2].color }} />
-      </div>
-      <p className="mt-4 text-center text-sm text-neutral-600">
-        전체 참가율 <span className="font-bold text-neutral-950">{Math.round((c.attended / top) * 100)}%</span>
-      </p>
     </div>
   );
 }
