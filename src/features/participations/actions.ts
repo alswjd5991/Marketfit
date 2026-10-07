@@ -89,9 +89,8 @@ export async function addParticipation(formData: FormData) {
     redirect(`${backTo}?error=${encodeURIComponent(error.message)}`);
   }
 
-  // "내 행사" 목록 화면은 아직 Phase 3~4에서 구현 예정이라(ComingSoon),
-  // 방금 한 행동에 대한 확인은 지금 있던 페이지에서 바로 보여준다.
-  redirect(`${backTo}?notice=${encodeURIComponent("내 행사에 추가했어요.")}`);
+  // 별도 알림 없이 원래 페이지로 — 버튼이 "내 행사에서 보기"로 바뀌는 것으로 충분하다.
+  redirect(backTo);
 }
 
 /** 61번 항목: store_id 조건을 매 쿼리에 직접 걸어 RLS와 이중으로 소유자 검증. */
@@ -179,9 +178,6 @@ export async function updateParticipationResult(formData: FormData) {
   const netProfit =
     totalRevenue == null ? null : totalRevenue - fee - transportCost - parkingCost - lodgingCost - otherCost;
 
-  const wouldReattendRaw = formData.get("would_reattend");
-  const wouldReattend = wouldReattendRaw === "" || wouldReattendRaw === null ? null : wouldReattendRaw === "true";
-
   // 부스 사진은 새로 고른 파일이 있을 때만 업로드하고, payload에도 그때만
   // logo_url 키를 넣는다(store/actions.ts의 updateStore와 같은 이유 —
   // 빈 file input을 그대로 반영하면 기존 사진이 지워진다).
@@ -207,7 +203,6 @@ export async function updateParticipationResult(formData: FormData) {
       weather: emptyToNull(formData.get("weather")),
       indoor_outdoor: emptyToNull(formData.get("indoor_outdoor")),
       perceived_crowd: emptyToNull(formData.get("perceived_crowd")),
-      would_reattend: wouldReattend,
       memo: emptyToNull(formData.get("memo")),
       // 2026-09-24 추가: 참가 후 기록되는 부스 정보(다른 마켓 신청서 조사 반영 — 0002 마이그레이션)
       booth_number: emptyToNull(formData.get("booth_number")),

@@ -5,7 +5,7 @@ import {
   type EventQuery, type EventRecord, type MarketfitEventRow,
 } from "./event-search";
 import { generateChatReply, type ChatDeps } from "./reply";
-import { participationStats } from "./stats";
+import { participationStats, productStats } from "./stats";
 
 const now = new Date("2026-09-29T15:30:00Z"); // 한국 9월 30일
 const question = (text: string) => [{ role: "user" as const, text }];
@@ -145,7 +145,7 @@ test("Marketfit 등록 행사가 3건 이상이면 다른 웹사이트를 조회
   const d = deps([record("가"), record("나"), record("다")]);
   const result = await generateChatReply(question("이번 달 서울 행사"), d, now);
   assert.ok(result.ok);
-  assert.ok(result.text.includes("■ Marketfit에 등록된 행사 (3건)"));
+  assert.ok(result.text.includes("### Marketfit에 등록된 행사 (3건)"));
   assert.equal(result.text.includes("다른 웹사이트"), false);
   assert.deepEqual(result.sources.map((s) => s.url), ["/events/가", "/events/나", "/events/다"]);
   assert.equal(fetch.mock.callCount(), 0);
@@ -159,9 +159,9 @@ test("3건 미만이면 서울시 공식 목록으로 보충하고, 가져온 �
   });
   const result = await generateChatReply(question("이번 달 서울 행사"), deps([record("2026 진행 행사", "2026-09-28", "2026-10-02")]), now);
   assert.ok(result.ok);
-  assert.ok(result.text.indexOf("■ Marketfit에 등록된 행사 (1건)") < result.text.indexOf("■ 다른 웹사이트에서 가져온 행사 — 출처: 서울시 공식 축제 찾기"));
+  assert.ok(result.text.indexOf("### Marketfit에 등록된 행사 (1건)") < result.text.indexOf("### 공식 사이트 행사"));
   assert.ok(result.text.includes("Marketfit에 등록되지 않은 행사예요"));
-  assert.ok(result.text.includes("2. 종료 행사"));
+  assert.ok(result.text.includes("2. **종료 행사**"));
   assert.equal(result.text.match(/진행 행사/g)?.length, 1); // DB와 같은 행사는 한 번만
   assert.ok(result.sources.some((s) => s.title === "[서울시] 종료 행사"));
   // DB 1건 + 새 공식 행사 1건 = 2건 < 3 → 웹 검색까지 보충
@@ -180,7 +180,7 @@ test("공식 목록까지 합쳐도 3건 미만이면 웹 검색으로 보충하
   assert.ok(result.ok);
   assert.ok(result.text.includes("조건에 맞는 행사가 아직 등록되어 있지 않아요"));
   assert.ok(result.text.includes("출처: 한국관광공사 전국 축제 정보"));
-  assert.ok(result.text.includes("■ 다른 웹사이트에서 찾은 정보 — 출처: 구글 웹 검색"));
+  assert.ok(result.text.includes("### 웹 검색으로 확인한 정보"));
   assert.ok(result.text.includes("부산 불꽃축제"));
   assert.ok(result.sources.some((s) => s.title === "[웹 검색] 검색 출처"));
   assert.equal(bodies.length, 1);
@@ -198,7 +198,7 @@ test("모집 질문은 행사 목록(모집 정보 없음)을 건너뛰고 웹 �
 test("웹 검색이 막히면 보충 실패를 알리고, 모든 출처가 실패하면 오류를 돌려준다", async () => {
   mock.method(globalThis, "fetch", async () => Response.json({ error: {} }, { status: 429 }));
   const partial = await generateChatReply(question("이번 달 부산 축제"), deps([record("가")]), now);
-  assert.ok(partial.ok && partial.text.includes("웹 검색을 연결할 수 없어") && partial.text.includes("1. 가"));
+  assert.ok(partial.ok && partial.text.includes("웹 검색을 연결할 수 없어") && partial.text.includes("1. **가**"));
   process.env.GEMINI_API_KEY = `test-key-${++keySeq}`;
   const failed = await generateChatReply(question("이번 달 부산 축제"), deps(new Error("db down")), now);
   assert.equal(failed.ok, false);
@@ -250,4 +250,29 @@ test("개인 통계의 합계·평균·순위를 코드에서 계산한다", () 
   assert.ok(lines.includes("적자 행사 1건"));
   assert.ok(lines.includes("평균 만족도 3.5/5 (2건)"));
   assert.ok(lines.includes("재참가 의향 있음 1건 / 없음 1건"));
+});
+
+test("조건별·기간별 비교와 상품 판매율도 코드에서 계산한다", () => {
+  const row = (name: string, start_date: string, total_revenue: number, net_profit: number, weather: string) =>
+    ({ name, status: "attended" as const, total_revenue, net_profit, satisfaction: null, would_reattend: null, start_date, weather, region: "서울", category: null, fee: 10000 });
+  const lines = participationStats([
+    row("A", "2024-05-01", 100000, 50000, "맑음"),
+    row("B", "2024-06-01", 100000, 50000, "비"),
+    row("C", "2024-07-01", 100000, 50000, "맑음"),
+    row("D", "2025-05-01", 300000, 250000, "맑음"),
+    row("E", "2025-06-01", 300000, 250000, "맑음"),
+    row("F", "2025-07-01", 300000, -10000, "비"),
+  ]).join("\n");
+  assert.ok(lines.includes("날씨별: 맑음 평균 매출 200,000원·순이익 150,000원(4건), 비 평균 매출 200,000원·순이익 20,000원(2건)"));
+  assert.ok(lines.includes("연도별: 2024년 평균 매출 100,000원·순이익 50,000원(3건), 2025년"));
+  assert.ok(lines.includes("매출 추이: 오래된 3건 평균 100,000원 → 최근 3건 평균 300,000원 (+200%, 2024-05-01~2025-07-01)"));
+  assert.ok(lines.includes("비용 합계 60,000원 (매출의 5%): 참가비 60,000원"));
+  assert.ok(!lines.includes("지역별"), "그룹이 하나뿐이면 비교 줄을 만들지 않는다");
+
+  const products = productStats([
+    { product_name: "쿠키", prepared: 20, sold: 15, revenue: 45000 },
+    { product_name: "쿠키", prepared: 20, sold: 5, revenue: 15000 },
+    { product_name: "약과", prepared: 10, sold: 10, revenue: 20000 },
+  ], 5);
+  assert.deepEqual(products, ["- 쿠키: 판매 20개 / 준비 40개 (판매율 50%) / 매출 60,000원", "- 약과: 판매 10개 / 준비 10개 (판매율 100%) / 매출 20,000원"]);
 });

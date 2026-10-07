@@ -1,12 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ParticipationStatus } from "@/types/database";
 import { getMyStore } from "@/features/store/data";
+import { toDisplayStatus } from "@/features/participations/status-labels";
+import { getCategoryGroup, type CategoryGroup } from "@/features/events/category-group";
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 export interface DashboardStats {
   totalParticipations: number;
   statusCounts: Record<ParticipationStatus, number>;
-  /** 카운트가 1건이라도 있는 카테고리만 담는다(존재하지 않는 카테고리를 0으로 채워 넣지 않음). */
-  categoryCounts: Record<string, number>;
   /** total_revenue를 입력한 기록이 하나도 없으면 null(0원으로 지어내지 않음). */
   totalRevenue: number | null;
   revenueEntryCount: number;
@@ -14,34 +16,71 @@ export interface DashboardStats {
   netProfitEntryCount: number;
   averageSatisfaction: number | null;
   satisfactionEntryCount: number;
-  /** 행사 시작월 기준 참가 건수 추이(오래된 달 -> 최근 달). start_date가 없는 행사는 제외. */
+  /** 최근 N회 평균 매출과 그 이전 평균 — 매출 기록이 6건 이상일 때만. */
+  revenueTrend: { recentAvg: number; earlierAvg: number; recentCount: number } | null;
+  /** 행사 시작월 기준 참가 건수(오래된 달 -> 최근 달, 빈 달은 0으로 채움). */
   monthlyParticipationCounts: MonthlyCount[];
-  /** 매출을 입력한 참가 기록만, 행사 시작일 순으로 정렬한 매출·순이익 추이. */
+  /** 매출을 입력한 참가 기록만, 행사 시작일 순. */
   eventRevenueTrend: EventTrendPoint[];
-  /** 상품별 판매 실적(event_product_sales)을 상품명으로 합산해 매출 높은 순 정렬, 상위 N개. */
+  /** 행사 유형(대분류)별 참가 수와 평균 순이익. 참가 수 많은 순. */
+  groupPerformance: GroupPerformance[];
+  /** 날씨별 평균 매출(인사이트 문장용). 기록이 2개 그룹 이상일 때만 채움. */
+  weatherPerformance: ConditionPerformance[];
+  /** 순이익 ÷ (참가비 + 교통·주차·숙박·기타 비용). 비용을 기록한 건만 */
+  returnOnCost: { percent: number; totalCost: number; entryCount: number } | null;
+  /** 총 매출 ÷ 목표 매출. 둘 다 입력한 건만 */
+  targetAchievement: { percent: number; entryCount: number } | null;
+  /** 상품별 판매 실적(참가 완료 행사)을 매출 높은 순으로. */
   popularProducts: PopularProduct[];
+  /** 품목별 행사별 판매 수량(행사 시작일 순). 품목은 판매 수량 많은 순 — 화면에서 고른 품목만 그린다. */
+  productSalesByEvent: ProductSalesByEvent;
+  /** 대시보드 맨 위 "종합 인사이트" 문장들. **굵게** 표시를 쓴다. */
+  insights: string[];
 }
 
 export interface PopularProduct {
   productName: string;
   totalSold: number;
+  totalPrepared: number;
   totalRevenue: number;
+  /** 판매/준비. 준비 수량이 0이면 null. */
+  sellThrough: number | null;
 }
-
-export const POPULAR_PRODUCTS_LIMIT = 8;
 
 export interface MonthlyCount {
   monthKey: string; // "2026-09"
-  monthLabel: string; // "2026년 9월"
   count: number;
 }
+
+export interface ProductSalesByEvent {
+  events: { eventName: string; startDate: string | null }[];
+  /** values[i]는 events[i]에서 판매한 수량(기록 없으면 0) */
+  series: { productName: string; values: number[] }[];
+}
+
 
 export interface EventTrendPoint {
   eventName: string;
   startDate: string;
+  group: CategoryGroup;
   revenue: number;
   netProfit: number | null;
 }
+
+export interface GroupPerformance {
+  group: CategoryGroup;
+  count: number;
+  avgNetProfit: number | null;
+  profitCount: number;
+}
+
+export interface ConditionPerformance {
+  label: string;
+  avgRevenue: number;
+  count: number;
+}
+
+export const POPULAR_PRODUCTS_LIMIT = 8;
 
 const EMPTY_STATUS_COUNTS: Record<ParticipationStatus, number> = {
   interested: 0,
@@ -60,139 +99,256 @@ const EMPTY_STATUS_COUNTS: Record<ParticipationStatus, number> = {
 export async function getDashboardStats(): Promise<DashboardStats | null> {
   const store = await getMyStore();
   if (!store) return null;
-
-  const supabase = await createClient();
   try {
-    const { data: rows, error } = await supabase
-      .from("event_participations")
-      .select("id, status, total_revenue, net_profit, satisfaction, event_id")
-      .eq("store_id", store.id);
-    if (error) throw error;
-    const participations = rows ?? [];
-
-    const statusCounts = { ...EMPTY_STATUS_COUNTS };
-    let totalRevenue = 0;
-    let revenueEntryCount = 0;
-    let totalNetProfit = 0;
-    let netProfitEntryCount = 0;
-    let satisfactionSum = 0;
-    let satisfactionEntryCount = 0;
-
-    for (const p of participations) {
-      statusCounts[p.status]++;
-      if (p.total_revenue != null) {
-        totalRevenue += p.total_revenue;
-        revenueEntryCount++;
-      }
-      if (p.net_profit != null) {
-        totalNetProfit += p.net_profit;
-        netProfitEntryCount++;
-      }
-      if (p.satisfaction != null) {
-        satisfactionSum += p.satisfaction;
-        satisfactionEntryCount++;
-      }
-    }
-
-    const categoryCounts: Record<string, number> = {};
-    const monthCounts = new Map<string, number>();
-    const eventRevenueTrend: EventTrendPoint[] = [];
-
-    const eventIds = participations.map((p) => p.event_id);
-    if (eventIds.length > 0) {
-      const { data: events, error: eventsError } = await supabase
-        .from("events")
-        .select("id, name, category, start_date")
-        .in("id", eventIds);
-      if (eventsError) throw eventsError;
-      const eventById = new Map((events ?? []).map((e) => [e.id, e]));
-
-      for (const p of participations) {
-        const event = eventById.get(p.event_id);
-
-        const category = event?.category ?? "기타";
-        categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
-
-        if (event?.start_date) {
-          const monthKey = event.start_date.slice(0, 7); // "YYYY-MM"
-          monthCounts.set(monthKey, (monthCounts.get(monthKey) ?? 0) + 1);
-
-          if (p.total_revenue != null) {
-            eventRevenueTrend.push({
-              eventName: event.name,
-              startDate: event.start_date,
-              revenue: p.total_revenue,
-              netProfit: p.net_profit,
-            });
-          }
-        }
-      }
-    }
-
-    const monthlyParticipationCounts: MonthlyCount[] = Array.from(monthCounts.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([monthKey, count]) => ({ monthKey, monthLabel: formatMonthLabel(monthKey), count }));
-
-    eventRevenueTrend.sort((a, b) => a.startDate.localeCompare(b.startDate));
-
-    const popularProducts = await getPopularProducts(
-      supabase,
-      participations.map((p) => p.id)
-    );
-
-    return {
-      totalParticipations: participations.length,
-      statusCounts,
-      categoryCounts,
-      totalRevenue: revenueEntryCount > 0 ? totalRevenue : null,
-      revenueEntryCount,
-      totalNetProfit: netProfitEntryCount > 0 ? totalNetProfit : null,
-      netProfitEntryCount,
-      averageSatisfaction: satisfactionEntryCount > 0 ? satisfactionSum / satisfactionEntryCount : null,
-      satisfactionEntryCount,
-      monthlyParticipationCounts,
-      eventRevenueTrend,
-      popularProducts,
-    };
+    return await computeDashboardStats(await createClient(), store.id);
   } catch {
     return null; // 62번 항목: 네트워크 오류로 페이지 전체가 죽지 않도록
   }
 }
 
-/**
- * 이 가게의 모든 참가 건에 기록된 event_product_sales를 상품명으로 합산해
- * 매출 높은 순 상위 N개를 돌려준다. 참가 건이 없으면 빈 배열(0건을 지어내지 않음).
- */
-async function getPopularProducts(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  participationIds: string[]
-): Promise<PopularProduct[]> {
-  if (participationIds.length === 0) return [];
-
-  const { data: sales, error } = await supabase
-    .from("event_product_sales")
-    .select("product_name, sold, revenue")
-    .in("participation_id", participationIds);
+export async function computeDashboardStats(supabase: Supabase, storeId: string): Promise<DashboardStats> {
+  const { data: rows, error } = await supabase
+    .from("event_participations")
+    .select(
+      "id, status, total_revenue, net_profit, satisfaction, weather, event_id, fee, target_revenue, transport_cost, parking_cost, lodging_cost, other_cost"
+    )
+    .eq("store_id", storeId);
   if (error) throw error;
+  const eventIds = (rows ?? []).map((p) => p.event_id);
+  const attendedIds = (rows ?? []).filter((p) => p.status === "attended").map((p) => p.id);
+  // 행사 정보와 상품 판매 기록은 서로 기다릴 필요가 없어 동시에 조회한다(서버↔DB 왕복 1번 절약).
+  const [eventsResult, salesResult] = await Promise.all([
+    eventIds.length
+      ? supabase.from("events").select("id, name, category, start_date").in("id", eventIds)
+      : Promise.resolve({ data: [], error: null }),
+    attendedIds.length
+      ? supabase.from("event_product_sales").select("participation_id, product_name, prepared, sold, revenue").in("participation_id", attendedIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (eventsResult.error) throw eventsResult.error;
+  if (salesResult.error) throw salesResult.error;
+  const events = eventsResult.data;
+  const eventById = new Map((events ?? []).map((e) => [e.id, e]));
+  const participations = (rows ?? []).map((p) => ({ ...p, event: eventById.get(p.event_id) ?? null }));
 
-  const byName = new Map<string, { totalSold: number; totalRevenue: number }>();
-  for (const s of sales ?? []) {
-    const entry = byName.get(s.product_name) ?? { totalSold: 0, totalRevenue: 0 };
-    entry.totalSold += s.sold;
-    entry.totalRevenue += s.revenue;
-    byName.set(s.product_name, entry);
+  const statusCounts = { ...EMPTY_STATUS_COUNTS };
+  for (const p of participations) statusCounts[toDisplayStatus(p.status)]++;
+  const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+  const avg = (xs: number[]) => (xs.length ? sum(xs) / xs.length : null);
+
+  const revenues = participations.filter((p) => p.total_revenue != null);
+  const profits = participations.filter((p) => p.net_profit != null).map((p) => p.net_profit!);
+  const satisfactions = participations.filter((p) => p.satisfaction != null).map((p) => p.satisfaction!);
+
+  const monthCounts = new Map<string, number>();
+  const eventRevenueTrend: EventTrendPoint[] = [];
+  const groups = new Map<CategoryGroup, { count: number; profits: number[] }>();
+  for (const p of participations) {
+    const e = p.event;
+    if (!e) continue;
+    const group = getCategoryGroup(e.category, e.name);
+    const g = groups.get(group) ?? { count: 0, profits: [] };
+    g.count++;
+    if (p.net_profit != null) g.profits.push(p.net_profit);
+    groups.set(group, g);
+    if (!e.start_date) continue;
+    const monthKey = e.start_date.slice(0, 7);
+    monthCounts.set(monthKey, (monthCounts.get(monthKey) ?? 0) + 1);
+    if (p.total_revenue != null) {
+      eventRevenueTrend.push({ eventName: e.name, startDate: e.start_date, group, revenue: p.total_revenue, netProfit: p.net_profit });
+    }
   }
+  eventRevenueTrend.sort((a, b) => a.startDate.localeCompare(b.startDate));
 
-  return Array.from(byName.entries())
-    .map(([productName, agg]) => ({ productName, ...agg }))
-    .sort((a, b) => b.totalRevenue - a.totalRevenue)
-    .slice(0, POPULAR_PRODUCTS_LIMIT);
+  const groupPerformance = [...groups]
+    .map(([group, g]) => ({ group, count: g.count, avgNetProfit: avg(g.profits), profitCount: g.profits.length }))
+    .sort((a, b) => b.count - a.count);
+
+  const recentCount = Math.min(5, Math.floor(eventRevenueTrend.length / 2));
+  const revenueTrend =
+    eventRevenueTrend.length >= 6
+      ? {
+          recentAvg: avg(eventRevenueTrend.slice(-recentCount).map((e) => e.revenue))!,
+          earlierAvg: avg(eventRevenueTrend.slice(0, -recentCount).map((e) => e.revenue))!,
+          recentCount,
+        }
+      : null;
+
+  // 투자 대비 수익률·목표 달성률(main 대시보드와 같은 계산)
+  const costed = participations
+    .map((p) => ({ p, cost: (p.fee ?? 0) + (p.transport_cost ?? 0) + (p.parking_cost ?? 0) + (p.lodging_cost ?? 0) + (p.other_cost ?? 0) }))
+    .filter(({ p, cost }) => p.net_profit != null && cost > 0);
+  const totalCost = sum(costed.map((c) => c.cost));
+  const targeted = participations.filter((p) => p.total_revenue != null && p.target_revenue != null && p.target_revenue > 0);
+
+  const { popularProducts, productSalesByEvent } = summarizeProductSales(
+    participations.filter((p) => p.status === "attended"),
+    salesResult.data ?? []
+  );
+
+  const stats: DashboardStats = {
+    totalParticipations: participations.length,
+    statusCounts,
+    totalRevenue: revenues.length ? sum(revenues.map((p) => p.total_revenue!)) : null,
+    revenueEntryCount: revenues.length,
+    totalNetProfit: profits.length ? sum(profits) : null,
+    netProfitEntryCount: profits.length,
+    averageSatisfaction: avg(satisfactions),
+    satisfactionEntryCount: satisfactions.length,
+    revenueTrend,
+    monthlyParticipationCounts: fillMonths(monthCounts),
+    eventRevenueTrend,
+    groupPerformance,
+    weatherPerformance: conditionPerformance(revenues, (p) => p.weather, ["맑음", "흐림", "비", "눈"]),
+    returnOnCost: costed.length
+      ? { percent: (sum(costed.map((c) => c.p.net_profit!)) / totalCost) * 100, totalCost, entryCount: costed.length }
+      : null,
+    targetAchievement: targeted.length
+      ? {
+          percent: (sum(targeted.map((p) => p.total_revenue!)) / sum(targeted.map((p) => p.target_revenue!))) * 100,
+          entryCount: targeted.length,
+        }
+      : null,
+    popularProducts,
+    productSalesByEvent,
+    insights: [],
+  };
+  stats.insights = buildInsights(stats, participations);
+  return stats;
 }
 
-/** "2026-09" -> "2026년 9월" */
-function formatMonthLabel(monthKey: string): string {
-  const [year, month] = monthKey.split("-");
-  const monthNum = Number(month);
-  if (!year || !Number.isFinite(monthNum)) return monthKey;
-  return `${year}년 ${monthNum}월`;
+function conditionPerformance<T extends { total_revenue: number | null }>(
+  rows: T[],
+  key: (r: T) => string | null,
+  order: string[]
+): ConditionPerformance[] {
+  const by = new Map<string, number[]>();
+  for (const r of rows) {
+    const k = key(r)?.trim();
+    if (k) by.set(k, [...(by.get(k) ?? []), r.total_revenue!]);
+  }
+  if (by.size < 2) return [];
+  const rank = (k: string) => (order.includes(k) ? order.indexOf(k) : order.length);
+  return [...by]
+    .sort(([a], [b]) => rank(a) - rank(b))
+    .map(([label, xs]) => ({ label, count: xs.length, avgRevenue: xs.reduce((a, b) => a + b, 0) / xs.length }));
+}
+
+/** 첫 달부터 마지막 달까지 빈 달을 0으로 채운다 — 막대 간격이 실제 시간 간격과 같아지게. */
+function fillMonths(counts: Map<string, number>): MonthlyCount[] {
+  const keys = [...counts.keys()].sort();
+  if (!keys.length) return [];
+  const out: MonthlyCount[] = [];
+  let [y, m] = keys[0].split("-").map(Number);
+  const last = keys.at(-1)!;
+  for (;;) {
+    const monthKey = `${y}-${String(m).padStart(2, "0")}`;
+    out.push({ monthKey, count: counts.get(monthKey) ?? 0 });
+    if (monthKey >= last) break;
+    if (++m > 12) [y, m] = [y + 1, 1];
+  }
+  return out;
+}
+
+const won = (n: number) => `${Math.round(n).toLocaleString("ko-KR")}원`;
+const pct = (n: number) => `${Math.round(n * 100)}%`;
+
+/** 숫자는 모두 위에서 계산된 값만 쓴다. 근거가 부족한 문장은 만들지 않는다. */
+function buildInsights(
+  s: DashboardStats,
+  participations: { status: ParticipationStatus; event: { name: string; start_date: string | null } | null }[]
+): string[] {
+  const out: string[] = [];
+  if (s.totalNetProfit != null) {
+    out.push(
+      `참가 완료 **${s.statusCounts.attended}회**, 누적 순이익 **${won(s.totalNetProfit)}** (행사당 평균 ${won(s.totalNetProfit / s.netProfitEntryCount)})`
+    );
+  }
+  if (s.revenueTrend) {
+    const { recentAvg, earlierAvg, recentCount } = s.revenueTrend;
+    const diff = (recentAvg - earlierAvg) / earlierAvg;
+    if (Math.abs(diff) >= 0.05) {
+      out.push(`최근 ${recentCount}회 평균 매출 ${won(recentAvg)} — 이전보다 **${pct(Math.abs(diff))} ${diff > 0 ? "증가" : "감소"}**`);
+    } else {
+      out.push(`최근 ${recentCount}회 평균 매출 ${won(recentAvg)} — 이전과 비슷한 수준`);
+    }
+  }
+  const groups = s.groupPerformance.filter((g) => g.profitCount >= 2 && g.avgNetProfit != null);
+  if (groups.length >= 2) {
+    const best = [...groups].sort((a, b) => b.avgNetProfit! - a.avgNetProfit!)[0];
+    out.push(`평균 순이익이 가장 높은 유형은 **${best.group}** (${won(best.avgNetProfit!)}, ${best.profitCount}회)`);
+  }
+  const sunny = s.weatherPerformance.find((w) => w.label === "맑음");
+  const rainy = s.weatherPerformance.find((w) => w.label === "비");
+  if (sunny && rainy && sunny.count >= 2 && rainy.avgRevenue < sunny.avgRevenue) {
+    out.push(`비 오는 날 평균 매출은 맑은 날보다 **${pct(1 - rainy.avgRevenue / sunny.avgRevenue)} 낮음** (${rainy.count}회)`);
+  }
+  const productTotal = s.popularProducts.reduce((a, p) => a + p.totalRevenue, 0);
+  const top = s.popularProducts[0];
+  if (top && productTotal > 0 && s.popularProducts.length >= 2) {
+    out.push(`매출 1위 상품 **${top.productName}** — 상품 매출의 ${pct(top.totalRevenue / productTotal)}`);
+  }
+  const rated = s.popularProducts.filter((p) => p.sellThrough != null && p.totalPrepared >= 20);
+  if (rated.length >= 2) {
+    const low = [...rated].sort((a, b) => a.sellThrough! - b.sellThrough!)[0];
+    if (low.sellThrough! < 0.6) out.push(`**${low.productName}** 판매율 ${pct(low.sellThrough!)} — 준비 수량 조절 필요`);
+  }
+  const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date());
+  const next = participations
+    .filter((p) => toDisplayStatus(p.status) === "planning_to_attend" && p.event?.start_date && p.event.start_date >= today)
+    .sort((a, b) => a.event!.start_date!.localeCompare(b.event!.start_date!))[0];
+  if (next) {
+    const [, m, d] = next.event!.start_date!.split("-").map(Number);
+    out.push(`다음 참가 예정: **${next.event!.name}** (${m}월 ${d}일)`);
+  }
+  return out;
+}
+
+/**
+ * 참가 완료 건의 event_product_sales로 두 가지를 만든다.
+ * - popularProducts: 상품명으로 합산해 매출 높은 순 상위 N개(판매율 포함)
+ * - productSalesByEvent: 품목별 행사별 판매 수량(행사 시작일 순, 판매 수량 많은 품목부터)
+ */
+function summarizeProductSales(
+  attended: { id: string; event: { name: string; start_date: string | null } | null }[],
+  sales: { participation_id: string; product_name: string; prepared: number; sold: number; revenue: number }[]
+): { popularProducts: PopularProduct[]; productSalesByEvent: ProductSalesByEvent } {
+  if (attended.length === 0) return { popularProducts: [], productSalesByEvent: { events: [], series: [] } };
+
+  const byName = new Map<string, { totalSold: number; totalPrepared: number; totalRevenue: number }>();
+  const soldByParticipation = new Map<string, Map<string, number>>();
+  for (const s of sales ?? []) {
+    const entry = byName.get(s.product_name) ?? { totalSold: 0, totalPrepared: 0, totalRevenue: 0 };
+    entry.totalSold += s.sold;
+    entry.totalPrepared += s.prepared;
+    entry.totalRevenue += s.revenue;
+    byName.set(s.product_name, entry);
+    const perProduct = soldByParticipation.get(s.participation_id) ?? new Map<string, number>();
+    perProduct.set(s.product_name, (perProduct.get(s.product_name) ?? 0) + s.sold);
+    soldByParticipation.set(s.participation_id, perProduct);
+  }
+
+  const totals = Array.from(byName.entries()).map(([productName, agg]) => ({
+    productName,
+    ...agg,
+    sellThrough: agg.totalPrepared > 0 ? agg.totalSold / agg.totalPrepared : null,
+  }));
+  const trendProducts = [...totals]
+    .sort((a, b) => b.totalSold - a.totalSold)
+    .map((p) => p.productName);
+  const eventById = new Map(attended.map((p) => [p.id, p.event]));
+  const eventRows = Array.from(soldByParticipation.entries())
+    .map(([id, perProduct]) => {
+      const e = eventById.get(id);
+      return { event: { eventName: e?.name ?? "이름 없는 행사", startDate: e?.start_date ?? null }, perProduct };
+    })
+    .sort((a, b) => (a.event.startDate ?? "").localeCompare(b.event.startDate ?? ""));
+
+  return {
+    popularProducts: [...totals].sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, POPULAR_PRODUCTS_LIMIT),
+    productSalesByEvent: {
+      events: eventRows.map((r) => r.event),
+      series: trendProducts.map((productName) => ({ productName, values: eventRows.map((r) => r.perProduct.get(productName) ?? 0) })),
+    },
+  };
 }

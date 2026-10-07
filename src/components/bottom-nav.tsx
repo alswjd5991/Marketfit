@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { CalendarSearch, Ticket, LayoutDashboard, Sparkles, Store } from "lucide-react";
+import { CalendarSearch, Ticket, LayoutDashboard, Store } from "lucide-react";
+import { BotIcon } from "@/components/bot-icon";
 
 const ITEMS = [
   { href: "/events", label: "행사 찾기", icon: CalendarSearch },
   { href: "/my-events", label: "내 행사", icon: Ticket },
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
-  { href: "/ai", label: "AI 도우미", icon: Sparkles },
+  { href: "/ai", label: "AI 도우미", icon: BotIcon },
   { href: "/store", label: "내 가게", icon: Store },
 ] as const;
 

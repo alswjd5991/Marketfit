@@ -1,26 +1,46 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import "./globals.css";
 import { NavBar } from "@/components/nav-bar";
 import { BottomNav } from "@/components/bottom-nav";
+import { FooterGate } from "@/components/footer-gate";
+import { SiteFooter } from "@/components/site-footer";
 
-// next/font/google(Geist)은 이 샌드박스에서 fonts.googleapis.com 접근이
-// 막혀 있어 빌드가 실패한다. Vercel 등 실제 배포 환경에서는 문제없이
-// 동작하지만, 외부 의존을 하나 줄이는 셈 치고 시스템 폰트 스택으로 대체했다.
-// 다시 웹폰트를 쓰고 싶다면 next/font/local로 폰트 파일을 내려받아 쓰는 것을
-// 권장한다(빌드 시점 네트워크 의존이 사라진다).
+// next/font/google은 이 샌드박스에서 fonts.googleapis.com 접근이 막혀 빌드가 실패하므로
+// 폰트 파일을 저장소에 두고 next/font/local로 쓴다(빌드 시점 네트워크 의존 없음).
+// SUIT(sun-typeface, SIL OFL) 가변 폰트 — 굵기 100~900을 파일 하나로 쓴다.
+const suit = localFont({
+  src: "./fonts/SUIT-Variable.woff2",
+  weight: "100 900",
+  display: "swap",
+  variable: "--font-suit",
+});
+
+// Rubik(Google Fonts, SIL OFL) 가변 폰트 라틴 서브셋 — "Marketfit" 로고 글자에만 쓴다.
+const rubik = localFont({
+  src: "./fonts/Rubik-Variable.woff2",
+  weight: "300 900",
+  display: "swap",
+  variable: "--font-rubik",
+});
 
 export const metadata: Metadata = {
-  title: "마켓핏 — 어떤 마켓에 나가야 잘 팔릴까요?",
+  title: "Marketfit — 셀러를 위한 행사 지도",
   description:
-    "전국 행사 모집정보를 찾고, 참가 데이터를 쌓아 우리 가게에 맞는 마켓을 찾는 소상공인 데이터 플랫폼.",
+    "전국 셀러 모집 공고와 내 판매 기록으로 다음에 나갈 마켓을 고르는 행사 지도.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className="h-full antialiased">
+    <html lang="ko" className={`${suit.variable} ${rubik.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-background font-sans text-neutral-900">
         <NavBar />
-        <main className="flex-1 pb-16 sm:pb-0">{children}</main>
+        <main className="flex-1">{children}</main>
+        <FooterGate>
+          <SiteFooter />
+        </FooterGate>
+        {/* 모바일 하단 탭 높이만큼 여백 */}
+        <div className="h-16 sm:hidden" />
         <BottomNav />
       </body>
     </html>

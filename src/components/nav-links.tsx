@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -12,30 +13,81 @@ const NAV_ITEMS = [
   { href: "/store", label: "내 가게" },
 ] as const;
 
-/** 데스크톱 상단 네비게이션의 현재 위치 표시. usePathname이 필요해서만
- *  클라이언트 컴포넌트로 분리했고, 로그인 상태 표시·로그아웃 폼은 여전히
- *  서버 컴포넌트인 nav-bar.tsx가 담당한다. */
 export function NavLinks() {
   const pathname = usePathname();
 
+  const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const [indicator, setIndicator] = useState({
+    x: 0,
+    width: 0,
+  });
+
+  const activeIndex = NAV_ITEMS.findIndex((item) =>
+    pathname.startsWith(item.href)
+  );
+
+  useLayoutEffect(() => {
+    // 메인 페이지처럼 활성 메뉴가 없으면 잴 필요가 없다(밑줄은 아래에서 숨긴다)
+    const activeLink = activeIndex === -1 ? null : linkRefs.current[activeIndex];
+    if (!activeLink) return;
+
+    // 위치·폭은 ResizeObserver 알림 안에서 잰다 — 처음 관찰을 시작할 때 한 번,
+    // 이후 메뉴 영역 크기가 바뀔 때마다(창 크기 변경 포함) 다시 알려준다.
+    const observer = new ResizeObserver(() => {
+      setIndicator({
+        x: activeLink.offsetLeft,
+        width: activeLink.offsetWidth,
+      });
+    });
+
+    observer.observe(activeLink);
+    if (activeLink.parentElement) observer.observe(activeLink.parentElement);
+
+    return () => observer.disconnect();
+  }, [activeIndex]);
+
+  const indicatorWidth = activeIndex === -1 ? 0 : indicator.width;
+
   return (
-    <>
-      {NAV_ITEMS.map((item) => {
+    <div className="relative flex items-center gap-9">
+      {NAV_ITEMS.map((item, index) => {
         const active = pathname.startsWith(item.href);
+
         return (
           <Link
             key={item.href}
+            ref={(element) => {
+              linkRefs.current[index] = element;
+            }}
             href={item.href}
             className={cn(
-              "relative py-1 transition-colors hover:text-neutral-950",
-              active ? "font-medium text-neutral-950" : "text-neutral-600"
+              "relative py-1 transition-colors duration-200 hover:text-neutral-950",
+              active
+                ? "font-medium text-neutral-950"
+                : "text-neutral-600"
             )}
           >
             {item.label}
-            {active && <span className="absolute -bottom-[13px] left-0 right-0 h-0.5 rounded-full bg-brand" />}
           </Link>
         );
       })}
-    </>
+
+      {/* 움직이는 활성 메뉴 밑줄 */}
+      <span
+        className="
+          pointer-events-none
+          absolute -bottom-[13px] left-0
+          h-0.5 rounded-full bg-brand
+          transition-[transform,width,opacity]
+          duration-300
+          ease-[cubic-bezier(0.22,1,0.36,1)]
+        "
+        style={{
+          width: `${indicatorWidth}px`,
+          transform: `translateX(${indicator.x}px)`,
+          opacity: indicatorWidth > 0 ? 1 : 0,
+        }}
+      />
+    </div>
   );
 }

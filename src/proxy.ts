@@ -41,8 +41,10 @@ export async function proxy(request: NextRequest) {
   // Wrapped in try/catch: a network blip to Supabase must not 500 every
   // page on the site (62번 항목) — worst case, the session just doesn't
   // refresh on this one request.
+  // getClaims도 만료된 세션은 갱신하고, ES256 서명 키라 토큰 검증을 네트워크 왕복 없이 끝낸다
+  // (store/data.ts의 getCurrentUser와 같은 이유).
   try {
-    await supabase.auth.getUser();
+    await supabase.auth.getClaims();
   } catch {
     return NextResponse.next({ request });
   }

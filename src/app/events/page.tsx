@@ -1,7 +1,9 @@
 import { getCategories, getEvents, getRegions } from "@/features/events/data";
+import { PageHeader } from "@/components/page-header";
+import { skyGradient } from "@/components/sky-page";
 import type { EventPeriod, EventSort } from "@/features/events/data";
 import { EventCard } from "@/features/events/event-card";
-import { EventFiltersBar } from "@/features/events/filters-bar";
+import { EventFiltersBar, EventResultsBar } from "@/features/events/filters-bar";
 import type { RecruitmentStatus } from "@/types/database";
 
 export default async function EventsPage(props: PageProps<"/events">) {
@@ -22,26 +24,25 @@ export default async function EventsPage(props: PageProps<"/events">) {
   ]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-1 text-2xl font-bold text-neutral-950">행사 찾기</h1>
-      <p className="mb-6 text-sm text-neutral-500">
-        전국 소상공인·셀러 모집 공고 {events.length}건 (마감된 공고도 계속
-        검색할 수 있습니다)
-      </p>
+    <div className="min-h-screen" style={{ background: skyGradient(0) }}>
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+      <PageHeader title="행사 찾기" />
 
       <EventFiltersBar regions={regions} categories={categories} />
+      <EventResultsBar count={events.length} />
 
       {events.length === 0 ? (
         <p className="py-16 text-center text-sm text-neutral-400">
-          조건에 맞는 행사가 없습니다. 필터를 조정해 보세요.
+          조건에 맞는 행사 없음
         </p>
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
           {events.map((e) => (
             <EventCard key={e.id} event={e} />
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }

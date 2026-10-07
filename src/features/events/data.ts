@@ -1,6 +1,7 @@
 import { seedEvents, type SeedEvent } from "@/lib/data/seed-events";
 import posterManifest from "@/lib/data/event-poster-manifest.json";
 import { computeRecruitmentStatus, formatDday } from "./status";
+import { CATEGORY_GROUPS, getCategoryGroup, type CategoryGroup } from "./category-group";
 import type { RecruitmentStatus } from "@/types/database";
 
 export interface EventListItem {
@@ -8,7 +9,9 @@ export interface EventListItem {
   name: string;
   region: string | null;
   venue: string | null;
-  category: string | null;
+  /** 화면에 보이는 카테고리 = 8종 분류(category-group.ts). 원문 카테고리는 쓰지 않는다. */
+  category: CategoryGroup;
+  categoryGroup: CategoryGroup;
   organizer: string | null;
   startDate: string | null;
   endDate: string | null;
@@ -43,12 +46,14 @@ function toListItem(e: SeedEvent): EventListItem {
     recruitEnd: e.recruitEnd,
     eventEndDate: e.endDate,
   });
+  const categoryGroup = getCategoryGroup(e.category, e.name);
   return {
     id: e.id,
     name: e.name,
     region: e.region,
     venue: e.venue,
-    category: e.category ?? categoryFromItems(e.items),
+    category: categoryGroup,
+    categoryGroup,
     organizer: e.organizer,
     startDate: e.startDate,
     endDate: e.endDate,
@@ -56,22 +61,12 @@ function toListItem(e: SeedEvent): EventListItem {
     recruitEnd: e.recruitEnd,
     fee: typeof e.feeKrw === "number" ? e.feeKrw : null,
     status,
-    dday: status === "open" || status === "upcoming" ? formatDday(e.recruitEnd) : null,
+    dday: status === "open" || status === "upcoming" ? formatDday(e.recruitEnd, e.endDate) : null,
     sourceName: e.organizer,
     sourceUrl: e.sourceUrl,
-    isSampleData: false, // 42건 전부 실제 공개 자료 — 6번 섹션 참고
+    isSampleData: false, // 전부 실제 공개 자료 — 6번 섹션 참고
     posterImage: getPosterImage(e.id),
   };
-}
-
-function categoryFromItems(items: string | null): string | null {
-  if (!items) return null;
-  if (/식품|디저트|베이커리|음식/.test(items)) return "음식";
-  if (/농산물|로컬푸드/.test(items)) return "농산물";
-  if (/수공예|핸드메이드|공예/.test(items)) return "수공예";
-  if (/의류|패션/.test(items)) return "패션";
-  if (/액세서리|주얼리/.test(items)) return "액세서리";
-  return "기타";
 }
 
 export type EventPeriod = "this_week" | "this_month" | "next_month" | "past" | "custom";
@@ -96,7 +91,7 @@ export async function getEvents(filters: EventFilters = {}): Promise<EventListIt
   let items = seedEvents.map(toListItem);
 
   if (filters.region) items = items.filter((e) => e.region === filters.region);
-  if (filters.category) items = items.filter((e) => e.category === filters.category);
+  if (filters.category) items = items.filter((e) => e.categoryGroup === filters.category);
   if (filters.status) items = items.filter((e) => e.status === filters.status);
   if (filters.query) {
     const q = filters.query.trim();
@@ -165,9 +160,14 @@ function compareBy(sort: EventSort) {
 
     // deadline(기본, 마감 임박순): 모집중/예정을 먼저, 마감일이 가까운 순.
     // 모집종료는 뒤로 보내되 "과거 최신순"(가장 최근에 마감된 것부터).
+    // recruitEnd가 없으면 endDate·startDate로 대체한다 — 둘 다 없어서 Infinity로
+    // 남는 행사끼리는 Infinity - Infinity = NaN이 되어 정렬이 먹히지 않고
+    // 원래 배열 순서 그대로 뒤섞여 나왔었다.
     if (rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
-    const aEnd = a.recruitEnd ? new Date(a.recruitEnd).getTime() : Infinity;
-    const bEnd = b.recruitEnd ? new Date(b.recruitEnd).getTime() : Infinity;
+    const bestDate = (e: EventListItem) => e.recruitEnd ?? e.endDate ?? e.startDate;
+    const aEnd = bestDate(a) ? new Date(bestDate(a) as string).getTime() : Infinity;
+    const bEnd = bestDate(b) ? new Date(bestDate(b) as string).getTime() : Infinity;
+    if (aEnd === Infinity && bEnd === Infinity) return 0;
     return a.status === "closed" ? bEnd - aEnd : aEnd - bEnd;
   };
 }
@@ -182,6 +182,5 @@ export async function getRegions(): Promise<string[]> {
 }
 
 export async function getCategories(): Promise<string[]> {
-  const set = new Set(seedEvents.map((e) => toListItem(e).category).filter(Boolean) as string[]);
-  return Array.from(set).sort();
+  return CATEGORY_GROUPS;
 }
