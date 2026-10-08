@@ -10,6 +10,7 @@
     "test:ai": "tsx --test src/features/ai/gemini.test.ts src/features/ai/event-search.test.ts src/features/ai/message-content.test.tsx",
     "test:analytics": "tsx --test src/features/analytics/*.test.ts",
     "test:events": "tsx --test src/features/events/weekly-sync.test.ts",
+    "test:participations": "tsx --test src/features/participations/status-rules.test.ts",
     "check:events": "tsx scripts/check-ai-events.ts",
     "check:ai": "tsx scripts/check-gemini.ts",
     "seed:events": "tsx scripts/seed-events.ts",

@@ -8,6 +8,43 @@ import type {
   Product,
 } from "@/types/database";
 import { getMyStore, getMyProducts } from "@/features/store/data";
+import { koreaDate } from "@/features/ai/event-search";
+import { PENDING_STATUSES, isMissed, sortByEventDate } from "./status-rules";
+
+type Client = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * 관심·참가 예정인 채로 행사 기간이 지난 참가 기록을 '미참여'(cancelled)로 바꿔 저장한다.
+ * 별도 배치 없이, 내 행사·대시보드·메인을 열 때 그 가게 것만 확인한다. 실패해도 화면은 계속 동작한다.
+ */
+export async function expireMissedParticipations(supabase: Client, storeId: string): Promise<void> {
+  try {
+    const today = koreaDate(new Date());
+    const { data: pending } = await supabase
+      .from("event_participations")
+      .select("id, status, event_id")
+      .eq("store_id", storeId)
+      .in("status", PENDING_STATUSES);
+    if (!pending?.length) return;
+    const { data: events } = await supabase
+      .from("events")
+      .select("id, start_date, end_date")
+      .in("id", pending.map((p) => p.event_id));
+    const dates = new Map((events ?? []).map((e) => [e.id, { startDate: e.start_date ?? null, endDate: e.end_date ?? null }]));
+    const missed = pending.filter((p) => {
+      const d = dates.get(p.event_id);
+      return d && isMissed(p.status, d, today);
+    });
+    if (missed.length === 0) return;
+    await supabase
+      .from("event_participations")
+      .update({ status: "cancelled" })
+      .in("id", missed.map((p) => p.id))
+      .eq("store_id", storeId);
+  } catch {
+    // 62번 항목: 네트워크 오류로 페이지 전체가 죽지 않도록
+  }
+}
 
 export interface MyParticipation {
   participationId: string;
@@ -127,7 +164,8 @@ export async function getMyParticipations(): Promise<MyParticipation[]> {
       seedIdMap.set(r.event_id, r.source_post_id.slice(idx + 1));
     }
 
-    return participations.map((p) => {
+    const today = koreaDate(new Date());
+    const rows: MyParticipation[] = participations.map((p) => {
       const e = eventMap.get(p.event_id);
       return {
         participationId: p.id,
@@ -142,6 +180,19 @@ export async function getMyParticipations(): Promise<MyParticipation[]> {
         detailSeedId: seedIdMap.get(p.event_id) ?? null,
       };
     });
+
+    // 관심·참가 예정인 채로 행사 기간이 지난 기록은 미참여로 바꾼다(저장 실패해도 화면은 미참여로 보여준다).
+    const missed = rows.filter((r) => isMissed(r.status, r, today));
+    if (missed.length > 0) {
+      await supabase
+        .from("event_participations")
+        .update({ status: "cancelled" })
+        .in("id", missed.map((r) => r.participationId))
+        .eq("store_id", store.id);
+      for (const r of missed) r.status = "cancelled";
+    }
+
+    return sortByEventDate(rows, today);
   } catch {
     return []; // 62번 항목: 네트워크 오류로 페이지 전체가 죽지 않도록
   }
