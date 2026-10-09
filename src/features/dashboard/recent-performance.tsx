@@ -54,10 +54,12 @@ export function RecentPerformance({
           <div className="flex h-2 gap-0.5 overflow-hidden rounded-full">
             <span style={{ flex: c.attended, background: "#F4917F" }} />
             <span style={{ flex: planned, background: "#8FD3AE" }} />
-            <span style={{ flex: c.interested + c.cancelled, background: "#FFE58A" }} />
+            <span style={{ flex: c.interested, background: "#FFE58A" }} />
+            <span style={{ flex: c.cancelled, background: "#D9DEE3" }} />
           </div>
           <p className="mt-1.5 text-xs text-[#8A8D93]">
-            완료 {c.attended} · 예정 {planned} · 관심 {c.interested + c.cancelled} · 참가율 {Math.round(attendRate * 100)}%
+            완료 {c.attended} · 예정 {planned} · 관심 {c.interested}
+            {c.cancelled > 0 && <> · 미참여 {c.cancelled}</>} · 참가율 {Math.round(attendRate * 100)}%
           </p>
         </div>
       }

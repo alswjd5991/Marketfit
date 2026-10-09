@@ -3,6 +3,7 @@ import { josa } from "@/lib/josa";
 import type { ParticipationStatus } from "@/types/database";
 import { getMyStore } from "@/features/store/data";
 import { toDisplayStatus } from "@/features/participations/status-labels";
+import { expireMissedParticipations } from "@/features/participations/data";
 import { getCategoryGroup, type CategoryGroup } from "@/features/events/category-group";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -100,7 +101,9 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
   const store = await getMyStore();
   if (!store) return null;
   try {
-    return await computeDashboardStats(await createClient(), store.id);
+    const supabase = await createClient();
+    await expireMissedParticipations(supabase, store.id); // 행사 기간이 지난 관심·참가 예정은 미참여로
+    return await computeDashboardStats(supabase, store.id);
   } catch {
     return null; // 62번 항목: 네트워크 오류로 페이지 전체가 죽지 않도록
   }
